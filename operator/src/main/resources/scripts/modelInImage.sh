@@ -513,6 +513,15 @@ function createModelDomain() {
   trace "Exiting createModelDomain"
 }
 
+
+function restoreDomainConfig() {
+  cd / || return 1
+  base64 -d /weblogic-operator/introspector/domainzip.secure > /tmp/domain.tar.gz || return 1
+  tar -xzf /tmp/domain.tar.gz || return 1
+  chmod +x ${DOMAIN_HOME}/bin/*.sh ${DOMAIN_HOME}/*.sh  || return 1
+}
+
+
 function diff_model() {
   trace "Entering diff_model"
 

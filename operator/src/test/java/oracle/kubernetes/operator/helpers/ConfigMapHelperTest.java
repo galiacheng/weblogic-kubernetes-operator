@@ -166,7 +166,7 @@ public class ConfigMapHelperTest {
   }
 
   @Test
-  public void whenMatchingConfigMapExists_addToPacket() {
+  public void whenMatchingConfigMapExists_addToPacket() { // todo REG don't let this use the live file system
     testSupport.defineResources(defaultConfigMap);
 
     Packet packet = testSupport.runSteps(ConfigMapHelper.createScriptConfigMapStep(DOMAIN_NS));
@@ -176,7 +176,7 @@ public class ConfigMapHelperTest {
   }
 
   @Test
-  public void whenExistingConfigMapIsMissingData_replaceIt() {
+  public void whenExistingConfigMapIsMissingData_replaceIt() {  // todo REG don't let this use the live file system
     testSupport.defineResources(defineConfigMap(PARTIAL_SCRIPT_NAMES));
 
     testSupport.runSteps(ConfigMapHelper.createScriptConfigMapStep(DOMAIN_NS));

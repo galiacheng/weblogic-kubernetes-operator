@@ -20,7 +20,7 @@ public class FileGroupReaderTest {
   private static InMemoryFileSystem fileSystem = InMemoryFileSystem.createInstance();
   private final FileGroupReader scriptReader = ConfigMapHelper.getScriptReader();
 
-  @Test
+  @Test  // todo REG why are we doing this? It is accessing the file system!
   public void afterLoadScriptsFromClasspath_haveScriptNamesAsKeys() {
     Map<String, String> scripts = scriptReader.loadFilesFromClasspath();
     assertThat(scripts.keySet(), containsInAnyOrder(SCRIPT_NAMES));

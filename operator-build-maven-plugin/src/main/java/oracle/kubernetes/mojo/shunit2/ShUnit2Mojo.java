@@ -3,11 +3,17 @@
 
 package oracle.kubernetes.mojo.shunit2;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -23,22 +29,55 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-// will start all tests in the testSourceDirectory named "test*" or "*test" with symbols:
-// SHUNIT2_PATH - pointing to the shunit2 script to include
-// SOURCE_DIR - pointing to the sourceDirectory that contains scripts to test
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.BLUE_FG;
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.BOLD;
+
+/*
+ Will run all shunit2 tests in the testSourceDirectory named "test*" or "*test" with environment variables:
+  SHUNIT2_PATH - pointing to the shunit2 script to include
+  SCRIPTPATH - pointing to the sourceDirectory that contains scripts to test
+
+ This mojo will run as part of the build in which it is configured. To run from the command line,
+
+   1. add the following to ~/.m2/settings.xml:
+
+      <pluginGroups>
+        <pluginGroup>oracle.kubernetes</pluginGroup>
+      </pluginGroups>
+
+   2. execute:
+
+      mvn operator-build:shunit2 -pl <module>
+
+      where <module> is the name of the subdirectory containing the module on which the plugin is to be run.
+ */
+
+
 @Mojo(
     name = "shunit2",
     defaultPhase = LifecyclePhase.TEST,
     requiresDependencyResolution = ResolutionScope.NONE)
 public class ShUnit2Mojo extends AbstractMojo {
+
   static final String SHUNIT2_PATH = "SHUNIT2_PATH";
   static final String SCRIPTPATH = "SCRIPTPATH";
 
+  private static final String BASH_TOO_OLD_MESSAGE =
+        "Bash %d.%d is too old to run unit tests."
+        + " Install a later version with Homebrew: "
+        + AnsiUtils.createFormatter(BOLD, BLUE_FG).format("brew install bash")
+        + ".";
   private static final Pattern DIGITS = Pattern.compile("\\d+");
+  private static final Pattern VERSION_PATTERN = Pattern.compile("GNU bash, version (\\d+)\\.(\\d+)");
   private static final String SHUNIT2_SCRIPT_ROOT = "shunit2";
+  private static final int MINIMUM_SUPPORTED_BASH_MAJOR_VERSION = 4;
+  private static final int MINIMUM_SUPPORTED_BASH_MINOR_VERSION = 2;
 
   @SuppressWarnings("FieldMayBeFinal") // not final to allow unit test to change it
   private static FileSystem fileSystem = FileSystem.LIVE_FILE_SYSTEM;
+
+  @SuppressWarnings("FieldMayBeFinal") // not final to allow unit test to change it
+  private static Function<String, BashProcessBuilder> builderFunction = BashProcessBuilder::new;
 
   /** The directory into which the mojo will copy the shunit2 script. */
   @SuppressWarnings("unused") // set by Maven
@@ -60,6 +99,10 @@ public class ShUnit2Mojo extends AbstractMojo {
 
   @Override
   public void execute() throws MojoFailureException, MojoExecutionException {
+    if (isEnvironmentNotSupported()) {
+      return;
+    }
+    
     environmentVariables = getEnvironmentVariables();
     testSuites = Arrays.stream(getScriptPaths()).map(this::createTestSuite).collect(Collectors.toList());
 
@@ -68,6 +111,62 @@ public class ShUnit2Mojo extends AbstractMojo {
       throw new MojoFailureException(String.format("%d failures, %d errors", totalNumFailures(), totalNumErrors()));
     }
   }
+
+  private boolean isEnvironmentNotSupported() throws MojoExecutionException {
+    return isMacOSX() && isBashTooOld(getBashVersion());
+  }
+
+  private boolean isMacOSX() {
+    return System.getProperty("os.name").startsWith("Mac ");
+  }
+
+  private boolean isBashTooOld(int[] bashVersion) {
+    if (isBashVersionTooOld(bashVersion)) {
+      getLog().warn(createVersionTooOldMessage(bashVersion));
+      return true;
+    }
+
+    return false;
+  }
+
+  private boolean isBashVersionTooOld(int[] version) {
+    return version[0] < MINIMUM_SUPPORTED_BASH_MAJOR_VERSION
+          || (version[0] == MINIMUM_SUPPORTED_BASH_MAJOR_VERSION && version[1] < MINIMUM_SUPPORTED_BASH_MINOR_VERSION);
+  }
+
+  private int[] getBashVersion() throws MojoExecutionException {
+    try {
+      final Process process = builderFunction.apply("-version").build();
+      process.waitFor();
+      return extractVersionFromResponse(process);
+    } catch (InterruptedException | IOException e) {
+      throw new MojoExecutionException("Unable to check bash version", e);
+    }
+  }
+
+  private int[] extractVersionFromResponse(Process process) throws IOException {
+    try (final InputStream inputStream = process.getInputStream()) {
+      return new BufferedReader(new InputStreamReader(inputStream)).lines()
+            .map(this::parseVersionNumber)
+            .filter(Objects::nonNull)
+            .findAny()
+            .orElseThrow(() -> new IOException("No bash version detected"));
+    }
+  }
+
+  private int[] parseVersionNumber(String message) {
+    final Matcher matcher = VERSION_PATTERN.matcher(message);
+    if (!matcher.find()) {
+      return null;
+    } else {
+      return new int[] {Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2))};
+    }
+  }
+
+  private String createVersionTooOldMessage(int[] version) {
+    return String.format(BASH_TOO_OLD_MESSAGE, version[0], version[1]);
+  }
+
 
   private int totalNumFailures() {
     return testSuites.stream().mapToInt(TestSuite::numFailures).sum();
@@ -78,7 +177,7 @@ public class ShUnit2Mojo extends AbstractMojo {
   }
 
   private TestSuite createTestSuite(String scriptPath) {
-    return new TestSuite(scriptPath, getLog(), environmentVariables);
+    return new TestSuite(builderFunction, scriptPath, getLog(), environmentVariables);
   }
 
   List<TestSuite> getTestSuites() {

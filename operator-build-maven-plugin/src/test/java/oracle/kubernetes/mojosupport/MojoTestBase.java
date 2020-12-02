@@ -80,6 +80,10 @@ public abstract class MojoTestBase {
     return logStub.infoMessages;
   }
 
+  protected List<String> getWarningLines() {
+    return logStub.warningMessages;
+  }
+
   protected List<String> getErrorLines() {
     return logStub.errorMessages;
   }
@@ -281,6 +285,7 @@ public abstract class MojoTestBase {
 
   abstract static class LogStub implements Log {
     private final List<String> infoMessages = new ArrayList<>();
+    private final List<String> warningMessages = new ArrayList<>();
     private final List<String> errorMessages = new ArrayList<>();
 
     @Override
@@ -309,6 +314,16 @@ public abstract class MojoTestBase {
       Optional.ofNullable(content).map(CharSequence::toString).ifPresent(builder::add);
       Optional.ofNullable(error).map(Throwable::toString).ifPresent(builder::add);
       return String.join(System.lineSeparator(), builder);
+    }
+
+    @Override
+    public boolean isWarnEnabled() {
+      return true;
+    }
+
+    @Override
+    public void warn(CharSequence content) {
+      warningMessages.add(createLogMessage(content, null));
     }
 
     @Override

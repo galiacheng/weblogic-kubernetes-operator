@@ -163,7 +163,7 @@ public class MainTest extends ThreadFactoryTestBase {
   }
 
   @Test
-  public void mainHasAccessToBuildProperties() {
+  public void mainHasAccessToBuildProperties() {  // todo REG think more on this; it may be brittle
     assertThat(Main.getBuildProperties(), allOf(
           hasKey(GIT_BRANCH_KEY), hasKey(GIT_COMMIT_KEY), hasKey(GIT_BUILD_TIME_KEY), hasKey(GIT_BUILD_VERSION_KEY)));
   }

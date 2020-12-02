@@ -26,6 +26,12 @@ if [ $? -ne 0 ]; then
       trace SEVERE "Error sourcing modelInImage.sh" && exit 1
 fi
 
+source ${SCRIPTPATH}/server_utils.sh
+
+if [ $? -ne 0 ]; then
+      trace SEVERE "Error sourcing server_utils.sh" && exit 1
+fi
+
 exportInstallHomes
 
 #
@@ -166,14 +172,6 @@ function copySitCfgWhileBooting() {
 
 # prepare mii server
 
-function restoreDomainConfig() {
-  trace "Model-in-Image: Restore domain config"
-  cd / || return 1
-  base64 -d /weblogic-operator/introspector/domainzip.secure > /tmp/domain.tar.gz || return 1
-  tar -xzf /tmp/domain.tar.gz || return 1
-  chmod +x ${DOMAIN_HOME}/bin/*.sh ${DOMAIN_HOME}/*.sh  || return 1
-}
-
 function prepareMIIServer() {
 
   trace "Model-in-Image: Creating domain home."
@@ -210,6 +208,7 @@ function prepareMIIServer() {
 
   # restore the config zip
   #
+  trace "Model-in-Image: Restore domain config"
   restoreDomainConfig || return 1
 
   # restore the archive apps and libraries

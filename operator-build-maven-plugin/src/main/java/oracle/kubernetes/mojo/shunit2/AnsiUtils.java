@@ -3,8 +3,7 @@
 
 package oracle.kubernetes.mojo.shunit2;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,49 +19,28 @@ class AnsiUtils {
     return matcher.replaceAll("");
   }
 
-  public static AnsiFormatter text(String s) {
-    return new AnsiFormatter(s);
+  public static AnsiFormatter createFormatter(Format... formats) {
+    return new AnsiFormatter(formats);
   }
 
   static class AnsiFormatter {
 
-    private final String string;
-    private final List<Format> formats = new ArrayList<>();
+    private final Format[] formats;
 
-    AnsiFormatter(String string) {
-      this.string = string;
+    AnsiFormatter(Format... formats) {
+      this.formats = formats;
     }
 
-    AnsiFormatter asBold() {
-      formats.add(Format.BOLD);
-      return this;
-    }
-
-    AnsiFormatter asRed() {
-      formats.add(Format.RED_FOREGROUND);
-      return this;
-    }
-
-    AnsiFormatter asBlue() {
-      formats.add(Format.BLUE_FOREGROUND);
-      return this;
-    }
-
-    public AnsiFormatter asGreen() {
-      formats.add(Format.GREEN_FOREGROUND);
-      return this;
-    }
-
-    String format() {
+    String format(String string) {
       return startCodes() + string + endCodes();
     }
 
     private String startCodes() {
-      return sequence(formats.stream().map(Format::getFormat).toArray(String[]::new));
+      return formats.length == 0 ? "" : sequence(Arrays.stream(formats).map(Format::getFormat).toArray(String[]::new));
     }
 
     private String endCodes() {
-      return sequence("0");
+      return formats.length == 0 ? "" : sequence("0");
     }
 
     String sequence(String... formatCodes) {
@@ -71,7 +49,7 @@ class AnsiUtils {
   }
 
   static enum Format {
-    BOLD(1), RED_FOREGROUND(31), BLUE_FOREGROUND(34), GREEN_FOREGROUND(32);
+    BOLD(1), RED_FG(31), BLUE_FG(34), GREEN_FG(32);
 
     private final String format;
     Format(int format) {

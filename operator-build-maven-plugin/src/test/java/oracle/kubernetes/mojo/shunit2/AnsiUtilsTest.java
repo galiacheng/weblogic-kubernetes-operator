@@ -5,6 +5,10 @@ package oracle.kubernetes.mojo.shunit2;
 
 import org.junit.Test;
 
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.BLUE_FG;
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.BOLD;
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.GREEN_FG;
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.RED_FG;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -22,25 +26,31 @@ public class AnsiUtilsTest {
   }
 
   @Test
+  public void formatBoldTexts() {
+    assertThat(AnsiUtils.createFormatter(BOLD).format("sample"),
+          equalTo("\u001B[1msample\u001B[0m"));
+  }
+
+  @Test
   public void formatBoldText() {
-    assertThat(AnsiUtils.text("sample").asBold().format(), equalTo("\u001B[1msample\u001B[0m"));
+    assertThat(AnsiUtils.createFormatter(BOLD).format("sample"), equalTo("\u001B[1msample\u001B[0m"));
   }
 
   @Test
   public void formatBoldRedText() {
-    assertThat(AnsiUtils.text("sample").asBold().asRed().format(),
+    assertThat(AnsiUtils.createFormatter(BOLD, RED_FG).format("sample"),
           equalTo("\u001B[1;31msample\u001B[0m"));
   }
 
   @Test
   public void formatBlueText() {
-    assertThat(AnsiUtils.text("sample").asBlue().format(),
+    assertThat(AnsiUtils.createFormatter(BLUE_FG).format("sample"),
           equalTo("\u001B[34msample\u001B[0m"));
   }
 
   @Test
   public void formatGreenText() {
-    assertThat(AnsiUtils.text("sample").asGreen().format(),
+    assertThat(AnsiUtils.createFormatter(GREEN_FG).format("sample"),
           equalTo("\u001B[32msample\u001B[0m"));
   }
 }

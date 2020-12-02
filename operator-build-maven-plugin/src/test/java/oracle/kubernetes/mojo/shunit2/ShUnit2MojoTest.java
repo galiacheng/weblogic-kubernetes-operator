@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 import com.meterware.simplestub.StaticStubSupport;
+import com.meterware.simplestub.SystemPropertySupport;
 import oracle.kubernetes.mojosupport.MojoTestBase;
 import oracle.kubernetes.mojosupport.TestFileSystem;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -31,18 +32,35 @@ import org.junit.Test;
 import org.objectweb.asm.ClassReader;
 
 import static com.meterware.simplestub.Stub.createNiceStub;
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.BLUE_FG;
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.BOLD;
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.GREEN_FG;
+import static oracle.kubernetes.mojo.shunit2.AnsiUtils.Format.RED_FG;
 import static org.apache.maven.plugins.annotations.LifecyclePhase.TEST;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
+import static org.hamcrest.Matchers.both;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.Assert.fail;
 
 @SuppressWarnings("UnconstructableJUnitTestCase") // mistaken warning due to private constructor
 public class ShUnit2MojoTest extends MojoTestBase {
 
   private static final String TEST_SCRIPT = "shunit2";
+  private static final String OS_NAME_PROPERTY = "os.name";
+  private static final String[] INSTALLED_OSX_BASH_VERSION = {
+      "GNU bash, version 3.2.57(1)-release (x86_64-apple-darwin19)",
+      "Copyright (C) 2007 Free Software Foundation, Inc."
+  };
+
+  private static final String[] HOMEBREW_BASH_VERSION = {
+      "GNU bash, version 5.0.18(1)-release (x86_64-apple-darwin19.6.0)",
+      "Copyright (C) 2019 Free Software Foundation, Inc.",
+      "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>"
+  };
 
   private final ShUnit2Mojo mojo;
   private final Function<String, BashProcessBuilder> builderFunction = this::createProcessBuilder;
@@ -69,7 +87,8 @@ public class ShUnit2MojoTest extends MojoTestBase {
     classReader.accept(new Visitor(ShUnit2Mojo.class), 0);
 
     mementos.add(StaticStubSupport.install(ShUnit2Mojo.class, "fileSystem", fileSystem));
-    mementos.add(StaticStubSupport.install(TestSuite.class, "builderFunction", builderFunction));
+    mementos.add(StaticStubSupport.install(ShUnit2Mojo.class, "builderFunction", builderFunction));
+    mementos.add(SystemPropertySupport.install(OS_NAME_PROPERTY, "Linux"));
 
     setMojoParameter("outputDirectory", TEST_CLASSES_DIRECTORY);
     setMojoParameter("sourceDirectory", SOURCE_DIRECTORY);
@@ -154,6 +173,51 @@ public class ShUnit2MojoTest extends MojoTestBase {
   }
 
   @Test
+  public void onMacOS_warnIfBashIsOld() throws MojoFailureException, MojoExecutionException {
+    System.setProperty(OS_NAME_PROPERTY, "Mac OS X");
+    defineExecution().withOutputs(INSTALLED_OSX_BASH_VERSION);
+
+    executeMojo();
+
+    assertThat(getWarningLines(),
+          contains("Bash 3.2 is too old to run unit tests. Install a later version with Homebrew: "
+                + AnsiUtils.createFormatter(BOLD, BLUE_FG).format("brew install bash") + "."));
+  }
+
+  @Test
+  public void onMacOS_dontRunTestsIfBashIsOld() throws MojoFailureException, MojoExecutionException {
+    System.setProperty(OS_NAME_PROPERTY, "Mac OS X");
+    defineExecution().withOutputs(INSTALLED_OSX_BASH_VERSION);
+    defineExecution().withOutputs("This is an example", "and here is another", "Ran 2 tests.");
+
+    executeMojo();
+
+    assertThat(getInfoLines(), empty());
+  }
+
+  @Test
+  public void onMacOS_dontWarnIfBashVersionIsSupported() throws MojoFailureException, MojoExecutionException {
+    System.setProperty(OS_NAME_PROPERTY, "Mac OS X");
+    defineExecution().withOutputs(HOMEBREW_BASH_VERSION);
+
+    executeMojo();
+
+    assertThat(getWarningLines(), empty());
+  }
+
+  @Test
+  public void onMacOS_runTestsIfBashVersionIsSupported() throws MojoFailureException, MojoExecutionException {
+    System.setProperty(OS_NAME_PROPERTY, "Mac OS X");
+    defineExecution().withOutputs(HOMEBREW_BASH_VERSION);
+    defineExecution().withOutputs("This is an example", "and here is another", "Ran 2 tests.");
+
+    executeMojo();
+
+    assertThat(getInfoLines(), contains("This is an example", "and here is another",
+                    createExpectedSuccessSummary(2, "test1.sh")));
+  }
+
+  @Test
   public void onExecution_specifyTheSelectedShUnit2ScriptPath() throws MojoFailureException, MojoExecutionException {
     executeMojo();
 
@@ -195,8 +259,10 @@ public class ShUnit2MojoTest extends MojoTestBase {
     return delegate.defineScriptExecution();
   }
 
+  @SuppressWarnings("SameParameterValue")
   private String createExpectedSuccessSummary(int numTestsRun, String testScript) {
-    return AnsiUtils.text("Tests run: " + numTestsRun).asGreen().format()
+    return AnsiUtils.createFormatter(BOLD, GREEN_FG).format("Tests ")
+          + AnsiUtils.createFormatter(BOLD, GREEN_FG).format("run: " + numTestsRun)
           + String.format(", Failures: 0, Errors: 0 - in /tests/%s", testScript);
   }
 
@@ -208,30 +274,35 @@ public class ShUnit2MojoTest extends MojoTestBase {
       executeMojo();
       fail("Should have thrown an exception");
     } catch (MojoFailureException ignored) {
-      assertThat(getInfoLines(),
-            contains(createExpectedFailureSummary(3, 0, 2, "test1.sh")));
+      assertThat(getErrorLines(),
+            contains("This is an example", "and here is another",
+                  createExpectedErrorSummary(3, 2, "test1.sh")));
     }
   }
 
-  private String createExpectedFailureSummary(int numTestsRun, int numFailures, int numErrors, String testScript) {
-    return AnsiUtils.text("Tests run: " + numTestsRun).asBold().asRed().format()
-          + String.format(", Failures: %d, Errors: %d - in /tests/%s", numFailures, numErrors, testScript);
+  @SuppressWarnings("SameParameterValue")
+  private String createExpectedErrorSummary(int numTestsRun, int numErrors, String testScript) {
+    return AnsiUtils.createFormatter(BOLD, RED_FG).format("Tests ")
+          + AnsiUtils.createFormatter(BOLD).format("run: " + numTestsRun)
+          + ", Failures: 0, "
+          + AnsiUtils.createFormatter(BOLD, RED_FG).format("Errors: " + numErrors)
+          + AnsiUtils.createFormatter(BOLD, RED_FG).format(" <<< FAILURE! - in /tests/" + testScript);
   }
 
   @Test
-  public void onExecution_logErrors() throws MojoFailureException, MojoExecutionException {
+  public void onExecution_logErrors() throws MojoExecutionException {
     defineExecution().withErrors("This is an example", "and here is another");
 
     try {
       executeMojo();
       fail("Should have thrown an exception");
     } catch (MojoFailureException ignored) {
-      assertThat(getErrorLines(), contains("This is an example", "and here is another"));
+      assertThat(getErrorLines(), both(hasItem("This is an example")).and(hasItem("and here is another")));
     }
   }
 
   @Test
-  public void onExecution_ignoreNonZeroReturnCodeErrors() throws MojoFailureException, MojoExecutionException {
+  public void onExecution_ignoreNonZeroReturnCodeErrors() throws MojoExecutionException {
     defineExecution().withErrors("This is an example",
           "\u001B[1;31mERROR:\u001B[0m testPartyLikeItIs1999() returned non-zero return code.");
 
@@ -239,7 +310,7 @@ public class ShUnit2MojoTest extends MojoTestBase {
       executeMojo();
       fail("Should have thrown an exception");
     } catch (MojoFailureException ignored) {
-      assertThat(getErrorLines(), contains("This is an example"));
+      assertThat(getErrorLines(), hasItem("This is an example"));
     }
   }
 
@@ -256,8 +327,9 @@ public class ShUnit2MojoTest extends MojoTestBase {
   public void onExecution_recordReportedNumberOfTests() throws MojoFailureException, MojoExecutionException {
     fileSystem.defineFileContents(new File(TEST_SOURCE_DIRECTORY, "test1.sh"), "");
     fileSystem.defineFileContents(new File(TEST_SOURCE_DIRECTORY, "test2.sh"), "");
-    defineExecution().withOutputs(String.format("Ran %s tests.", AnsiUtils.text("3").asBold().asBlue().format()));
-    defineExecution().withOutputs(String.format("Ran %s tests.", AnsiUtils.text("2").asBold().asBlue().format()));
+    final AnsiUtils.AnsiFormatter shUnit2RunCountFormat = AnsiUtils.createFormatter(BOLD, BLUE_FG);
+    defineExecution().withOutputs(String.format("Ran %s tests.", shUnit2RunCountFormat.format("3")));
+    defineExecution().withOutputs(String.format("Ran %s tests.", shUnit2RunCountFormat.format("2")));
 
     executeMojo();
 
@@ -265,7 +337,7 @@ public class ShUnit2MojoTest extends MojoTestBase {
   }
 
   @Test
-  public void onExecution_recordReportedNumberOfFailures() throws MojoFailureException, MojoExecutionException {
+  public void onExecution_recordReportedNumberOfFailures() throws MojoExecutionException {
     fileSystem.defineFileContents(new File(TEST_SOURCE_DIRECTORY, "test1.sh"), "");
     fileSystem.defineFileContents(new File(TEST_SOURCE_DIRECTORY, "test2.sh"), "");
     defineExecution()
@@ -288,7 +360,7 @@ public class ShUnit2MojoTest extends MojoTestBase {
   }
 
   private String createExpectedTestFailure(String explanation) {
-    return AnsiUtils.text("ASSERT:").asBold().asRed().format() + explanation;
+    return AnsiUtils.createFormatter(BOLD, RED_FG).format("ASSERT:") + explanation;
   }
 
   @Test(expected = MojoFailureException.class)
