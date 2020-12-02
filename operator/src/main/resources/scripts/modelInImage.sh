@@ -526,9 +526,8 @@ function restorePrimordialDomain() {
 
 function restoreEncodedTar() {
   cd / || return 1
-  base64 -d "/weblogic-operator/introspector/$1.secure" > /tmp/domain.tar.gz || return 1
-  #  source "/weblogic-operator/introspector/restore_$1.sh"
-  #  base64 -d "/tmp/domain.secure" > /tmp/domain.tar.gz || return 1
+  source "/weblogic-operator/introspector/restore_$1.sh"
+  base64 -d "/tmp/domain.secure" > /tmp/domain.tar.gz || return 1
 
   tar -xzf /tmp/domain.tar.gz || return 1
 

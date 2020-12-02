@@ -38,13 +38,19 @@ testOnRestoreDomainConfig_useRootDirectory() {
   assertEquals "should be at '/'" "/" "$PWD"
 }
 
+testOnRestoreDomainConfig_sourceConfiguredScript() {
+  restoreDomainConfig
+
+  assertEquals "SOURCE'd script" "/weblogic-operator/introspector/restore_domainzip.sh" "$SOURCE_ARGS"
+}
+
 testOnRestoreDomainConfig_base64DecodeZip() {
   rm /tmp/domain.tar.gz
 
   restoreDomainConfig
 
   contents="$(cat /tmp/domain.tar.gz)"
-  assertEquals "/weblogic-operator/introspector/domainzip.secure" $contents
+  assertEquals "/tmp/domain.secure" $contents
 }
 
 testOnRestoreDomainConfig_unTarDomain() {
@@ -65,13 +71,19 @@ testOnRestorePrimordialDomain_useRootDirectory() {
   assertEquals "should be at '/'" "/" "$PWD"
 }
 
+testOnRestorePrimordialDomain_sourceConfiguredScript() {
+  restorePrimordialDomain
+
+  assertEquals "SOURCE'd script" "/weblogic-operator/introspector/restore_primordial_domainzip.sh" "$SOURCE_ARGS"
+}
+
 testOnRestorePrimordialDomain_base64DecodeZip() {
   rm /tmp/domain.tar.gz
 
   restorePrimordialDomain
 
   contents="$(cat /tmp/domain.tar.gz)"
-  assertEquals "/weblogic-operator/introspector/primordial_domainzip.secure" $contents
+  assertEquals "/tmp/domain.secure" $contents
 }
 
 testOnRestorePrimordialDomain_unTarDomain() {
@@ -99,6 +111,14 @@ base64() {
     return 1
   else
     echo "$2"
+  fi
+}
+
+source() {
+  if [ "$DISALLOW" = "SOURCE" ]; then
+    return 1
+  else
+    SOURCE_ARGS="$*"
   fi
 }
 
