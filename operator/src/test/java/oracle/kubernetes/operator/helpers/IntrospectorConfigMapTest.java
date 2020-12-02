@@ -60,7 +60,6 @@ public class IntrospectorConfigMapTest {
   private static final String INPUTS_HASH_VALUE = "MII_inputs_hash";
   private static final String MD5_SECRETS = "md5-secrets";
   private static final String RESTART_VERSION = "123";
-  private static final String OVERRIDES_VALUE = "a[]";
   private final KubernetesTestSupport testSupport = new KubernetesTestSupport();
   private final List<Memento> mementos = new ArrayList<>();
   private final TerminalStep terminalStep = new TerminalStep();
@@ -80,7 +79,9 @@ public class IntrospectorConfigMapTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws Exception {
+    testSupport.throwOnCompletionFailure();
+    
     mementos.forEach(Memento::revert);
   }
 
@@ -326,6 +327,27 @@ public class IntrospectorConfigMapTest {
     Packet packet = testSupport.runSteps(ConfigMapHelper.createIntrospectorConfigMapStep(terminalStep));
 
     assertThat(packet.get(DOMAIN_INPUTS_HASH), notNullValue());
+  }
+
+  @Test
+  public void whenDomainIsModelInImage_addReconstructScriptsForEncodedZips() {
+    configureDomain().withDomainHomeSourceType(DomainSourceType.FromModel);
+    introspectResult
+          .defineFile(TOPOLOGY_YAML, "domainValid: true", "domain:", "  name: \"sample\"")
+          .defineFile("domainzip.secure", "abcdefg")
+          .defineFile("primordial_domainzip.secure", "hijklmno")
+          .addToPacket();
+
+    testSupport.runSteps(ConfigMapHelper.createIntrospectorConfigMapStep(terminalStep));
+
+    assertThat(getIntrospectorConfigMapValue("restore_domainzip.sh"),
+          equalTo(simpleRestoreScript("domainzip")));
+    assertThat(getIntrospectorConfigMapValue("restore_primordial_domainzip.sh"),
+          equalTo(simpleRestoreScript("primordial_domainzip")));
+  }
+
+  String simpleRestoreScript(String name) {
+    return String.format("#!/usr/bin/env bash\ncp /weblogic-operator/introspector/%s.secure /tmp/domain.secure", name);
   }
 
   private V1ConfigMap createIntrospectorConfigMap(Map<String, String> entries) {

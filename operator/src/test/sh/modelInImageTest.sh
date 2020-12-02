@@ -1,4 +1,4 @@
-#! /bin/sh -x
+#!/usr/bin/env bash
 # Copyright (c) 2020, Oracle Corporation and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
@@ -57,6 +57,27 @@ testOnRestoreDomainConfig_makeScriptsExecutable() {
   restoreDomainConfig
 
   assertEquals "CD command arguments" "+x ${DOMAIN_HOME}/bin/*.sh ${DOMAIN_HOME}/*.sh" "$CHMOD_ARGS"
+}
+
+testOnRestorePrimordialDomain_useRootDirectory() {
+  restorePrimordialDomain
+
+  assertEquals "should be at '/'" "/" "$PWD"
+}
+
+testOnRestorePrimordialDomain_base64DecodeZip() {
+  rm /tmp/domain.tar.gz
+
+  restorePrimordialDomain
+
+  contents="$(cat /tmp/domain.tar.gz)"
+  assertEquals "/weblogic-operator/introspector/primordial_domainzip.secure" $contents
+}
+
+testOnRestorePrimordialDomain_unTarDomain() {
+  restorePrimordialDomain
+
+  assertEquals "TAR command arguments" "-xzf /tmp/domain.tar.gz" "$TAR_ARGS"
 }
 
 ######################### Mocks for the tests ###############

@@ -515,10 +515,23 @@ function createModelDomain() {
 
 
 function restoreDomainConfig() {
-  cd / || return 1
-  base64 -d /weblogic-operator/introspector/domainzip.secure > /tmp/domain.tar.gz || return 1
-  tar -xzf /tmp/domain.tar.gz || return 1
+  restoreEncodedTar "domainzip" || return 1
+
   chmod +x ${DOMAIN_HOME}/bin/*.sh ${DOMAIN_HOME}/*.sh  || return 1
+}
+
+function restorePrimordialDomain() {
+  restoreEncodedTar "primordial_domainzip" || return 1
+}
+
+function restoreEncodedTar() {
+  cd / || return 1
+  base64 -d "/weblogic-operator/introspector/$1.secure" > /tmp/domain.tar.gz || return 1
+  #  source "/weblogic-operator/introspector/restore_$1.sh"
+  #  base64 -d "/tmp/domain.secure" > /tmp/domain.tar.gz || return 1
+
+  tar -xzf /tmp/domain.tar.gz || return 1
+
 }
 
 

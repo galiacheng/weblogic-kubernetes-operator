@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.json.Json;
 import javax.json.JsonPatchBuilder;
 import javax.json.JsonValue;
@@ -487,6 +489,11 @@ public class ConfigMapHelper {
   }
 
   static class IntrospectionLoader {
+
+    protected static final String SIMPLE_RESTORE_SCRIPT
+          = "#!/usr/bin/env bash%n"
+          + "cp /weblogic-operator/introspector/%s.secure /tmp/domain.secure";
+    protected static final String RESTORE_SCRIPT_NAME = "restore_%s.sh";
     private final Packet packet;
     private final Step conflictStep;
     private final DomainPresenceInfo info;
@@ -502,7 +509,7 @@ public class ConfigMapHelper {
 
     private void parseIntrospectorResult() {
       String result = (String) packet.remove(ProcessingConstants.DOMAIN_INTROSPECTOR_LOG_RESULT);
-      data = ConfigMapHelper.parseIntrospectorResult(result, info.getDomainUid());
+      data = withRestoreScripts(ConfigMapHelper.parseIntrospectorResult(result, info.getDomainUid()));
 
       LOGGER.fine("================");
       LOGGER.fine(data.toString());
@@ -512,6 +519,34 @@ public class ConfigMapHelper {
             .map(this::getDomainTopology)
             .map(DomainTopology::getDomain)
             .orElse(null);
+    }
+
+    private Map<String, String> withRestoreScripts(Map<String, String> introspectorResult) {
+      final Map<String, String> result = new HashMap<>(introspectorResult);
+
+      for (String key : introspectorResult.keySet()) {
+        Optional.ofNullable(getEncodingName(key)).ifPresent(e -> addSimpleRestoreScript(result, e));
+      }
+      
+      return result;
+    }
+
+    private String getEncodingName(String key) {
+      Pattern encodedZipPattern = Pattern.compile("([A-Za-z_]+)\\.secure");
+      final Matcher matcher = encodedZipPattern.matcher(key);
+      return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private void addSimpleRestoreScript(Map<String, String> map, String key) {
+      map.put(createRestoreScriptName(key), createRestoreScript(key));
+    }
+
+    private String createRestoreScriptName(String encodingName) {
+      return String.format(RESTORE_SCRIPT_NAME, encodingName);
+    }
+
+    private String createRestoreScript(String encodingName) {
+      return String.format(SIMPLE_RESTORE_SCRIPT, encodingName);
     }
 
     boolean isTopologyNotValid() {
