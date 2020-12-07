@@ -6,9 +6,11 @@ package oracle.kubernetes.operator.helpers;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import javax.annotation.Nonnull;
 
 import io.kubernetes.client.custom.Quantity;
+import io.kubernetes.client.openapi.models.V1ConfigMapVolumeSource;
 import io.kubernetes.client.openapi.models.V1Container;
 import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1HostPathVolumeSource;
@@ -66,9 +68,57 @@ public class Matchers {
     return new V1Container().name(name).image(image).command(Arrays.asList(command));
   }
 
+  public static class VolumeMatcher extends TypeSafeDiagnosingMatcher<V1Volume> {
+    private final String expectedName;
+    private final String expectedConfigMapName;
+
+    private VolumeMatcher(String expectedName, String expectedConfigMapName) {
+      this.expectedName = expectedName;
+      this.expectedConfigMapName = expectedConfigMapName;
+    }
+
+    public static VolumeMatcher volume(String expectedName, String expectedConfigMapName) {
+      return new VolumeMatcher(expectedName, expectedConfigMapName);
+    }
+
+    @Override
+    protected boolean matchesSafely(V1Volume item, Description mismatchDescription) {
+      if (isExpectedVolume(item)) {
+        return true;
+      }
+
+      describe(mismatchDescription, item.getName(), getConfigMapName(item));
+      return false;
+    }
+
+    private void describe(Description description, String name, String configMapName) {
+      description.appendText("volume with name: ").appendValue(name);
+      if (expectedConfigMapName != null) {
+        description.appendText(", config map name: ").appendValue(configMapName);
+      }
+    }
+
+    private boolean isExpectedVolume(V1Volume volume) {
+      return expectedName.equals(volume.getName())
+          && expectedConfigMapName.equals(getConfigMapName(volume));
+    }
+
+    private String getPath(V1Volume volume) {
+      return Optional.ofNullable(volume.getHostPath()).map(V1HostPathVolumeSource::getPath).orElse(null);
+    }
+
+    private String getConfigMapName(V1Volume volume) {
+      return Optional.ofNullable(volume.getConfigMap()).map(V1ConfigMapVolumeSource::getName).orElse(null);
+    }
+
+    @Override
+    public void describeTo(Description description) {
+      describe(description, expectedName, expectedConfigMapName);
+    }
+  }
+
   @SuppressWarnings("unused")
-  public static class VolumeMountMatcher
-      extends org.hamcrest.TypeSafeDiagnosingMatcher<io.kubernetes.client.openapi.models.V1VolumeMount> {
+  public static class VolumeMountMatcher extends TypeSafeDiagnosingMatcher<V1VolumeMount> {
     private final String expectedName;
     private final String expectedPath;
     private final boolean readOnly;
