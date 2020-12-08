@@ -26,12 +26,6 @@ if [ $? -ne 0 ]; then
       trace SEVERE "Error sourcing modelInImage.sh" && exit 1
 fi
 
-source ${SCRIPTPATH}/server_utils.sh
-
-if [ $? -ne 0 ]; then
-      trace SEVERE "Error sourcing server_utils.sh" && exit 1
-fi
-
 exportInstallHomes
 
 #
