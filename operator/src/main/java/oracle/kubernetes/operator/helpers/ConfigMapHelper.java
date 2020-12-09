@@ -14,10 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import javax.annotation.Nonnull;
 import javax.json.Json;
 import javax.json.JsonPatchBuilder;
@@ -55,12 +53,9 @@ import static oracle.kubernetes.operator.IntrospectorConfigMapConstants.DOMAIN_R
 import static oracle.kubernetes.operator.IntrospectorConfigMapConstants.NUM_CONFIG_MAPS;
 import static oracle.kubernetes.operator.IntrospectorConfigMapConstants.SECRETS_MD_5;
 import static oracle.kubernetes.operator.IntrospectorConfigMapConstants.SIT_CONFIG_FILE_PREFIX;
-import static oracle.kubernetes.operator.IntrospectorConfigMapConstants.getIntrospectorVolumePath;
 import static oracle.kubernetes.operator.KubernetesConstants.SCRIPT_CONFIG_MAP_NAME;
 import static oracle.kubernetes.operator.LabelConstants.INTROSPECTION_STATE_LABEL;
 import static oracle.kubernetes.operator.ProcessingConstants.DOMAIN_VALIDATION_ERRORS;
-import static oracle.kubernetes.operator.helpers.ConfigMapHelper.IntrospectorConfigMapContext.createRestoreScriptName;
-import static oracle.kubernetes.operator.helpers.ConfigMapHelper.IntrospectorConfigMapContext.getEncodingName;
 import static oracle.kubernetes.operator.helpers.KubernetesUtils.getDomainUidLabel;
 import static oracle.kubernetes.operator.helpers.NamespaceHelper.getOperatorNamespace;
 
@@ -499,8 +494,6 @@ public class ConfigMapHelper {
 
   static class IntrospectionLoader {
 
-    protected static final String SIMPLE_RESTORE_SCRIPT_PATTERN
-          = "cp " + getIntrospectorVolumePath(0) + "/%s.secure /tmp/domain.secure";
     private final Packet packet;
     private final Step conflictStep;
     private final DomainPresenceInfo info;
@@ -516,7 +509,7 @@ public class ConfigMapHelper {
 
     private void parseIntrospectorResult() {
       String result = (String) packet.remove(ProcessingConstants.DOMAIN_INTROSPECTOR_LOG_RESULT);
-      data = withRestoreScripts(ConfigMapHelper.parseIntrospectorResult(result, info.getDomainUid()));
+      data = ConfigMapHelper.parseIntrospectorResult(result, info.getDomainUid());
 
       LOGGER.fine("================");
       LOGGER.fine(data.toString());
@@ -526,24 +519,6 @@ public class ConfigMapHelper {
             .map(this::getDomainTopology)
             .map(DomainTopology::getDomain)
             .orElse(null);
-    }
-
-    private Map<String, String> withRestoreScripts(Map<String, String> introspectorResult) {
-      final Map<String, String> result = new HashMap<>(introspectorResult);
-
-      for (String key : introspectorResult.keySet()) {
-        Optional.ofNullable(getEncodingName(key)).ifPresent(e -> addSimpleRestoreScript(result, e));
-      }
-      
-      return result;
-    }
-
-    private void addSimpleRestoreScript(Map<String, String> map, String key) {
-      map.put(createRestoreScriptName(key), createRestoreScript(key));
-    }
-
-    private String createRestoreScript(String encodingName) {
-      return String.format(SIMPLE_RESTORE_SCRIPT_PATTERN, encodingName);
     }
 
     boolean isTopologyNotValid() {
@@ -662,16 +637,15 @@ public class ConfigMapHelper {
   }
 
   public static class IntrospectorConfigMapContext extends ConfigMapContext implements SplitterTarget {
-    private static final String RESTORE_SCRIPT_NAME = "restore_%s.sh";
 
-    final String domainUid;
+    private static final Pattern ENCODED_ZIP_PATTERN = Pattern.compile("([A-Za-z_]+)\\.secure");
+
     private boolean patchOnly;
 
     IntrospectorConfigMapContext(Step conflictStep, DomainPresenceInfo info, Map<String, String> data, int index) {
       super(conflictStep, getConfigMapName(info, index), info.getNamespace(), data, info);
 
-      this.domainUid = info.getDomainUid();
-      addLabel(LabelConstants.DOMAINUID_LABEL, domainUid);
+      addLabel(LabelConstants.DOMAINUID_LABEL, info.getDomainUid());
     }
 
     private static String getConfigMapName(DomainPresenceInfo info, int index) {
@@ -685,49 +659,17 @@ public class ConfigMapHelper {
 
     @Override
     public void recordEntryLocation(String key, int firstTarget, int lastTarget) {
-      setContentValue(createRestoreScriptName(getEncodingName(key)), createJoiningScript(key, firstTarget, lastTarget));
+      if (isEncodedZip(key)) {
+        setContentValue(createRangeName(key), firstTarget + " " + lastTarget);
+      }
     }
 
-    static String getEncodingName(String key) {
-      Pattern encodedZipPattern = Pattern.compile("([A-Za-z_]+)\\.secure");
-      final Matcher matcher = encodedZipPattern.matcher(key);
-      return matcher.find() ? matcher.group(1) : null;
+    private boolean isEncodedZip(String key) {
+      return ENCODED_ZIP_PATTERN.matcher(key).matches();
     }
 
-    static String createRestoreScriptName(String encodingName) {
-      return String.format(RESTORE_SCRIPT_NAME, encodingName);
-    }
-
-    private String createJoiningScript(String key, int firstTarget, int lastTarget) {
-      return new JoiningScriptBuilder(key).withRange(firstTarget, lastTarget).build();
-    }
-
-    static class JoiningScriptBuilder {
-      private final String encodingName;
-      private int first;
-      private int last;
-
-      JoiningScriptBuilder(String encodingName) {
-        this.encodingName = encodingName;
-      }
-
-      JoiningScriptBuilder withRange(int first, int last) {
-        this.first = first;
-        this.last = last;
-        return this;
-      }
-
-      String build() {
-        return "cat " + sourceList() + " > /tmp/domain.secure";
-      }
-
-      private String sourceList() {
-        return IntStream.rangeClosed(first, last).mapToObj(this::segmentPath).collect(Collectors.joining(" "));
-      }
-
-      private String segmentPath(int index) {
-        return IntrospectorConfigMapConstants.getIntrospectorVolumePath(index) + "/" + encodingName;
-      }
+    private String createRangeName(String key) {
+      return key + ".range";
     }
 
     IntrospectorConfigMapContext patchOnly() {

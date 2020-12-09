@@ -58,6 +58,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
 
 public class IntrospectorConfigMapTest {
@@ -370,7 +371,7 @@ public class IntrospectorConfigMapTest {
   }
 
   @Test
-  public void whenDomainIsModelInImage_addReconstructScriptsForEncodedZips() {
+  public void whenDomainIsModelInImage_dontAddRangesForZipsThatFitInMainConfigMap() {
     configureDomain().withDomainHomeSourceType(DomainSourceType.FromModel);
     introspectResult
           .defineFile(TOPOLOGY_YAML, "domainValid: true", "domain:", "  name: \"sample\"")
@@ -380,14 +381,8 @@ public class IntrospectorConfigMapTest {
 
     testSupport.runSteps(ConfigMapHelper.createIntrospectorConfigMapStep(terminalStep));
 
-    assertThat(getIntrospectorConfigMapValue("restore_domainzip.sh"),
-          equalTo(simpleRestoreScript("domainzip")));
-    assertThat(getIntrospectorConfigMapValue("restore_primordial_domainzip.sh"),
-          equalTo(simpleRestoreScript("primordial_domainzip")));
-  }
-
-  String simpleRestoreScript(String name) {
-    return String.format("cp /weblogic-operator/introspector/%s.secure /tmp/domain.secure", name);
+    assertThat(getIntrospectorConfigMapValue("domainzip.secure.range"), nullValue());
+    assertThat(getIntrospectorConfigMapValue("primordial_domainzip.secure.range"), nullValue());
   }
 
   private V1ConfigMap createIntrospectorConfigMap(int mapIndex, Map<String, String> entries) {
@@ -397,7 +392,7 @@ public class IntrospectorConfigMapTest {
   }
 
   @Test
-  public void whenDomainIsModelInImageAndEncodedZipTooLargeForSingleMap_addJoiningReconstructScript() {
+  public void whenDomainIsModelInImageAndEncodedZipTooLargeForSingleMap_reportRange() {
     configureDomain().withDomainHomeSourceType(DomainSourceType.FromModel);
     introspectResult
           .defineFile(TOPOLOGY_YAML, "domainValid: true", "domain:", "  name: \"sample\"")
@@ -406,15 +401,7 @@ public class IntrospectorConfigMapTest {
 
     testSupport.runSteps(ConfigMapHelper.createIntrospectorConfigMapStep(terminalStep));
 
-    assertThat(getIntrospectorConfigMapValue("restore_domainzip.sh"),
-          equalTo(joiningRestoreScript("domainzip")));
-  }
-
-  @SuppressWarnings("SameParameterValue")
-  String joiningRestoreScript(String name) {
-    return String.format("cat /weblogic-operator/introspector/%s.secure "
-                          +  "/weblogic-operator/introspector_1/%s.secure "
-                          +  "/weblogic-operator/introspector_2/%s.secure > /tmp/domain.secure", name, name, name);
+    assertThat(getIntrospectorConfigMapValue("domainzip.secure.range"), equalTo("0 2"));
   }
 
   @Nonnull

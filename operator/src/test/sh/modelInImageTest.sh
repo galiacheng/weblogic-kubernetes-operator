@@ -6,6 +6,51 @@ setUp() {
   DISALLOW=
   PWD=/no/where/special
   DOMAIN_HOME=/domain/home
+
+  export TEST_CONFIGMAP_ROOT=/tmp/test/introspector
+
+  rm -fR ${TEST_CONFIGMAP_ROOT}
+  rm -fR ${TEST_CONFIGMAP_ROOT}_1
+  rm -fR ${TEST_CONFIGMAP_ROOT}_2
+  mkdir -p $TEST_CONFIGMAP_ROOT
+  echo "<ignored>" > $TEST_CONFIGMAP_ROOT/domainzip.secure
+  echo "<ignored>" > $TEST_CONFIGMAP_ROOT/primordial_domainzip.secure
+}
+
+testIndexRangeWhenRangeFileMissing() {
+  actual=$(getIndexRange $TEST_CONFIGMAP_ROOT "domainzip.secure")
+  expected="0 0"
+
+  assertEquals "$expected" "$actual"
+}
+
+testIndexRangeWhenRangeFilePresent() {
+  echo "0 2" > $TEST_CONFIGMAP_ROOT/domainzip.secure.range
+  actual=$(getIndexRange $TEST_CONFIGMAP_ROOT "domainzip.secure")
+  expected="0 2"
+
+  assertEquals "$expected" "$actual"
+}
+
+testBuildConfigMapMultipleElements() {
+  contents=$(buildConfigMapElements $TEST_CONFIGMAP_ROOT "domain.secure" 0 2)
+  expect="$TEST_CONFIGMAP_ROOT/domain.secure ${TEST_CONFIGMAP_ROOT}_1/domain.secure ${TEST_CONFIGMAP_ROOT}_2/domain.secure"
+
+  assertEquals "$expect" "$contents"
+}
+
+testBuildConfigMapOneElementAtZero() {
+  contents=$(buildConfigMapElements $TEST_CONFIGMAP_ROOT "domain.secure" 0 0)
+  expect="$TEST_CONFIGMAP_ROOT/domain.secure"
+
+  assertEquals "$expect" "$contents"
+}
+
+testBuildConfigMapOneElementAfterZero() {
+  contents=$(buildConfigMapElements $TEST_CONFIGMAP_ROOT "domain.secure" 1 1)
+  expect="${TEST_CONFIGMAP_ROOT}_1/domain.secure"
+
+  assertEquals "$expect" "$contents"
 }
 
 testRestoreDomainConfig_failsIfUnableToCDToRoot() {
@@ -38,10 +83,29 @@ testOnRestoreDomainConfig_useRootDirectory() {
   assertEquals "should be at '/'" "/" "$PWD"
 }
 
-testOnRestoreDomainConfig_sourceConfiguredScript() {
+testOnRestoreDomainConfig_whenNoIndexesDefinedCatSingleFile() {
+  echo -n "abc" > $TEST_CONFIGMAP_ROOT/domainzip.secure
+
   restoreDomainConfig
 
-  assertEquals "SOURCE'd script" "/weblogic-operator/introspector/restore_domainzip.sh" "$SOURCE_ARGS"
+  expected="abc"
+  actual="$(cat /tmp/domain.secure)"
+  assertEquals "$expected" "$actual"
+}
+
+testOnRestoreDomainConfig_whenIndexesDefinedCatMultipleFiles() {
+  mkdir ${TEST_CONFIGMAP_ROOT}_1
+  mkdir ${TEST_CONFIGMAP_ROOT}_2
+  echo "0 2" > $TEST_CONFIGMAP_ROOT/domainzip.secure.range
+  echo -n "abc" > $TEST_CONFIGMAP_ROOT/domainzip.secure
+  echo -n "def" > ${TEST_CONFIGMAP_ROOT}_1/domainzip.secure
+  echo -n "ghi" > ${TEST_CONFIGMAP_ROOT}_2/domainzip.secure
+
+  restoreDomainConfig
+
+  expected="abcdefghi"
+  actual="$(cat /tmp/domain.secure)"
+  assertEquals "$expected" "$actual"
 }
 
 testOnRestoreDomainConfig_base64DecodeZip() {
@@ -71,12 +135,6 @@ testOnRestorePrimordialDomain_useRootDirectory() {
   assertEquals "should be at '/'" "/" "$PWD"
 }
 
-testOnRestorePrimordialDomain_sourceConfiguredScript() {
-  restorePrimordialDomain
-
-  assertEquals "SOURCE'd script" "/weblogic-operator/introspector/restore_primordial_domainzip.sh" "$SOURCE_ARGS"
-}
-
 testOnRestorePrimordialDomain_base64DecodeZip() {
   rm /tmp/domain.tar.gz
 
@@ -84,6 +142,16 @@ testOnRestorePrimordialDomain_base64DecodeZip() {
 
   contents="$(cat /tmp/domain.tar.gz)"
   assertEquals "/tmp/domain.secure" $contents
+}
+
+testOnRestoreDomainConfig_whenNoIndexesDefinedCatSingleFile() {
+  echo -n "abc" > $TEST_CONFIGMAP_ROOT/primordial_domainzip.secure
+
+  restorePrimordialDomain
+
+  expected="abc"
+  actual="$(cat /tmp/domain.secure)"
+  assertEquals "$expected" "$actual"
 }
 
 testOnRestorePrimordialDomain_unTarDomain() {

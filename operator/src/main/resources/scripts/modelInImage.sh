@@ -525,12 +525,54 @@ function restorePrimordialDomain() {
 }
 
 function restoreEncodedTar() {
+  CONFIGMAP_ROOT=${TEST_CONFIGMAP_ROOT:-/weblogic-operator/introspector}
   cd / || return 1
-  source "/weblogic-operator/introspector/restore_$1.sh"
+  indexRange="$(getIndexRange $CONFIGMAP_ROOT $1.secure)"
+#  echo "REG -> calling buildConfigMapElements [$CONFIGMAP_ROOT] [$1.secure] [$indexRange]"
+#  echo "REG-> resulting in cat $(buildConfigMapElements $CONFIGMAP_ROOT $1.secure $indexRange)"
+  # shellcheck disable=SC2046
+  cat $(buildConfigMapElements $CONFIGMAP_ROOT $1.secure $indexRange) > /tmp/domain.secure
   base64 -d "/tmp/domain.secure" > /tmp/domain.tar.gz || return 1
 
   tar -xzf /tmp/domain.tar.gz || return 1
+}
 
+# Returns the index range for an encoded file in an introspector config map
+# args:
+# $1 the root of the config map
+# $2 the key of the encoded file in the map
+function getIndexRange() {
+  rangeFile="$1/$2.range"
+  if [ -f "$rangeFile" ]; then
+    cat "$rangeFile"
+  else
+    echo "0 0"
+  fi
+}
+
+# Creates a string containing entries from one or more config maps
+# args:
+# $1 the root of the config map
+# $2 the key of the entry in each map
+# $3 the index of the first configmap containing the entry key
+# $4 the index of the last configmap containing the entry key
+function buildConfigMapElements() {
+  result=""
+  
+  for ((i=$3;i<=$4;i++)); do
+    result="$result $1$(getSuffix $i)/${2}"
+  done
+
+  echo $result
+}
+
+# Returns the suffix for a config map mount address
+function getSuffix() {
+  if [ "$1" -eq 0 ]; then
+    echo ""
+  else
+    echo "_$1"
+  fi
 }
 
 
