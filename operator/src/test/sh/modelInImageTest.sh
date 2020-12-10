@@ -2,55 +2,53 @@
 # Copyright (c) 2020, Oracle Corporation and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
+TEST_OPERATOR_ROOT=/tmp/test/weblogic-operator
 setUp() {
   DISALLOW=
   PWD=/no/where/special
   DOMAIN_HOME=/domain/home
 
-  export TEST_CONFIGMAP_ROOT=/tmp/test/introspector
-
-  rm -fR ${TEST_CONFIGMAP_ROOT}
-  rm -fR ${TEST_CONFIGMAP_ROOT}_1
-  rm -fR ${TEST_CONFIGMAP_ROOT}_2
-  mkdir -p $TEST_CONFIGMAP_ROOT
-  echo "<ignored>" > $TEST_CONFIGMAP_ROOT/domainzip.secure
-  echo "<ignored>" > $TEST_CONFIGMAP_ROOT/primordial_domainzip.secure
+  INTROSPECTOR_MAP=${TEST_OPERATOR_ROOT}/introspector
+  rm -fR ${TEST_OPERATOR_ROOT}
+  mkdir -p ${TEST_OPERATOR_ROOT}/introspector
+  echo "<ignored>" > $INTROSPECTOR_MAP/domainzip.secure
+  echo "<ignored>" > $INTROSPECTOR_MAP/primordial_domainzip.secure
 }
 
 testIndexRangeWhenRangeFileMissing() {
-  actual=$(getIndexRange $TEST_CONFIGMAP_ROOT "domainzip.secure")
+  actual=$(getIndexRange "domainzip.secure")
   expected="0 0"
 
   assertEquals "$expected" "$actual"
 }
 
 testIndexRangeWhenRangeFilePresent() {
-  echo "0 2" > $TEST_CONFIGMAP_ROOT/domainzip.secure.range
-  actual=$(getIndexRange $TEST_CONFIGMAP_ROOT "domainzip.secure")
+  echo "0 2" > $INTROSPECTOR_MAP/domainzip.secure.range
+  actual=$(getIndexRange "domainzip.secure")
   expected="0 2"
 
   assertEquals "$expected" "$actual"
 }
 
 testBuildConfigMapMultipleElements() {
-  contents=$(buildConfigMapElements $TEST_CONFIGMAP_ROOT "domain.secure" 0 2)
-  expect="$TEST_CONFIGMAP_ROOT/domain.secure ${TEST_CONFIGMAP_ROOT}_1/domain.secure ${TEST_CONFIGMAP_ROOT}_2/domain.secure"
+  actual=$(buildConfigMapElements "domain.secure" 0 2)
+  expected="$INTROSPECTOR_MAP/domain.secure ${INTROSPECTOR_MAP}_1/domain.secure ${INTROSPECTOR_MAP}_2/domain.secure"
 
-  assertEquals "$expect" "$contents"
+  assertEquals "$expected" "$actual"
 }
 
 testBuildConfigMapOneElementAtZero() {
-  contents=$(buildConfigMapElements $TEST_CONFIGMAP_ROOT "domain.secure" 0 0)
-  expect="$TEST_CONFIGMAP_ROOT/domain.secure"
+  actual=$(buildConfigMapElements "domain.secure" 0 0)
+  expected="$INTROSPECTOR_MAP/domain.secure"
 
-  assertEquals "$expect" "$contents"
+  assertEquals "$expected" "$actual"
 }
 
 testBuildConfigMapOneElementAfterZero() {
-  contents=$(buildConfigMapElements $TEST_CONFIGMAP_ROOT "domain.secure" 1 1)
-  expect="${TEST_CONFIGMAP_ROOT}_1/domain.secure"
+  actual=$(buildConfigMapElements "domain.secure" 1 1)
+  expected="${INTROSPECTOR_MAP}_1/domain.secure"
 
-  assertEquals "$expect" "$contents"
+  assertEquals "$expected" "$actual"
 }
 
 testRestoreDomainConfig_failsIfUnableToCDToRoot() {
@@ -84,7 +82,7 @@ testOnRestoreDomainConfig_useRootDirectory() {
 }
 
 testOnRestoreDomainConfig_whenNoIndexesDefinedCatSingleFile() {
-  echo -n "abc" > $TEST_CONFIGMAP_ROOT/domainzip.secure
+  echo -n "abc" > $INTROSPECTOR_MAP/domainzip.secure
 
   restoreDomainConfig
 
@@ -94,12 +92,12 @@ testOnRestoreDomainConfig_whenNoIndexesDefinedCatSingleFile() {
 }
 
 testOnRestoreDomainConfig_whenIndexesDefinedCatMultipleFiles() {
-  mkdir ${TEST_CONFIGMAP_ROOT}_1
-  mkdir ${TEST_CONFIGMAP_ROOT}_2
-  echo "0 2" > $TEST_CONFIGMAP_ROOT/domainzip.secure.range
-  echo -n "abc" > $TEST_CONFIGMAP_ROOT/domainzip.secure
-  echo -n "def" > ${TEST_CONFIGMAP_ROOT}_1/domainzip.secure
-  echo -n "ghi" > ${TEST_CONFIGMAP_ROOT}_2/domainzip.secure
+  mkdir ${INTROSPECTOR_MAP}_1
+  mkdir ${INTROSPECTOR_MAP}_2
+  echo "0 2" > $INTROSPECTOR_MAP/domainzip.secure.range
+  echo -n "abc" > $INTROSPECTOR_MAP/domainzip.secure
+  echo -n "def" > ${INTROSPECTOR_MAP}_1/domainzip.secure
+  echo -n "ghi" > ${INTROSPECTOR_MAP}_2/domainzip.secure
 
   restoreDomainConfig
 
@@ -113,8 +111,8 @@ testOnRestoreDomainConfig_base64DecodeZip() {
 
   restoreDomainConfig
 
-  contents="$(cat /tmp/domain.tar.gz)"
-  assertEquals "/tmp/domain.secure" $contents
+  actual="$(cat /tmp/domain.tar.gz)"
+  assertEquals "/tmp/domain.secure" $actual
 }
 
 testOnRestoreDomainConfig_unTarDomain() {
@@ -140,12 +138,12 @@ testOnRestorePrimordialDomain_base64DecodeZip() {
 
   restorePrimordialDomain
 
-  contents="$(cat /tmp/domain.tar.gz)"
-  assertEquals "/tmp/domain.secure" $contents
+  actual="$(cat /tmp/domain.tar.gz)"
+  assertEquals "/tmp/domain.secure" $actual
 }
 
 testOnRestoreDomainConfig_whenNoIndexesDefinedCatSingleFile() {
-  echo -n "abc" > $TEST_CONFIGMAP_ROOT/primordial_domainzip.secure
+  echo -n "abc" > $INTROSPECTOR_MAP/primordial_domainzip.secure
 
   restorePrimordialDomain
 
