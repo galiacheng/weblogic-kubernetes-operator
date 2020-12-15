@@ -66,7 +66,7 @@ public interface IntrospectorConfigMapConstants {
 
   /**  A (possibly empty) suffix for introspector volume paths. */
   static String mountSuffix(int index) {
-    return index == 0 ? "" : "_" + String.format("%03d", index);
+    return index == 0 ? "" : String.format("%03d", index);
   }
 
 
