@@ -8,12 +8,12 @@ import java.math.BigInteger;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import javax.json.JsonPatchBuilder;
 
 import io.kubernetes.client.common.KubernetesListObject;
 import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.openapi.models.V1ListMeta;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
+import jakarta.json.JsonPatchBuilder;
 import oracle.kubernetes.operator.LabelConstants;
 import org.apache.commons.collections.MapUtils;
 import org.joda.time.DateTime;

@@ -7,22 +7,21 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 import javax.annotation.Priority;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.container.PreMatching;
-import javax.ws.rs.core.Application;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.ext.Provider;
 
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.container.PreMatching;
+import jakarta.ws.rs.core.Application;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.ext.Provider;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
 import oracle.kubernetes.operator.rest.backend.RestBackend;
-import org.glassfish.jersey.server.ResourceConfig;
 
 /**
  * AuthenticationFilter authenticates the request by extracting the access token from tha
@@ -54,8 +53,7 @@ public class AuthenticationFilter extends BaseDebugLoggingFilter implements Cont
   public void filter(ContainerRequestContext req) {
     LOGGER.entering();
     try {
-      ResourceConfig rc = (ResourceConfig) application;
-      RestConfig r = (RestConfig) rc.getProperty(RestConfig.REST_CONFIG_PROPERTY);
+      RestConfig r = (RestConfig) application.getProperties().get(RestConfig.REST_CONFIG_PROPERTY);
       String t = getAccessToken(req);
       RestBackend be = r.getBackend(t);
       req.setProperty(REST_BACKEND_PROPERTY, be);
