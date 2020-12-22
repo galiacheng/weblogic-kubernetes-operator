@@ -3,8 +3,6 @@
 
 package oracle.kubernetes.weblogic.domain.model;
 
-import javax.validation.Valid;
-
 import oracle.kubernetes.json.Description;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -20,7 +18,6 @@ public class Opss {
   @Description(
       "Name of a Secret containing the OPSS key passphrase, which must be in a field named `walletPassword`."
       + " Used to encrypt and decrypt the wallet that is used for accessing the domain's entries in its RCU database.")
-  @Valid
   private String walletPasswordSecret;
 
   public String getWalletFileSecret() {

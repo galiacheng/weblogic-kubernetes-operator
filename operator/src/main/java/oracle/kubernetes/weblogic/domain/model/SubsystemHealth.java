@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import javax.annotation.Nonnull;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 
 import com.google.gson.annotations.Expose;
 import oracle.kubernetes.json.Description;
@@ -23,17 +21,16 @@ public class SubsystemHealth implements Comparable<SubsystemHealth>, PatchableCo
 
   @Description("Server health of this WebLogic Server instance.")
   @Expose
-  @NotNull
+  @Nonnull
   private String health;
 
   @Description("Name of subsystem providing symptom information.")
   @Expose
-  @NotNull
+  @Nonnull
   private String subsystemName;
 
   @Description("Symptoms provided by the reporting subsystem.")
   @Expose
-  @Valid
   private List<String> symptoms = new ArrayList<>();
 
   public SubsystemHealth() {

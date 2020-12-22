@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 
 import oracle.kubernetes.operator.MakeRightDomainOperation;
 import oracle.kubernetes.operator.ProcessingConstants;
@@ -39,7 +39,7 @@ public class ManagedServerUpAfterStep extends Step {
   }
 
   @SuppressWarnings("unchecked")
-  @NotNull Map<String, StepAndPacket> getServersToRoll(Packet packet) {
+  @Nonnull Map<String, StepAndPacket> getServersToRoll(Packet packet) {
     return Optional.ofNullable((Map<String, StepAndPacket>) packet.get(ProcessingConstants.SERVERS_TO_ROLL))
           .orElseGet(Collections::emptyMap);
   }

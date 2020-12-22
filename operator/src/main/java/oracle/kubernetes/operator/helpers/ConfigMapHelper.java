@@ -17,7 +17,6 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
-import javax.validation.constraints.NotNull;
 
 import io.kubernetes.client.custom.V1Patch;
 import io.kubernetes.client.openapi.models.V1ConfigMap;
@@ -346,7 +345,7 @@ public class ConfigMapHelper {
         return KubernetesUtils.isMissingValues(getMapLabels(currentMap), getLabels());
       }
 
-      private Map<String, String> getMapLabels(@NotNull V1ConfigMap map) {
+      private Map<String, String> getMapLabels(@Nonnull V1ConfigMap map) {
         return Optional.ofNullable(map.getMetadata()).map(V1ObjectMeta::getLabels).orElseGet(Collections::emptyMap);
       }
 
@@ -635,7 +634,7 @@ public class ConfigMapHelper {
       return (List<String>) packet.get(DOMAIN_VALIDATION_ERRORS);
     }
 
-    @NotNull
+    @Nonnull
     private String perLine(List<String> errors) {
       return String.join(lineSeparator(), errors);
     }

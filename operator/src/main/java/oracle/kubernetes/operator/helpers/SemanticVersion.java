@@ -4,7 +4,7 @@
 package oracle.kubernetes.operator.helpers;
 
 import java.util.Objects;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 
 /** Major, minor and revision version specification for a product. */
 public class SemanticVersion implements Comparable<SemanticVersion> {
@@ -111,7 +111,7 @@ public class SemanticVersion implements Comparable<SemanticVersion> {
   }
 
   @Override
-  public int compareTo(@NotNull SemanticVersion o) {
+  public int compareTo(@Nonnull SemanticVersion o) {
     if (o == null) {
       return 1;
     }

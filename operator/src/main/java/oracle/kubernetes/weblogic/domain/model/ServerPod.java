@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
-import javax.validation.Valid;
 
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.models.V1Affinity;
@@ -57,7 +56,6 @@ class ServerPod extends KubernetesResource {
    *
    * @since 2.0
    */
-  @Valid
   @Description("A list of environment variables to set in the container running a WebLogic Server instance. "
       + "More info: https://oracle.github.io/weblogic-kubernetes-operator/userguide/managing-domains/"
       + "domain-resource/#jvm-memory-and-java-option-environment-variables. "

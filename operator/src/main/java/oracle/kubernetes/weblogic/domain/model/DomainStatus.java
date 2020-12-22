@@ -14,7 +14,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.validation.Valid;
 
 import jakarta.json.JsonPatchBuilder;
 import oracle.kubernetes.json.Description;
@@ -36,7 +35,6 @@ import static oracle.kubernetes.weblogic.domain.model.ObjectPatch.createObjectPa
 public class DomainStatus {
 
   @Description("Current service state of the domain.")
-  @Valid
   private List<DomainCondition> conditions = new ArrayList<>();
 
   @Description(
@@ -57,12 +55,10 @@ public class DomainStatus {
   private Integer introspectJobFailureCount = new Integer(0);
 
   @Description("Status of WebLogic Servers in this domain.")
-  @Valid
   // sorted list of ServerStatus
   private final List<ServerStatus> servers;
 
   @Description("Status of WebLogic clusters in this domain.")
-  @Valid
   // sorted list of ClusterStatus
   List<ClusterStatus> clusters = new ArrayList<>();
 

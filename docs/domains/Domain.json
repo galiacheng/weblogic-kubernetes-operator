@@ -254,7 +254,11 @@
           "description": "The status of the condition. Can be True, False, Unknown.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "type",
+        "status"
+      ]
     },
     "DomainSpec": {
       "description": "The specification of the operation of the WebLogic domain. Required.",
@@ -418,7 +422,10 @@
             "$ref": "#/definitions/ManagedServer"
           }
         }
-      }
+      },
+      "required": [
+        "webLogicCredentialsSecret"
+      ]
     },
     "DomainStatus": {
       "description": "The current status of the operation of the WebLogic domain. Updated automatically by the operator.",
@@ -780,7 +787,11 @@
           "description": "Current state of this WebLogic Server instance.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "serverName",
+        "state"
+      ]
     },
     "Shutdown": {
       "type": "object",
@@ -821,7 +832,11 @@
           "description": "Name of subsystem providing symptom information.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "health",
+        "subsystemName"
+      ]
     }
   },
   "properties": {

@@ -4,7 +4,6 @@
 package oracle.kubernetes.weblogic.domain.model;
 
 import javax.annotation.Nullable;
-import javax.validation.Valid;
 
 import oracle.kubernetes.json.Description;
 import oracle.kubernetes.json.EnumClass;
@@ -26,7 +25,6 @@ public class Model {
   @Description("Location of the WebLogic Deploy Tooling model home. Defaults to /u01/wdt/models.")
   private String modelHome;
 
-  @Valid
   @Nullable
   @Description("Runtime encryption secret. Required when `domainHomeSourceType` is set to FromModel.")
   private String runtimeEncryptionSecret;

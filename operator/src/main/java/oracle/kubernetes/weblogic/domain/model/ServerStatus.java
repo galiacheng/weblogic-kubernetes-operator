@@ -5,8 +5,6 @@ package oracle.kubernetes.weblogic.domain.model;
 
 import java.util.Optional;
 import javax.annotation.Nonnull;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 
 import com.google.gson.annotations.Expose;
 import oracle.kubernetes.json.Description;
@@ -22,12 +20,12 @@ public class ServerStatus implements Comparable<ServerStatus>, PatchableComponen
 
   @Description("WebLogic Server instance name.")
   @Expose
-  @NotNull
+  @Nonnull
   private String serverName;
 
   @Description("Current state of this WebLogic Server instance.")
   @Expose
-  @NotNull
+  @Nonnull
   private String state;
 
   @Description("Desired state of this WebLogic Server instance. Values are RUNNING, ADMIN, or SHUTDOWN.")
@@ -44,7 +42,6 @@ public class ServerStatus implements Comparable<ServerStatus>, PatchableComponen
 
   @Description("Current status and health of a specific WebLogic Server instance.")
   @Expose
-  @Valid
   private ServerHealth health;
 
   // volatile so it will not be included in the json schema

@@ -10061,6 +10061,8 @@ spec:
                       type: string
                   required:
                   - serverName
+            required:
+            - webLogicCredentialsSecret
           status:
             type: object
             description: The current status of the operation of the WebLogic domain.
@@ -10127,9 +10129,15 @@ spec:
                               subsystemName:
                                 description: Name of subsystem providing symptom information.
                                 type: string
+                            required:
+                            - health
+                            - subsystemName
                     state:
                       description: Current state of this WebLogic Server instance.
                       type: string
+                  required:
+                  - serverName
+                  - state
               introspectJobFailureCount:
                 type: number
                 description: Non-zero if the introspector job fails for any reason.
@@ -10189,6 +10197,9 @@ spec:
                       description: The status of the condition. Can be True, False,
                         Unknown.
                       type: string
+                  required:
+                  - type
+                  - status
               message:
                 type: string
                 description: A human readable message indicating details about why

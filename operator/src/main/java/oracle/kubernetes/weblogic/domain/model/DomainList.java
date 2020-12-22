@@ -5,8 +5,7 @@ package oracle.kubernetes.weblogic.domain.model;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
@@ -34,8 +33,7 @@ public class DomainList implements KubernetesListObject {
    */
   @SerializedName("items")
   @Expose
-  @Valid
-  @NotNull
+  @Nonnull
   private List<Domain> items = new ArrayList<Domain>();
 
   /**
@@ -53,7 +51,6 @@ public class DomainList implements KubernetesListObject {
    */
   @SerializedName("metadata")
   @Expose
-  @Valid
   private V1ListMeta metadata;
 
   /**

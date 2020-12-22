@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.Optional;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 
 import com.google.gson.annotations.SerializedName;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
@@ -89,8 +87,7 @@ public class DomainSpec extends BaseConfiguration {
       "Reference to a Kubernetes Secret that contains"
           + " the user name and password needed to boot a WebLogic Server under the `username` and "
           + "`password` fields.")
-  @Valid
-  @NotNull
+  @Nonnull
   private V1SecretReference webLogicCredentialsSecret;
 
   /**

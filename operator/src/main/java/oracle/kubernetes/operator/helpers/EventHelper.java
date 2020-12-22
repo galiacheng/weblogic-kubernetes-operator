@@ -4,7 +4,7 @@
 package oracle.kubernetes.operator.helpers;
 
 import java.util.Optional;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 
 import io.kubernetes.client.openapi.models.V1Event;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -320,7 +320,7 @@ public class EventHelper {
       return "EventData: " + eventItem;
     }
 
-    public static boolean isProcessingAbortedEvent(@NotNull EventData eventData) {
+    public static boolean isProcessingAbortedEvent(@Nonnull EventData eventData) {
       return eventData.eventItem == DOMAIN_PROCESSING_ABORTED;
     }
   }

@@ -6,7 +6,6 @@ package oracle.kubernetes.weblogic.domain.model;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.validation.Valid;
 
 import com.google.gson.annotations.Expose;
 import oracle.kubernetes.json.Description;
@@ -34,7 +33,6 @@ public class ServerHealth {
 
   @Description("Status of unhealthy subsystems, if any.")
   @Expose
-  @Valid
   private List<SubsystemHealth> subsystems = new ArrayList<>();
 
   public ServerHealth() {

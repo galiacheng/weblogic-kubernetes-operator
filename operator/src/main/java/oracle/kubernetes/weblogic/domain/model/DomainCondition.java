@@ -3,7 +3,7 @@
 
 package oracle.kubernetes.weblogic.domain.model;
 
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
@@ -22,7 +22,7 @@ public class DomainCondition implements Comparable<DomainCondition>, PatchableCo
   @Description(
       "The type of the condition. Valid types are Progressing, "
           + "Available, and Failed.")
-  @NotNull
+  @Nonnull
   private final DomainConditionType type;
 
   @Description("Last time we probed the condition.")
@@ -48,7 +48,7 @@ public class DomainCondition implements Comparable<DomainCondition>, PatchableCo
   @Description("The status of the condition. Can be True, False, Unknown.")
   @SerializedName("status")
   @Expose
-  @NotNull
+  @Nonnull
   private String status;
 
   public DomainCondition(DomainConditionType conditionType) {

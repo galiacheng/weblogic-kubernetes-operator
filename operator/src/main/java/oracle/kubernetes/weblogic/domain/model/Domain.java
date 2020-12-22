@@ -15,7 +15,6 @@ import java.util.StringTokenizer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
-import javax.validation.Valid;
 
 import com.google.common.base.Strings;
 import com.google.gson.annotations.Expose;
@@ -92,7 +91,6 @@ public class Domain implements KubernetesObject {
    */
   @SerializedName("metadata")
   @Expose
-  @Valid
   @Description("The resource metadata. Must include the `name` and `namespace`. Required.")
   @Nonnull
   private V1ObjectMeta metadata = new V1ObjectMeta();
@@ -102,7 +100,6 @@ public class Domain implements KubernetesObject {
    */
   @SerializedName("spec")
   @Expose
-  @Valid
   @Description("The specification of the operation of the WebLogic domain. Required.")
   @Nonnull
   private DomainSpec spec = new DomainSpec();
@@ -113,7 +110,6 @@ public class Domain implements KubernetesObject {
    */
   @SerializedName("status")
   @Expose
-  @Valid
   @Description("The current status of the operation of the WebLogic domain. Updated automatically by the operator.")
   private DomainStatus status;
 
