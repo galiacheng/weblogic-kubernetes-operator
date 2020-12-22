@@ -324,10 +324,6 @@
       <artifactId>client-java</artifactId>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>jakarta.platform</groupId>
-      <artifactId>jakarta.jakartaee-web-api</artifactId>
-    </dependency>
 
     <!--  not included with jdk 9 -->
     <dependency>

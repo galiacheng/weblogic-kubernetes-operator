@@ -1175,7 +1175,11 @@ window.onload = function() {
           "description": "The status of the condition. Can be True, False, Unknown.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "type",
+        "status"
+      ]
     },
     "DomainSpec": {
       "description": "The specification of the operation of the WebLogic domain. Required.",
@@ -1339,7 +1343,10 @@ window.onload = function() {
             "$ref": "#/definitions/ManagedServer"
           }
         }
-      }
+      },
+      "required": [
+        "webLogicCredentialsSecret"
+      ]
     },
     "DomainStatus": {
       "description": "The current status of the operation of the WebLogic domain. Updated automatically by the operator.",
@@ -1701,7 +1708,11 @@ window.onload = function() {
           "description": "Current state of this WebLogic Server instance.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "serverName",
+        "state"
+      ]
     },
     "Shutdown": {
       "type": "object",
@@ -1742,7 +1753,11 @@ window.onload = function() {
           "description": "Name of subsystem providing symptom information.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "health",
+        "subsystemName"
+      ]
     }
   },
   "securityDefinitions": {
