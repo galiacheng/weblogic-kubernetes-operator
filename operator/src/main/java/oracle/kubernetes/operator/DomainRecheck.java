@@ -135,6 +135,7 @@ class DomainRecheck {
   }
 
   private class NamespaceListResponseStep extends DefaultResponseStep<V1NamespaceList> {
+    Step current = getNext();
 
     private NamespaceListResponseStep() {
       super(new Namespaces.NamespaceListAfterStep(domainNamespaces));
@@ -171,8 +172,9 @@ class DomainRecheck {
                 RunInParallel.perNamespace(namespacesToStartNow, DomainRecheck.this::createNamespaceReview));
         }
       }
-      nextSteps.add(getNext());
-      return Step.chain(nextSteps.toArray(new Step[0]));
+      nextSteps.add(current);
+      current = Step.chain(nextSteps.toArray(new Step[0]));
+      return current;
     }
 
     private Set<String> getNamespacesToStart(List<String> namespaceNames) {

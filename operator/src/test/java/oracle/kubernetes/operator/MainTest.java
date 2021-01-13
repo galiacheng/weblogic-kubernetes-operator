@@ -594,9 +594,9 @@ public class MainTest extends ThreadFactoryTestBase {
   }
 
   @Test
-  public void withNamespaceList_onReadExistingNamespaces_whenConfiguredDomainNamespaceMissing_noEventCreated() {
+  public void withNamespaceList_onReadExistingNamespaces_whenConfiguredDomainNamespacesMissing_noEventCreated() {
     defineSelectionStrategy(SelectionStrategy.List);
-    String namespaceString = "NS1,NS" + LAST_NAMESPACE_NUM;
+    String namespaceString = "NS,NS" + LAST_NAMESPACE_NUM;
     HelmAccessStub.defineVariable(HelmAccess.OPERATOR_DOMAIN_NAMESPACES, namespaceString);
     createNamespaces(LAST_NAMESPACE_NUM - 1);
 
@@ -607,6 +607,19 @@ public class MainTest extends ThreadFactoryTestBase {
             NAMESPACE_WATCHING_STARTED_EVENT), is(false));
   }
 
+  @Test
+  public void withNamespaceList_onReadExistingNamespaces_whenConfiguredDomainNamespacesExisting_eventCreated() {
+    defineSelectionStrategy(SelectionStrategy.List);
+    String namespaceString = "NS1,NS" + LAST_NAMESPACE_NUM;
+    HelmAccessStub.defineVariable(HelmAccess.OPERATOR_DOMAIN_NAMESPACES, namespaceString);
+    createNamespaces(LAST_NAMESPACE_NUM - 1);
+
+    testSupport.runSteps(createDomainRecheck().readExistingNamespaces());
+
+    MatcherAssert.assertThat("Found NAMESPACE_WATCHING_STARTING_EVENT",
+            containsEvent(getEvents(testSupport),
+                    NAMESPACE_WATCHING_STARTED_EVENT), is(true));
+  }
 
   @Test
   public void withNamespaceList_onReadExistingNamespaces_whenDomainNamespaceRemoved_nsWatchStoppedEventCreated() {
