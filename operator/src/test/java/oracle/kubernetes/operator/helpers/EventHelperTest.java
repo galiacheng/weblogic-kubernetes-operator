@@ -231,7 +231,7 @@ public class EventHelperTest {
   }
 
   @Test
-  public void whenCreateEventTwice_fail404OnCreate2ndEvent_domainProcessingStartingEventCreatedTwice() {
+  public void whenCreateEventTwice_fail404OnReplaceEvent_domainProcessingStartingEventCreatedTwice() {
     System.out.println("X 404");
     testSupport.runSteps(Step.chain(
         createEventStep(new EventData(DOMAIN_PROCESSING_STARTING)),
@@ -249,7 +249,7 @@ public class EventHelperTest {
   }
 
   @Test
-  public void whenCreateEventTwice_fail410OnCreate2ndEvent_domainProcessingStartingEventCreatedTwice() {
+  public void whenCreateEventTwice_fail410OnReplaceEvent_domainProcessingStartingEventCreatedTwice() {
     System.out.println("X 410");
     testSupport.runSteps(Step.chain(
         createEventStep(new EventData(DOMAIN_PROCESSING_STARTING)),
@@ -267,7 +267,7 @@ public class EventHelperTest {
   }
 
   @Test
-  public void whenCreateEventTwice_fail403OnCreate2ndEvent_domainProcessingStartingEventCreatedOnce() {
+  public void whenCreateEventTwice_fail403OnReplaceEvent_domainProcessingStartingEventCreatedOnce() {
     System.out.println("X 403");
     testSupport.runSteps(Step.chain(
         createEventStep(new EventData(DOMAIN_PROCESSING_STARTING)),

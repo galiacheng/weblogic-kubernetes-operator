@@ -14,7 +14,6 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1ObjectReference;
 import oracle.kubernetes.operator.helpers.EventHelper.EventItem;
 import oracle.kubernetes.operator.helpers.KubernetesTestSupport;
-import org.joda.time.DateTime;
 
 import static oracle.kubernetes.operator.EventConstants.WEBLOGIC_OPERATOR_COMPONENT;
 
@@ -155,29 +154,6 @@ public class EventTestUtils {
   }
 
   /**
-   * Whether the latest event that matches the given reason has the expected count.
-   *
-   * @param events list of events to check
-   * @param reason reason to match
-   * @param count count to match
-   * @return true if the expected condition met
-   */
-  public static boolean containsLastEventWithCountOne(
-      List<V1Event> events, String reason, int count) {
-    DateTime latest =
-        Optional.ofNullable(events).map(e -> e.get(0)).map(V1Event::getFirstTimestamp).orElse(new DateTime(0));
-    V1Event found = Optional.ofNullable(events).map(e -> e.get(0)).orElse(null);
-    for (V1Event event : events) {
-      if (reasonMatches(event, reason) && getFirstTimestamp(event).isAfter(latest)) {
-        found = event;
-        latest = event.getFirstTimestamp();
-      }
-    }
-    System.out.println("X found = " + found);
-    return Optional.ofNullable(found).map(c -> countMatches(c, count)).orElse(false);
-  }
-
-  /**
    * Whether the number of events with the same reason and count of 1 matches the given expected count.
    *
    * @param events list of events to check
@@ -189,10 +165,6 @@ public class EventTestUtils {
     List<V1Event> eventsMatchReason = getEventsWithReason(events, reason);
     System.out.println("XXX expected event size = " + eventsCount + " got " + eventsMatchReason.size());
     return eventsMatchReason.stream().allMatch(e -> countMatches(e, 1)) && eventsMatchReason.size() == eventsCount;
-  }
-
-  private static DateTime getFirstTimestamp(V1Event event) {
-    return Optional.ofNullable(event).map(V1Event::getFirstTimestamp).orElse(new DateTime(0));
   }
 
   public static List<V1Event> getEvents(KubernetesTestSupport testSupport) {
