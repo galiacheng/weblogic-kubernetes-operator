@@ -52,7 +52,6 @@ import static oracle.kubernetes.operator.EventTestUtils.containsEventWithLabels;
 import static oracle.kubernetes.operator.EventTestUtils.containsEventWithMessage;
 import static oracle.kubernetes.operator.EventTestUtils.containsEventWithNamespace;
 import static oracle.kubernetes.operator.EventTestUtils.containsEventsWithCountOne;
-import static oracle.kubernetes.operator.EventTestUtils.containsLastEventWithCountOne;
 import static oracle.kubernetes.operator.EventTestUtils.containsOneEventWithCount;
 import static oracle.kubernetes.operator.EventTestUtils.getEvents;
 import static oracle.kubernetes.operator.KubernetesConstants.OPERATOR_NAMESPACE_ENV;
