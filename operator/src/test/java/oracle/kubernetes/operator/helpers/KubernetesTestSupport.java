@@ -452,6 +452,7 @@ public class KubernetesTestSupport extends FiberTestSupport {
     replace {
       @Override
       <T> Object execute(CallContext callContext, DataRepository<T> dataRepository) {
+        System.out.println("XX execute replace operation");
         return callContext.replaceResource(dataRepository);
       }
     },
@@ -1122,6 +1123,7 @@ public class KubernetesTestSupport extends FiberTestSupport {
 
     private Object execute() {
       if (failure != null && failure.matches(resourceType, requestParams, operation)) {
+        System.out.println("XX throw exception for failure " + failure);
         throw failure.getException();
       }
 
