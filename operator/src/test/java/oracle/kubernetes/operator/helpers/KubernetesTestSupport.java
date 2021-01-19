@@ -1126,7 +1126,7 @@ public class KubernetesTestSupport extends FiberTestSupport {
         System.out.println("XX throw exception for failure " + failure);
         throw failure.getException();
       }
-
+      System.out.println("XX execute operation " + operation);
       return operation.execute(this, selectRepository(resourceType));
     }
 
