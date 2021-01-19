@@ -233,6 +233,7 @@ public class EventHelperTest {
 
   @Test
   public void whenCreateEventTwice_fail404OnCreate2ndEvent_domainProcessingStartingEventCreatedWithExpectedCount() {
+    System.out.println("X 404");
     testSupport.runSteps(Step.chain(
         createEventStep(new EventData(DOMAIN_PROCESSING_STARTING)),
         createEventStep(new EventData(DOMAIN_PROCESSING_COMPLETED))));
@@ -250,6 +251,7 @@ public class EventHelperTest {
 
   @Test
   public void whenCreateEventTwice_fail410OnCreate2ndEvent_domainProcessingStartingEventCreatedWithExpectedCount() {
+    System.out.println("X 410");
     testSupport.runSteps(Step.chain(
         createEventStep(new EventData(DOMAIN_PROCESSING_STARTING)),
         createEventStep(new EventData(DOMAIN_PROCESSING_COMPLETED))));

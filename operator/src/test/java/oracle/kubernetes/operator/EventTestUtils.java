@@ -185,7 +185,8 @@ public class EventTestUtils {
    */
   public static boolean containsEventsWithCountOne(List<V1Event> events, String reason, int eventsCount) {
     List<V1Event> eventsMatchReason = getEventsWithReason(events, reason);
-    return eventsMatchReason.size() == eventsCount && eventsMatchReason.stream().allMatch(e -> countMatches(e, 1));
+    System.out.println("XXX expected event size = " + eventsCount + " got " + eventsMatchReason.size());
+    return eventsMatchReason.stream().allMatch(e -> countMatches(e, 1)) && eventsMatchReason.size() == eventsCount;
   }
 
   private static DateTime getFirstTimestamp(V1Event event) {
@@ -256,6 +257,7 @@ public class EventTestUtils {
   }
 
   private static boolean countMatches(@NotNull V1Event event, int count) {
+    System.out.println("Expected count = " + count + " real count = " + getCount(event));
     return getCount(event) == count;
   }
 
