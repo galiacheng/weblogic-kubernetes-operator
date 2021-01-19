@@ -232,7 +232,7 @@ public class EventHelperTest {
   }
 
   @Test
-  public void whenCreateEventTwice_fail404OnCreate2ndEvent_domainProcessingStartingEventCreatedWithExpectedCount() {
+  public void whenCreateEventTwice_fail404OnCreate2ndEvent_domainProcessingStartingEventCreatedTwice() {
     System.out.println("X 404");
     testSupport.runSteps(Step.chain(
         createEventStep(new EventData(DOMAIN_PROCESSING_STARTING)),
@@ -244,9 +244,9 @@ public class EventHelperTest {
 
     testSupport.runSteps(Step.chain(createEventStep(new EventData(DOMAIN_PROCESSING_STARTING))));
 
-    assertThat("Found DOMAIN_PROCESSING_STARTING event with expected count",
-        containsLastEventWithCountOne(getEvents(testSupport),
-            DOMAIN_PROCESSING_STARTING_EVENT, 1), is(true));
+    assertThat("Found 2 DOMAIN_PROCESSING_STARTING events",
+        EventTestUtils.getNumberOfEvents(getEvents(testSupport),
+            DOMAIN_PROCESSING_STARTING_EVENT), equalTo(2));
   }
 
   @Test
@@ -263,8 +263,8 @@ public class EventHelperTest {
     testSupport.runSteps(Step.chain(createEventStep(new EventData(DOMAIN_PROCESSING_STARTING))));
 
     assertThat("Found DOMAIN_PROCESSING_STARTING event with expected count",
-        containsLastEventWithCountOne(getEvents(testSupport),
-            DOMAIN_PROCESSING_STARTING_EVENT, 1), is(true));
+        EventTestUtils.getNumberOfEvents(getEvents(testSupport),
+            DOMAIN_PROCESSING_STARTING_EVENT), equalTo(2));
   }
 
   @Test

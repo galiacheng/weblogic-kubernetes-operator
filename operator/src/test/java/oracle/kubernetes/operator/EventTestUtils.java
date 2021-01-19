@@ -164,14 +164,16 @@ public class EventTestUtils {
    */
   public static boolean containsLastEventWithCountOne(
       List<V1Event> events, String reason, int count) {
-    DateTime latest = new DateTime(0);
-    V1Event found = null;
+    DateTime latest =
+        Optional.ofNullable(events).map(e -> e.get(0)).map(V1Event::getFirstTimestamp).orElse(new DateTime(0));
+    V1Event found = Optional.ofNullable(events).map(e -> e.get(0)).orElse(null);
     for (V1Event event : events) {
       if (reasonMatches(event, reason) && getFirstTimestamp(event).isAfter(latest)) {
         found = event;
         latest = event.getFirstTimestamp();
       }
     }
+    System.out.println("X found = " + found);
     return Optional.ofNullable(found).map(c -> countMatches(c, count)).orElse(false);
   }
 
@@ -293,4 +295,7 @@ public class EventTestUtils {
     return getEventsWithReason(events, reason).size() > 0 ? getEventsWithReason(events, reason).get(0) : null;
   }
 
+  public static int getNumberOfEvents(List<V1Event> events, String reason) {
+    return getEventsWithReason(events, reason).size();
+  }
 }
