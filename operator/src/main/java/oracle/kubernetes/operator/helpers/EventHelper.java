@@ -93,6 +93,7 @@ public class EventHelper {
 
     @Override
     public NextAction apply(Packet packet) {
+      LOGGER.info("XXX CreateEventStep.apply() is called item = " + eventData.eventItem.getReason());
       DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
       if (hasProcessingNotStarted(info) && (eventData.eventItem == DOMAIN_PROCESSING_COMPLETED)) {
         return doNext(packet);
@@ -153,9 +154,17 @@ public class EventHelper {
 
       @Override
       public NextAction onSuccess(Packet packet, CallResponse<V1Event> callResponse) {
+        LOGGER.info("XXX CreateEventResponseStep.onSuccess() is called");
         Optional.ofNullable(packet.getSpi(DomainPresenceInfo.class))
             .ifPresent(dpi -> dpi.setLastEventItem(eventData.eventItem));
         return doNext(packet);
+      }
+
+      @Override
+      public NextAction onFailure(Packet packet, CallResponse<V1Event> callResponse) {
+        LOGGER.info("XXX CreateEventResponseStep.onFailure() is called ex = "
+            + callResponse.getE() + " response = " + callResponse);
+        return super.onFailure(packet, callResponse);
       }
     }
 
@@ -167,6 +176,7 @@ public class EventHelper {
 
       @Override
       public NextAction onSuccess(Packet packet, CallResponse<V1Event> callResponse) {
+        LOGGER.info("XXX ReplaceEventResponseStep.onSuccess() is called");
         Optional.ofNullable(packet.getSpi(DomainPresenceInfo.class))
             .ifPresent(dpi -> dpi.setLastEventItem(eventData.eventItem));
         return doNext(packet);
@@ -174,6 +184,8 @@ public class EventHelper {
 
       @Override
       public NextAction onFailure(Packet packet, CallResponse<V1Event> callResponse) {
+        LOGGER.info("XXX ReplaceEventResponseStep.onFailure() is called ex = "
+            + callResponse.getE() + " response = " + callResponse);
         return UnrecoverableErrorBuilder.isAsyncCallNotFoundFailure(callResponse)
             ? doNext(Step.chain(createCreateEventCall(createEventModel(packet, eventData)), getNext()), packet)
             : super.onFailure(packet, callResponse);
