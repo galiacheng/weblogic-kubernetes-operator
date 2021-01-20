@@ -3,9 +3,12 @@
 
 package oracle.kubernetes.operator.steps;
 
+import io.kubernetes.client.openapi.models.V1Event;
 import oracle.kubernetes.operator.calls.CallResponse;
 import oracle.kubernetes.operator.helpers.CallBuilder;
 import oracle.kubernetes.operator.helpers.ResponseStep;
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
@@ -15,6 +18,8 @@ import oracle.kubernetes.operator.work.Step;
  * nothing on success. Subclasses must override #doSuccess to take action.
  */
 public class DefaultResponseStep<T> extends ResponseStep<T> {
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
+
   public DefaultResponseStep() {
   }
 
@@ -28,6 +33,10 @@ public class DefaultResponseStep<T> extends ResponseStep<T> {
 
   @Override
   public NextAction onFailure(Packet packet, CallResponse<T> callResponse) {
+    if (callResponse.getResult() instanceof V1Event) {
+      LOGGER.info("XXX DefaultResponseStep.onFailure() is called ex = "
+          + callResponse.getE() + " response = " + callResponse);
+    }
     return callResponse.getStatusCode() == CallBuilder.NOT_FOUND
         ? onSuccess(packet, callResponse)
         : super.onFailure(packet, callResponse);
@@ -35,6 +44,9 @@ public class DefaultResponseStep<T> extends ResponseStep<T> {
 
   @Override
   public NextAction onSuccess(Packet packet, CallResponse<T> callResponse) {
+    if (callResponse.getResult() instanceof V1Event) {
+      LOGGER.info("XXX DefaultResponseStep.onSuccess() is called");
+    }
     return doNext(packet);
   }
 }

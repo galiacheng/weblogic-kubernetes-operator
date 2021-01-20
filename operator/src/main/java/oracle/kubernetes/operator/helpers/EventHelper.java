@@ -89,6 +89,7 @@ public class EventHelper {
 
     @Override
     public NextAction apply(Packet packet) {
+      LOGGER.info("XXX CreateEventStep.apply is called");
       DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
       if (hasProcessingNotStarted(info) && (eventData.eventItem == DOMAIN_PROCESSING_COMPLETED)) {
         return doNext(packet);
