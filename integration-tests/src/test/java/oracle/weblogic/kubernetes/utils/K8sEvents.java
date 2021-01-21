@@ -54,7 +54,6 @@ public class K8sEvents {
               + event.getMetadata().getName().contains(domainUid) + " lastTimestamp =  "
               + event.getLastTimestamp() + " localTimestamp = " + timestamp);
           if (event.getReason().equals(reason)
-              && event.getMetadata().getName().contains(domainUid)
               && (isEqualOrAfter(timestamp, event))) {
             logger.info(Yaml.dump(event));
             verifyOperatorDetails(event, opNamespace, domainUid);

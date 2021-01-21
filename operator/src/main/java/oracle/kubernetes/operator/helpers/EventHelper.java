@@ -402,10 +402,7 @@ public class EventHelper {
 
       @Override
       public V1ObjectReference createInvolvedObject(EventData eventData) {
-        return new V1ObjectReference()
-            .name(eventData.getResourceName())
-            .namespace(eventData.getNamespace())
-            .kind(KubernetesConstants.NAMESPACE);
+        return createNSEventInvolvedObject(eventData);
       }
 
       @Override
@@ -437,10 +434,7 @@ public class EventHelper {
 
       @Override
       public V1ObjectReference createInvolvedObject(EventData eventData) {
-        return new V1ObjectReference()
-            .name(eventData.getResourceName())
-            .namespace(eventData.getNamespace())
-            .kind(KubernetesConstants.NAMESPACE);
+        return createNSEventInvolvedObject(eventData);
       }
 
       @Override
@@ -448,6 +442,13 @@ public class EventHelper {
         return namespace;
       }
     };
+
+    private static V1ObjectReference createNSEventInvolvedObject(EventData eventData) {
+      return new V1ObjectReference()
+          .name(eventData.getResourceName())
+          .namespace(eventData.getNamespace())
+          .kind(KubernetesConstants.NAMESPACE);
+    }
 
     public String getMessage(String resourceName, EventData eventData) {
       return String.format(getPattern(), resourceName);
