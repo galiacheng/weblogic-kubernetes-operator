@@ -46,8 +46,13 @@ public class K8sEvents {
     return () -> {
       logger.info("Verifying {0} event is logged by the operator in domain namespace {1}", reason, domainNamespace);
       try {
+
         List<V1Event> events = Kubernetes.listNamespacedEvents(domainNamespace);
+        logger.info("XX found " + events.size() + " events");
         for (V1Event event : events) {
+          logger.info("XX event = " + event + " reason = " + event.getReason() + " contains domainUID = "
+              + event.getMetadata().getName().contains(domainUid) + " lastTimestamp =  "
+              + event.getLastTimestamp() + " localTimestamp = " + timestamp);
           if (event.getReason().equals(reason)
               && event.getMetadata().getName().contains(domainUid)
               && (isEqualOrAfter(timestamp, event))) {
@@ -92,7 +97,7 @@ public class K8sEvents {
   }
 
   private static boolean isEqualOrAfter(DateTime timestamp, V1Event event) {
-    return event.getLastTimestamp().isEqual(timestamp.getMillis())
+    return event.getLastTimestamp().equals(timestamp.getMillis())
             || event.getLastTimestamp().isAfter(timestamp.getMillis());
   }
 
