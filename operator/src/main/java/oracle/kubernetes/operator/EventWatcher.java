@@ -3,11 +3,13 @@
 
 package oracle.kubernetes.operator;
 
+import java.util.Optional;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.models.V1Event;
+import io.kubernetes.client.openapi.models.V1ObjectReference;
 import io.kubernetes.client.util.Watch.Response;
 import io.kubernetes.client.util.Watchable;
 import oracle.kubernetes.operator.TuningParameters.WatchTuning;
@@ -68,6 +70,16 @@ public class EventWatcher extends Watcher<V1Event> {
 
   @Override
   public String getDomainUid(Response<V1Event> item) {
-    return null;
+    String podName = Optional.ofNullable(item.object)
+        .map(V1Event::getInvolvedObject)
+        .map(V1ObjectReference::getName)
+        .orElse(null);
+
+    if (podName == null || podName.indexOf("-") <= 0) {
+      return null;
+    }
+
+    String[] domainAndServer = podName.split("-");
+    return domainAndServer[0];
   }
 }

@@ -96,7 +96,7 @@ public class K8sEvents {
   }
 
   private static boolean isEqualOrAfter(DateTime timestamp, V1Event event) {
-    return event.getLastTimestamp().equals(timestamp.getMillis())
+    return event.getLastTimestamp().isEqual(timestamp.getMillis())
             || event.getLastTimestamp().isAfter(timestamp.getMillis());
   }
 
