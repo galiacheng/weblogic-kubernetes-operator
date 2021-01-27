@@ -78,7 +78,7 @@ parallel_run="false"
 threads="2"
 wdt_download_url="https://github.com/oracle/weblogic-deploy-tooling/releases/latest"
 wit_download_url="https://github.com/oracle/weblogic-image-tool/releases/latest"
-wle_download_url="https://github.com/oracle/weblogic-logging-exporter/releases/latest"
+wle_download_url="https://objectstorage.us-phoenix-1.oraclecloud.com/n/weblogick8s/b/wko-system-test-files/o/weblogic-logging-exporter.jar"
 maven_profile_name="integration-tests"
 skip_tests=false
 

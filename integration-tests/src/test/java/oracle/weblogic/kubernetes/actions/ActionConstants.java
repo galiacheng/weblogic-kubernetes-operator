@@ -56,7 +56,8 @@ public interface ActionConstants {
   public static final String SNAKE = "SNAKE";
 
   public static final String WLE_DOWNLOAD_URL_DEFAULT
-      = "https://github.com/oracle/weblogic-logging-exporter/releases/latest";
+      = "https://objectstorage.us-phoenix-1.oraclecloud.com/n/weblogick8s/b/"
+      + "wko-system-test-files/o/weblogic-logging-exporter.jar";
   public static final String WLE_DOWNLOAD_URL
       = System.getProperty("wle.download.url", WLE_DOWNLOAD_URL_DEFAULT);
   public static final String WLE_VERSION    = System.getProperty("wle.version", "latest");
