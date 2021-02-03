@@ -673,7 +673,20 @@ public class Kubernetes {
    */
   public static void copyDirectoryFromPod(V1Pod pod, String srcPath, Path destination)
       throws IOException, ApiException, CopyNotSupportedException {
-    copyFileFromPod(pod.getMetadata().getNamespace(), pod.getMetadata().getName(), null, srcPath, destination);
+    StringBuilder sb = new StringBuilder();
+    sb.append("kubectl exec -i ");
+    String namespace = pod.getMetadata().getNamespace();
+    if (namespace != null) {
+      sb.append("-n ").append(namespace).append(" ");
+    }
+    sb.append(pod.getMetadata().getName())
+        .append(" -- sh -c \"cd ").append(srcPath)
+        .append(" && tar -cz * | base64\" | base64 -D | tar -xf - -C ").append(destination);
+    String cpCommand = sb.toString();
+    assertTrue(Command
+        .withParams(new CommandParams()
+            .command(cpCommand))
+        .execute(), cpCommand + " failed");
   }
 
   /**
