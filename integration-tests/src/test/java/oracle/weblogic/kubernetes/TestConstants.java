@@ -36,6 +36,7 @@ public interface TestConstants {
 
 
   // kind constants
+  public static final boolean USE_KIND_LOAD = Boolean.parseBoolean(System.getProperty("use.kind.load", "false"));
   public static final String KIND_REPO = System.getenv("KIND_REPO");
   public static final String REPO_DUMMY_VALUE = "dummy";
 

@@ -37,7 +37,7 @@ script="${BASH_SOURCE[0]}"
 scriptDir="$( cd "$( dirname "${script}" )" && pwd )"
 
 function usage {
-  echo "usage: ${script} [-v <version>] [-n <name>] [-s] [-o <directory>] [-t <tests>] [-c <name>] [-p true|false] [-x <number_of_threads>] [-d <wdt_download_url>] [-i <wit_download_url>] [-l <wle_download_url>] [-m <maven_profile_name>] [-h]"
+  echo "usage: ${script} [-v <version>] [-n <name>] [-s] [-o <directory>] [-t <tests>] [-c <name>] [-p true|false] [-x <number_of_threads>] [-d <wdt_download_url>] [-i <wit_download_url>] [-l <wle_download_url>] [-m <maven_profile_name>] [-k] [-h]"
   echo "  -v Kubernetes version (optional) "
   echo "      (default: 1.16, supported values depend on the kind version. See kindversions.properties) "
   echo "  -n Kind cluster name (optional) "
@@ -61,12 +61,20 @@ function usage {
   echo "      (default: https://github.com/oracle/weblogic-logging-exporter/releases/latest) "
   echo "  -m Run integration-tests or wls-image-cert or fmw-image-cert"
   echo "      (default: integration-tests, supported values: wls-image-cert, fmw-image-cert) "
+  echo "  -k Require tests to use 'kind load docker-image'. If this option is specified then no local registry will be started. "
   echo "  -h Help"
   exit $1
 }
 
+function captureLogs {
+  echo "Capture Kind logs..."
+  mkdir "${RESULT_ROOT}/kubelogs"
+  kind export logs "${RESULT_ROOT}/kubelogs" --name "${kind_name}" --verbosity 99
+}
+
 k8s_version="1.16"
 kind_name="kind"
+use_kind_load=false
 if [[ -z "${WORKSPACE}" ]]; then
   outdir="/scratch/${USER}/kindtest"
 else
@@ -82,7 +90,7 @@ wle_download_url="https://github.com/oracle/weblogic-logging-exporter/releases/l
 maven_profile_name="integration-tests"
 skip_tests=false
 
-while getopts "v:n:o:t:c:x:p:d:i:l:m:sh" opt; do
+while getopts "v:n:o:t:c:x:p:d:i:l:m:skh" opt; do
   case $opt in
     v) k8s_version="${OPTARG}"
     ;;
@@ -108,6 +116,8 @@ while getopts "v:n:o:t:c:x:p:d:i:l:m:sh" opt; do
     ;;
     s) skip_tests=true
     ;;
+    k) use_kind_load=true
+    ;;
     h) usage 0
     ;;
     *) usage 1
@@ -120,13 +130,16 @@ function versionprop {
 }
 
 kind_version=$(kind version)
-kind_series="0.9"
+kind_series="0.10"
 case "${kind_version}" in
   "kind v0.7."*)
     kind_series="0.7"
     ;;
   "kind v0.8."*)
     kind_series="0.8"
+    ;;
+  "kind v0.9."*)
+    kind_series="0.9"
     ;;
 esac
 
@@ -175,37 +188,45 @@ kind delete cluster --name ${kind_name} --kubeconfig "${RESULT_ROOT}/kubeconfig"
 kind_network='kind'
 reg_name='kind-registry'
 reg_port='5000'
-case "${kind_version}" in
-  "kind v0.7."* | "kind v0.6."* | "kind v0.5."*)
-    kind_network='bridge'
-    ;;
-esac
 
-echo 'Create registry container unless it already exists'
-running="$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)"
-if [ "${running}" != 'true' ]; then
-  docker run \
-    -d --restart=always -p "${reg_port}:5000" --name "${reg_name}" \
-    registry:2
+containerdConfigPatches=""
+if $use_kind_load; then
+  echo 'Create a cluster'
+else
+  case "${kind_version}" in
+    "kind v0.7."* | "kind v0.6."* | "kind v0.5."*)
+      kind_network='bridge'
+      ;;
+  esac
+
+  echo 'Create registry container unless it already exists'
+  running="$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)"
+  if [ "${running}" != 'true' ]; then
+    docker run \
+      -d --restart=always -p "${reg_port}:5000" --name "${reg_name}" \
+      registry:2
+  fi
+
+  reg_host="${reg_name}"
+  if [ "${kind_network}" = "bridge" ]; then
+      reg_host="$(docker inspect -f '{{.NetworkSettings.IPAddress}}' "${reg_name}")"
+  fi
+  echo "Registry Host: ${reg_host}"
+
+  echo 'Create a cluster with the local registry enabled in containerd'
+  containerdConfigPatches="
+containerdConfigPatches:
+- |-
+  [plugins.\"io.containerd.grpc.v1.cri\".registry.mirrors.\"localhost:${reg_port}\"]
+    endpoint = [\"http://${reg_host}:${reg_port}\"]"
 fi
-
-reg_host="${reg_name}"
-if [ "${kind_network}" = "bridge" ]; then
-    reg_host="$(docker inspect -f '{{.NetworkSettings.IPAddress}}' "${reg_name}")"
-fi
-echo "Registry Host: ${reg_host}"
-
-echo 'Create a cluster with the local registry enabled in containerd'
 cat <<EOF | kind create cluster --name "${kind_name}" --kubeconfig "${RESULT_ROOT}/kubeconfig" --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 networking:
   disableDefaultCNI: ${disableDefaultCNI}
   podSubnet: 192.168.0.0/16
-containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
-    endpoint = ["http://${reg_host}:${reg_port}"]
+${containerdConfigPatches}
 nodes:
   - role: control-plane
     image: ${kind_image}
@@ -234,22 +255,23 @@ for node in $(kind get nodes --name "${kind_name}"); do
   kubectl annotate node "${node}" tilt.dev/registry=localhost:${reg_port};
 done
 
-if [ "${kind_network}" != "bridge" ]; then
-  containers=$(docker network inspect ${kind_network} -f "{{range .Containers}}{{.Name}} {{end}}")
-  needs_connect="true"
-  for c in ${containers}; do
-    if [ "$c" = "${reg_name}" ]; then
-      needs_connect="false"
+if ! $use_kind_load; then
+  if [ "${kind_network}" != "bridge" ]; then
+    containers=$(docker network inspect ${kind_network} -f "{{range .Containers}}{{.Name}} {{end}}")
+    needs_connect="true"
+    for c in ${containers}; do
+      if [ "$c" = "${reg_name}" ]; then
+        needs_connect="false"
+      fi
+    done
+    if [ "${needs_connect}" = "true" ]; then
+      docker network connect "${kind_network}" "${reg_name}" || true
     fi
-  done
-  if [ "${needs_connect}" = "true" ]; then
-    docker network connect "${kind_network}" "${reg_name}" || true
   fi
-fi
 
-# Document the local registry
-# https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry
-cat <<EOF | kubectl apply -f -
+  # Document the local registry
+  # https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry
+  cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -260,6 +282,8 @@ data:
     host: "localhost:${reg_port}"
     help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
 EOF
+
+fi
 
 echo 'Set up test running ENVVARs...'
 export KIND_REPO="localhost:${reg_port}/"
@@ -280,10 +304,10 @@ if [ "${maven_profile_name}" = "wls-image-cert" ] || [ "${maven_profile_name}" =
   time mvn -Dwdt.download.url="${wdt_download_url}" -Dwit.download.url="${wit_download_url}" -Dwle.download.url="${wle_download_url}" -pl integration-tests -P ${maven_profile_name} verify 2>&1 | tee "${RESULT_ROOT}/kindtest.log"
 else
   if [ "${test_filter}" = "ItOperatorUpgrade" ] || [ "${parallel_run}" = "false" ]; then
-    echo "Running mvn -Dit.test=${test_filter}, !ItIstioCrossClusters -Dwdt.download.url=${wdt_download_url} -Dwit.download.url=${wit_download_url} -Dwle.download.url=${wle_download_url} -pl integration-tests -P ${maven_profile_name} verify"
-    time mvn -Dit.test="${test_filter}, !ItIstioCrossClusters*" -Dwdt.download.url="${wdt_download_url}" -Dwit.download.url="${wit_download_url}" -Dwle.download.url="${wle_download_url}" -pl integration-tests -P ${maven_profile_name} verify 2>&1 | tee "${RESULT_ROOT}/kindtest.log"
+    echo "Running mvn -Dit.test=${test_filter}, !ItIstioCrossClusters -Dwdt.download.url=${wdt_download_url} -Dwit.download.url=${wit_download_url} -Dwle.download.url=${wle_download_url} -Duse.kind.load=${use_kind_load} -pl integration-tests -P ${maven_profile_name} verify"
+    time mvn -Dit.test="${test_filter}, !ItIstioCrossClusters*" -Dwdt.download.url="${wdt_download_url}" -Dwit.download.url="${wit_download_url}" -Dwle.download.url="${wle_download_url}" -Duse.kind.load=${use_kind_load} pl integration-tests -P ${maven_profile_name} verify 2>&1 | tee "${RESULT_ROOT}/kindtest.log" || captureLogs
   else
-    echo "Running mvn -Dit.test=${test_filter}, !ItOperatorUpgrade, !ItDedicatedMode, !ItT3Channel, !ItOpUpgradeFmwDomainInPV, !ItIstioCrossClusters* -Dwdt.download.url=${wdt_download_url} -Dwit.download.url=${wit_download_url} -Dwle.download.url=${wle_download_url} -DPARALLEL_CLASSES=${parallel_run} -DNUMBER_OF_THREADS=${threads}  -pl integration-tests -P ${maven_profile_name} verify"
-    time mvn -Dit.test="${test_filter}, !ItOperatorUpgrade, !ItDedicatedMode, !ItT3Channel, !ItOpUpgradeFmwDomainInPV, !ItIstioCrossClusters*" -Dwdt.download.url="${wdt_download_url}" -Dwit.download.url="${wit_download_url}" -Dwle.download.url="${wle_download_url}" -DPARALLEL_CLASSES="${parallel_run}" -DNUMBER_OF_THREADS="${threads}" -pl integration-tests -P ${maven_profile_name} verify 2>&1 | tee "${RESULT_ROOT}/kindtest.log"
+    echo "Running mvn -Dit.test=${test_filter}, !ItOperatorUpgrade, !ItDedicatedMode, !ItT3Channel, !ItOpUpgradeFmwDomainInPV, !ItIstioCrossClusters* -Dwdt.download.url=${wdt_download_url} -Dwit.download.url=${wit_download_url} -Dwle.download.url=${wle_download_url} -Duse.kind.load=${use_kind_load} -DPARALLEL_CLASSES=${parallel_run} -DNUMBER_OF_THREADS=${threads}  -pl integration-tests -P ${maven_profile_name} verify"
+    time mvn -Dit.test="${test_filter}, !ItOperatorUpgrade, !ItDedicatedMode, !ItT3Channel, !ItOpUpgradeFmwDomainInPV, !ItIstioCrossClusters*" -Dwdt.download.url="${wdt_download_url}" -Dwit.download.url="${wit_download_url}" -Dwle.download.url="${wle_download_url}" -Duse.kind.load=${use_kind_load} -DPARALLEL_CLASSES="${parallel_run}" -DNUMBER_OF_THREADS="${threads}" -pl integration-tests -P ${maven_profile_name} verify 2>&1 | tee "${RESULT_ROOT}/kindtest.log" || captureLogs
   fi
 fi

@@ -60,6 +60,8 @@ import oracle.weblogic.kubernetes.actions.impl.Traefik;
 import oracle.weblogic.kubernetes.actions.impl.TraefikParams;
 import oracle.weblogic.kubernetes.actions.impl.Voyager;
 import oracle.weblogic.kubernetes.actions.impl.VoyagerParams;
+import oracle.weblogic.kubernetes.actions.impl.primitive.Command;
+import oracle.weblogic.kubernetes.actions.impl.primitive.CommandParams;
 import oracle.weblogic.kubernetes.actions.impl.primitive.Docker;
 import oracle.weblogic.kubernetes.actions.impl.primitive.Helm;
 import oracle.weblogic.kubernetes.actions.impl.primitive.HelmParams;
@@ -71,6 +73,8 @@ import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import oracle.weblogic.kubernetes.utils.ExecResult;
 import org.joda.time.DateTime;
 
+import static oracle.weblogic.kubernetes.TestConstants.KIND_REPO;
+import static oracle.weblogic.kubernetes.TestConstants.USE_KIND_LOAD;
 import static oracle.weblogic.kubernetes.actions.impl.Operator.start;
 import static oracle.weblogic.kubernetes.actions.impl.Operator.stop;
 import static oracle.weblogic.kubernetes.actions.impl.Prometheus.uninstall;
@@ -1034,11 +1038,29 @@ public class TestActions {
    * @return true if successful
    */
   public static boolean dockerPush(String image) {
-    boolean result = Docker.push(image);
+    boolean result = isImageKindRepo(image) ? kindPush(image) : Docker.push(image);
     if (result) {
       ImageBuilders.registerPushedImage(image);
     }
     return result;
+  }
+
+  private static boolean isImageKindRepo(String image) {
+    return USE_KIND_LOAD && (KIND_REPO != null) && image.startsWith(KIND_REPO);
+  }
+
+  /**
+   * Push an image to a registry.
+   *
+   * @param image fully qualified docker image, image name:image tag
+   * @return true if successful
+   */
+  private static boolean kindPush(String image) {
+    String cmdToExecute = String.format("kind load docker-image %s", image);
+    return Command
+        .withParams(new CommandParams()
+            .command(cmdToExecute))
+        .execute();
   }
 
   /**
