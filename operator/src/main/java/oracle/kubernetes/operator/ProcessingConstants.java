@@ -32,7 +32,6 @@ public interface ProcessingConstants {
   String DOMAIN_INTROSPECT_REQUESTED = "domainIntrospectRequested";
   String REMAINING_SERVERS_HEALTH_TO_READ = "serverHealthRead";
 
-  String ENCODED_CREDENTIALS = "encodedCredentials";
   String DOMAIN_VALIDATION_ERRORS = "domainValidationErrors";
   String INTROSPECTOR_JOB_FAILURE_LOGGED = "introspectorJobFailureLogged";
   String WAIT_FOR_POD_READY = "waitForPodReady";

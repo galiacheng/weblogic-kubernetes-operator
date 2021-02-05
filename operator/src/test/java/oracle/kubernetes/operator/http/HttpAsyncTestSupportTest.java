@@ -51,6 +51,19 @@ public class HttpAsyncTestSupportTest {
     assertThat(support.getResponse(createPostRequest("http://this", "abc")).body(), equalTo("Got it"));
   }
 
+  @Test
+  public void whenMultipleUrlsDefined_selectMatch() {
+    support.defineResponse(createGetRequest("http://that"), createStub(HttpResponseStub.class, 200, "Wrong"));
+    support.defineResponse(createGetRequest("http://this"), createStub(HttpResponseStub.class, 200, "Got it"));
+
+    assertThat(support.getResponse(createGetRequest("http://this")).body(), equalTo("Got it"));
+  }
+
+  @Test
+  void whenMatchingRequestMeetsExpectations_returnMatch() {
+
+  }
+
   @SuppressWarnings("SameParameterValue")
   private HttpRequest createPostRequest(String urlString, String body) {
     return HttpRequest.newBuilder().POST(HttpRequest.BodyPublishers.ofString(body)).uri(URI.create(urlString)).build();

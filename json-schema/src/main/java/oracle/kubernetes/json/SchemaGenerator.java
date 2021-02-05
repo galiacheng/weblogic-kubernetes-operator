@@ -10,12 +10,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -50,8 +51,8 @@ public class SchemaGenerator {
   // a map of external class names to the external schema that defines them
   private final Map<String, String> schemaUrls = new HashMap<>();
 
-  // if true generate the additionalProperties field for each object. Defaults to true
-  private boolean includeAdditionalProperties = true;
+  // if true generate the additionalProperties field to forbid fields not in the object's schema. Defaults to true.
+  private boolean forbidAdditionalProperties = true;
 
   // if true, the object fields are implemented as references to definitions
   private boolean supportObjectReferences = true;
@@ -60,7 +61,7 @@ public class SchemaGenerator {
   private boolean includeSchemaReference = true;
 
   // suppress descriptions for any contained packages
-  private Collection<String> suppressDescriptionForPackages = new ArrayList<>();
+  private final Collection<String> suppressDescriptionForPackages = new ArrayList<>();
 
   /**
    * Returns a pretty-printed string corresponding to a generated schema.
@@ -127,10 +128,10 @@ public class SchemaGenerator {
    * Specifies whether the "additionalProperties" property will be specified to forbid properties
    * not in the schema.
    *
-   * @param includeAdditionalProperties true to forbid unknown properties
+   * @param forbidAdditionalProperties true to forbid unknown properties
    */
-  public void setIncludeAdditionalProperties(boolean includeAdditionalProperties) {
-    this.includeAdditionalProperties = includeAdditionalProperties;
+  public void setForbidAdditionalProperties(boolean forbidAdditionalProperties) {
+    this.forbidAdditionalProperties = forbidAdditionalProperties;
   }
 
   /**
@@ -166,7 +167,7 @@ public class SchemaGenerator {
    * @param someClass the class for which the schema should be generated
    * @return a map of maps, representing the computed JSON
    */
-  public Map<String, Object> generate(Class someClass) {
+  public Map<String, Object> generate(Class<?> someClass) {
     Map<String, Object> result = new HashMap<>();
 
     if (includeSchemaReference) {
@@ -248,10 +249,6 @@ public class SchemaGenerator {
     return type.equals(DateTime.class);
   }
 
-  private boolean isMapType(Class<?> type) {
-    return Map.class.isAssignableFrom(type);
-  }
-
   private boolean isNumeric(Class<?> type) {
     return Number.class.isAssignableFrom(type) || PRIMITIVE_NUMBERS.contains(type);
   }
@@ -294,7 +291,7 @@ public class SchemaGenerator {
   }
 
   private void addStringRestrictions(Map<String, Object> result, Field field) {
-    Class<? extends Enum> enumClass = getEnumClass(field);
+    Class<? extends Enum<?>> enumClass = getEnumClass(field);
     if (enumClass != null) {
       addEnumValues(result, enumClass, getEnumQualifier(field));
     }
@@ -305,7 +302,7 @@ public class SchemaGenerator {
     }
   }
 
-  private Class<? extends java.lang.Enum> getEnumClass(Field field) {
+  private Class<? extends java.lang.Enum<?>> getEnumClass(Field field) {
     EnumClass annotation = field.getAnnotation(EnumClass.class);
     return annotation != null ? annotation.value() : null;
   }
@@ -316,7 +313,7 @@ public class SchemaGenerator {
   }
 
   private void addEnumValues(
-      Map<String, Object> result, Class<? extends Enum> enumClass, String qualifier) {
+      Map<String, Object> result, Class<? extends Enum<?>> enumClass, String qualifier) {
     result.put("enum", getEnumValues(enumClass, qualifier));
   }
 
@@ -378,7 +375,7 @@ public class SchemaGenerator {
     return type.getSimpleName();
   }
 
-  private void generateEnumTypeIn(Map<String, Object> result, Class<? extends Enum> enumType) {
+  private void generateEnumTypeIn(Map<String, Object> result, Class<? extends Enum<?>> enumType) {
     result.put("type", "string");
     addEnumValues(result, enumType, "");
   }
@@ -425,20 +422,11 @@ public class SchemaGenerator {
     if (isDateTime(type)) {
       result.put("type", "string");
       result.put("format", "date-time");
-    } else if (isMapType(type)) {
-      // reached here if the type is a Map
-      final Map<String, Object> properties = new HashMap<>();
-      Optional.ofNullable(getDescription(type)).ifPresent(s -> result.put("description", s));
-      result.put("type", "object");
-      properties.put("type", "string");
-      result.put("additionalProperties", properties);
     } else {
       final Map<String, Object> properties = new HashMap<>();
       List<String> requiredFields = new ArrayList<>();
       result.put("type", "object");
-      if (includeAdditionalProperties) {
-        result.put("additionalProperties", "false");
-      }
+      Optional.ofNullable(getAdditionalProperties(type)).ifPresent(p -> result.put("additionalProperties", p));
       Optional.ofNullable(getDescription(type)).ifPresent(s -> result.put("description", s));
       result.put("properties", properties);
 
@@ -457,20 +445,67 @@ public class SchemaGenerator {
     }
   }
 
+  private Object getAdditionalProperties(Class<?> type) {
+    if (isMapType(type)) {
+      return createMapEntriesSchema(type);
+    } else if (forbidAdditionalProperties) {
+      return "false";
+    } else {
+      return null;
+    }
+  }
+
+  private boolean isMapType(Class<?> type) {
+    return Map.class.isAssignableFrom(type);
+  }
+
+  @Nonnull
+  private Map<String, Object> createMapEntriesSchema(Class<?> type) {
+    Map<String, Object> entries = new HashMap<>();
+    new TypeReferenceGenerator().generateTypeIn(entries, (Class<?>) getMapValueType(type));
+    return entries;
+  }
+
+  // Given a map type, attempts to determine the actual type of its values. Defaults
+  // to String if unable to determine the type.
+  private Type getMapValueType(Class<?> mapType) {
+    return Optional.ofNullable(mapType.getGenericSuperclass())
+          .map(this::getActualTypeArguments)
+          .map(this::getValueType)
+          .orElse(String.class);
+  }
+
+  private Type[] getActualTypeArguments(Type type) {
+    if (type instanceof ParameterizedType) {
+      return ((ParameterizedType) type).getActualTypeArguments();
+    } else {
+      return new Type[0];
+    }
+  }
+
+  // Given an array of actual parameter types for a Map, returns the one corresponding to the value type.
+  private Type getValueType(Type[] types) {
+    return types.length < 2 ? null : types[1];
+  }
+
+
+
   private Collection<Field> getPropertyFields(Class<?> type) {
     Set<Field> result = new LinkedHashSet<>();
-    for (Class<?> cl = type; cl != null && !cl.equals(Object.class); cl = cl.getSuperclass()) {
+    for (Class<?> cl = type; cl != null && !isExcludedSuperClass(cl); cl = cl.getSuperclass()) {
       result.addAll(Arrays.asList(cl.getDeclaredFields()));
     }
 
-    for (Iterator<Field> each = result.iterator(); each.hasNext(); ) {
-      if (isSelfReference(each.next())) {
-        each.remove();
-      }
-    }
+    result.removeIf(this::isSelfReference);
 
     return result;
   }
+
+  private boolean isExcludedSuperClass(Class<?> cl) {
+    return excludedSuperClasses.contains(cl);
+  }
+
+  private final Set<Class<?>> excludedSuperClasses = Set.of(Object.class, HashMap.class);
 
   private boolean isSelfReference(Field field) {
     return field.getName().startsWith("this$");
@@ -502,15 +537,10 @@ public class SchemaGenerator {
     }
   }
 
-  private class SubSchemaGenerator {
-    final Field field;
-
-    SubSchemaGenerator(Field field) {
-      this.field = field;
-    }
+  private class TypeReferenceGenerator {
 
     @SuppressWarnings("unchecked")
-    private void generateTypeIn(Map<String, Object> result, Class<?> type) {
+    void generateTypeIn(Map<String, Object> result, Class<?> type) {
       if (type.equals(Boolean.class) || type.equals(Boolean.TYPE)) {
         result.put("type", "boolean");
       } else if (isNumeric(type)) {
@@ -518,17 +548,13 @@ public class SchemaGenerator {
       } else if (isString(type)) {
         result.put("type", "string");
       } else if (type.isEnum()) {
-        generateEnumTypeIn(result, (Class<? extends Enum>) type);
-      } else if (type.isArray()) {
-        this.generateArrayTypeIn(result, type);
-      } else if (Collection.class.isAssignableFrom(type)) {
-        generateCollectionTypeIn(result);
+        generateEnumTypeIn(result, (Class<? extends Enum<?>>) type);
       } else {
         generateObjectFieldIn(result, type);
       }
     }
 
-    private void generateObjectFieldIn(Map<String, Object> result, Class<?> type) {
+    protected void generateObjectFieldIn(Map<String, Object> result, Class<?> type) {
       if (supportObjectReferences) {
         generateObjectReferenceIn(result, type);
       } else {
@@ -536,9 +562,27 @@ public class SchemaGenerator {
       }
     }
 
-    private void generateObjectReferenceIn(Map<String, Object> result, Class<?> type) {
+    protected void generateObjectReferenceIn(Map<String, Object> result, Class<?> type) {
       addReference(type);
       result.put("$ref", getReferencePath(type));
+    }
+  }
+
+  private class SubSchemaGenerator extends TypeReferenceGenerator {
+    final Field field;
+
+    SubSchemaGenerator(Field field) {
+      this.field = field;
+    }
+
+    void generateTypeIn(Map<String, Object> result, Class<?> type) {
+      if (type.isArray()) {
+        this.generateArrayTypeIn(result, type);
+      } else if (Collection.class.isAssignableFrom(type)) {
+        generateCollectionTypeIn(result);
+      } else {
+        super.generateTypeIn(result, type);
+      }
     }
 
     private void generateCollectionTypeIn(Map<String, Object> result) {

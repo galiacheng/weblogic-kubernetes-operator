@@ -31,6 +31,8 @@ import oracle.kubernetes.weblogic.domain.DomainConfigurator;
 import oracle.kubernetes.weblogic.domain.ServerConfigurator;
 import org.junit.jupiter.api.Test;
 
+import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_EXPORTER_SIDECAR_PORT;
+import static oracle.kubernetes.operator.KubernetesConstants.MONITORING_EXPORTER_NAME;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVERS_TO_ROLL;
 import static oracle.kubernetes.operator.WebLogicConstants.ADMIN_STATE;
 import static oracle.kubernetes.operator.WebLogicConstants.RUNNING_STATE;
@@ -52,12 +54,16 @@ import static oracle.kubernetes.utils.LogMatcher.containsInfo;
 import static oracle.kubernetes.utils.LogMatcher.containsSevere;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.anEmptyMap;
+import static org.hamcrest.Matchers.both;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
 
 @SuppressWarnings("ConstantConditions")
@@ -80,6 +86,7 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
   private static final String RAW_VALUE_4 = "$(SERVER_NAME)-volume";
   private static final String END_VALUE_4_DNS1123 = "ess-server1-volume";
   private static final String CLUSTER_NAME = "test-cluster";
+  private static final String NOOP_EXPORTER_CONFIG = "queries:\n";
 
   public ManagedPodHelperTest() {
     super(SERVER_NAME, LISTEN_PORT);
@@ -865,6 +872,28 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
   }
 
   @Test
+  public void whenPodCreatedWithoutExportConfiguration_hasPrometheusAnnotations() {
+    assertThat(
+        getCreatedPod().getMetadata().getAnnotations(),
+        allOf(
+            hasEntry("prometheus.io/port", Integer.toString(getServerTopology().getListenPort())),
+            hasEntry("prometheus.io/path", "/wls-exporter/metrics"),
+            hasEntry("prometheus.io/scrape", "true")));
+  }
+
+  @Test
+  public void whenPodCreatedWithSslAndWithoutExportConfiguration_hasPrometheusAnnotations() {
+    getServerTopology().setListenPort(null);
+    getServerTopology().setSslListenPort(7002);
+    assertThat(
+        getCreatedPod().getMetadata().getAnnotations(),
+        allOf(
+            hasEntry("prometheus.io/port", Integer.toString(getServerTopology().getSslListenPort())),
+            hasEntry("prometheus.io/path", "/wls-exporter/metrics"),
+            hasEntry("prometheus.io/scrape", "true")));
+  }
+
+  @Test
   public void whenPodHasDuplicateLabels_createManagedPodWithCombination() {
     getConfigurator()
         .withPodLabel("label1", "domain-label-value1")
@@ -1092,6 +1121,111 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
                   createWeightedPodAffinityTerm("weblogic.domainUID", UID))));
 
     assertThat(getCreatePodAffinity(), is(expectedValue));
+  }
+
+  @Test
+  void whenDomainHasMonitoringExporterConfiguration_createContainerWithExporterSidecar() {
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer(), is(notNullValue()));
+  }
+
+  private void defineExporterConfiguration() {
+    configureDomain().withMonitoringExporterConfiguration(NOOP_EXPORTER_CONFIG);
+  }
+
+  @Test
+  public void whenDomainHasMonitoringExporterConfiguration_hasPrometheusAnnotations() {
+    defineExporterConfiguration();
+
+    assertThat(
+        getCreatedPod().getMetadata().getAnnotations(),
+        allOf(
+            hasEntry("prometheus.io/port", Integer.toString(DEFAULT_EXPORTER_SIDECAR_PORT)),
+            hasEntry("prometheus.io/path", "/metrics"),
+            hasEntry("prometheus.io/scrape", "true")));
+  }
+
+  private V1Container getExporterContainer() {
+    return getCreatedPodSpecContainers().stream().filter(this::isMonitoringExporterContainer).findFirst().orElse(null);
+  }
+
+  private boolean isMonitoringExporterContainer(V1Container container) {
+    return container.getImage().contains(MONITORING_EXPORTER_NAME);
+  }
+
+  @Test
+  void monitoringExporterContainer_hasExporterName() {
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getName(), equalTo(MONITORING_EXPORTER_NAME));
+  }
+
+  @Test
+  void monitoringExporterContainerCommand_isNotDefined() {
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getCommand(), nullValue());
+  }
+
+  @Test
+  void whenExporterContainerCreated_specifyOperatorDomain() {
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getArgs(), hasItem("-DDOMAIN=" + getDomain().getDomainUid()));
+  }
+
+  @Test
+  void whenPlaintextPortAvailable_monitoringExporterSpecifiesIt() {
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getArgs(), hasItem("-DWLS_PORT=" + LISTEN_PORT));
+  }
+
+  @Test
+  void whenOnlySslPortAvailable_monitoringExporterSpecifiesIt() {
+    getServerTopology().setListenPort(null);
+    getServerTopology().setSslListenPort(7002);
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getArgs(), both(hasItem("-DWLS_PORT=" + 7002)).and(hasItem("-DWLS_SECURE=true")));
+  }
+
+  @Test
+  void whenOnlyAdminAndSslPortsAvailable_monitoringExporterSpecifiesAdminPort() {
+    getServerTopology().setListenPort(null);
+    getServerTopology().setListenPort(null);
+    getServerTopology().setAdminPort(8001);
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getArgs(),
+               both(hasItem("-DWLS_PORT=" + 8001)).and(not(hasItem("-DWLS_SECURE=true"))));
+  }
+
+  @Test
+  void whenDefaultMonitorPortUsedByServer_relocateIt() {
+    getServerTopology().setListenPort(8080);
+    getServerTopology().setSslListenPort(8081);
+    getServerTopology().setAdminPort(8082);
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getArgs(), hasItem("-DEXPORTER_PORT=8083"));
+  }
+
+
+  @Test
+  public void whenDefaultMonitorPortUsedByServer_hasPrometheusAnnotations() {
+    getServerTopology().setListenPort(8080);
+    getServerTopology().setSslListenPort(8081);
+    getServerTopology().setAdminPort(8082);
+    defineExporterConfiguration();
+
+    assertThat(
+        getCreatedPod().getMetadata().getAnnotations(),
+        allOf(
+            hasEntry("prometheus.io/port", "8083"),
+            hasEntry("prometheus.io/path", "/metrics"),
+            hasEntry("prometheus.io/scrape", "true")));
   }
 
   @Override

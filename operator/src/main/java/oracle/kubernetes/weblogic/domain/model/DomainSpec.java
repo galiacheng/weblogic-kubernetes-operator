@@ -301,6 +301,22 @@ public class DomainSpec extends BaseConfiguration {
   private List<String> configOverrideSecrets;
 
   /**
+   * The WebLogic Monitoring Exporter configuration.
+   */
+  @Description("The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will "
+        + "deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter")
+  @SerializedName("monitoringExporter")
+  private MonitoringExporterConfiguration monitoringExporterConfiguration;
+
+  MonitoringExporterConfiguration getMonitoringExporterConfiguration() {
+    return monitoringExporterConfiguration;
+  }
+
+  void createMonitoringExporterConfiguration(String yaml) {
+    monitoringExporterConfiguration = MonitoringExporterConfiguration.createFromYaml(yaml);
+  }
+
+  /**
    * The configuration for the admin server.
    *
    * @since 2.0
@@ -332,7 +348,6 @@ public class DomainSpec extends BaseConfiguration {
           + "WebLogic domain configuration.")
   protected final List<Cluster> clusters = new ArrayList<>();
 
-  /**
   /**
    * Adds a Cluster to the DomainSpec.
    *

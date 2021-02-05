@@ -152,6 +152,12 @@ public class DomainCommonConfigurator extends DomainConfigurator {
     return this;
   }
 
+  @Override
+  public DomainConfigurator withMonitoringExporterConfiguration(String configuration) {
+    getDomainSpec().createMonitoringExporterConfiguration(configuration);
+    return this;
+  }
+
   private AdminServer getOrCreateAdminServer() {
     return getDomainSpec().getOrCreateAdminServer();
   }

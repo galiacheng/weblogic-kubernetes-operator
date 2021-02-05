@@ -146,11 +146,6 @@ public class CrdHelper {
       context = new CrdContext(version, productVersion, this);
     }
 
-    CrdStep(KubernetesVersion version, SemanticVersion productVersion, Step next) {
-      super(next);
-      context = new CrdContext(version, productVersion, this);
-    }
-
     @Override
     public NextAction apply(Packet packet) {
       if (context.version.isCrdV1Supported()) {
@@ -161,6 +156,7 @@ public class CrdHelper {
     }
   }
 
+  @SuppressWarnings("ConstantConditions")
   static class CrdContext {
     private final Step conflictStep;
     private final V1CustomResourceDefinition model;
@@ -172,24 +168,24 @@ public class CrdHelper {
       this.version = version;
       this.productVersion = productVersion;
       this.conflictStep = conflictStep;
-      this.model = createModel(version, productVersion);
-      this.betaModel = createBetaModel(version, productVersion);
+      this.model = createModel(productVersion);
+      this.betaModel = createBetaModel(productVersion);
     }
 
-    static V1CustomResourceDefinition createModel(KubernetesVersion version, SemanticVersion productVersion) {
+    static V1CustomResourceDefinition createModel(SemanticVersion productVersion) {
       return new V1CustomResourceDefinition()
           .apiVersion("apiextensions.k8s.io/v1")
           .kind("CustomResourceDefinition")
           .metadata(createMetadata(productVersion))
-          .spec(createSpec(version));
+          .spec(createSpec());
     }
 
-    static V1beta1CustomResourceDefinition createBetaModel(KubernetesVersion version, SemanticVersion productVersion) {
+    static V1beta1CustomResourceDefinition createBetaModel(SemanticVersion productVersion) {
       return new V1beta1CustomResourceDefinition()
           .apiVersion("apiextensions.k8s.io/v1beta1")
           .kind("CustomResourceDefinition")
           .metadata(createMetadata(productVersion))
-          .spec(createBetaSpec(version));
+          .spec(createBetaSpec());
     }
 
     static V1ObjectMeta createMetadata(SemanticVersion productVersion) {
@@ -202,28 +198,24 @@ public class CrdHelper {
       return metadata;
     }
 
-    static V1CustomResourceDefinitionSpec createSpec(KubernetesVersion version) {
-      V1CustomResourceDefinitionSpec spec =
-          new V1CustomResourceDefinitionSpec()
-              .group(KubernetesConstants.DOMAIN_GROUP)
-              .preserveUnknownFields(false)
-              .versions(getCrdVersions())
-              .scope("Namespaced")
-              .names(getCrdNames());
-      return spec;
+    static V1CustomResourceDefinitionSpec createSpec() {
+      return new V1CustomResourceDefinitionSpec()
+          .group(KubernetesConstants.DOMAIN_GROUP)
+          .preserveUnknownFields(false)
+          .versions(getCrdVersions())
+          .scope("Namespaced")
+          .names(getCrdNames());
     }
 
-    static V1beta1CustomResourceDefinitionSpec createBetaSpec(KubernetesVersion version) {
-      V1beta1CustomResourceDefinitionSpec spec =
-          new V1beta1CustomResourceDefinitionSpec()
-              .group(KubernetesConstants.DOMAIN_GROUP)
-              .preserveUnknownFields(false)
-              .versions(getBetaCrdVersions())
-              .validation(createBetaSchemaValidation())
-              .subresources(createBetaSubresources())
-              .scope("Namespaced")
-              .names(getBetaCrdNames());
-      return spec;
+    static V1beta1CustomResourceDefinitionSpec createBetaSpec() {
+      return new V1beta1CustomResourceDefinitionSpec()
+          .group(KubernetesConstants.DOMAIN_GROUP)
+          .preserveUnknownFields(false)
+          .versions(getBetaCrdVersions())
+          .validation(createBetaSchemaValidation())
+          .subresources(createBetaSubresources())
+          .scope("Namespaced")
+          .names(getBetaCrdNames());
     }
 
     static String getVersionFromCrdSchemaFileName(String name) {
@@ -353,8 +345,8 @@ public class CrdHelper {
 
     static SchemaGenerator createSchemaGenerator() {
       SchemaGenerator generator = new SchemaGenerator();
-      generator.setIncludeAdditionalProperties(false);
-      generator.setSupportObjectReferences(false);
+      generator.setForbidAdditionalProperties(false);
+      generator.setSupportObjectReferences(true);
       generator.setIncludeSchemaReference(false);
       generator.addPackageToSuppressDescriptions("io.kubernetes.client.openapi.models");
       return generator;

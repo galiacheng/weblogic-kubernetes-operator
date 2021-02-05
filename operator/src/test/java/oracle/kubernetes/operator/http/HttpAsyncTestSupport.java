@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,8 @@ import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
  */
 public class HttpAsyncTestSupport {
   private static final HttpResponse<String> NOT_FOUND = createStub(HttpResponseStub.class, HTTP_NOT_FOUND);
-  private static final RequestHandler NO_SUCH_HANDLER = new RequestHandler(null, NOT_FOUND);
+  private static final RequestValidation[] NO_VALIDATIONS = new RequestValidation[0];
+  private static final RequestHandler NO_SUCH_HANDLER = new RequestHandler(null, NOT_FOUND, NO_VALIDATIONS);
 
   @SuppressWarnings({"FieldMayBeFinal", "CanBeFinal"})
   private HttpAsyncRequestStep.FutureFactory futureFactory = this::getFuture;
@@ -34,10 +36,20 @@ public class HttpAsyncTestSupport {
    * Defines the response for an async http request.
    * @param request the expected request
    * @param response the desired result
+   * @param validations a (possibly empty) array of additional tests on the request
    */
-  public void defineResponse(HttpRequest request, HttpResponse<String> response) {
+  public void defineResponse(HttpRequest request, HttpResponse<String> response, RequestValidation... validations) {
+    assert validations != null;
     cannedResponses.putIfAbsent(request.uri(), new ArrayList<>());
-    cannedResponses.get(request.uri()).add(new RequestHandler(request, response));
+    cannedResponses.get(request.uri()).add(new RequestHandler(request, response, validations));
+  }
+
+  /**
+   * Represent a function that applies a test to an HTTP request and returns true if it is valid.
+   */
+  @FunctionalInterface
+  public interface RequestValidation {
+    boolean isValid(HttpRequest request);
   }
 
   HttpResponse<String> getResponse(HttpRequest request) {
@@ -62,9 +74,11 @@ public class HttpAsyncTestSupport {
     private final HttpRequest request;
     private final CompletableFuture<HttpResponse<String>> future;
     private final HttpResponse<String> response;
+    private final RequestValidation[] validations;
 
-    RequestHandler(HttpRequest request, HttpResponse<String> response) {
+    RequestHandler(HttpRequest request, HttpResponse<String> response, RequestValidation[] validations) {
       this.request = request;
+      this.validations = validations;
       this.future = new CompletableFuture<>();
       this.future.complete(response);
       this.response = response;
@@ -75,7 +89,11 @@ public class HttpAsyncTestSupport {
     }
 
     private boolean matches(HttpRequest request) {
-      return isMatchingRequest(request, this.request);
+      return isMatchingRequest(request, this.request) && isValid(request);
+    }
+
+    private boolean isValid(HttpRequest request) {
+      return Arrays.stream(validations).allMatch(v -> v.isValid(request));
     }
 
     private boolean isMatchingRequest(HttpRequest left, HttpRequest right) {

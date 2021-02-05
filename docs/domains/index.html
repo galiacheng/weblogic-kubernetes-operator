@@ -1181,6 +1181,10 @@ window.onload = function() {
       "description": "The specification of the operation of the WebLogic domain. Required.",
       "type": "object",
       "properties": {
+        "monitoringExporter": {
+          "description": "The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter",
+          "$ref": "#/definitions/MonitoringExporterConfiguration"
+        },
         "configuration": {
           "description": "Models and overrides affecting the WebLogic domain configuration.",
           "$ref": "#/definitions/Configuration"
@@ -1390,6 +1394,37 @@ window.onload = function() {
         }
       }
     },
+    "ExporterQuery": {
+      "additionalProperties": {
+        "$ref": "#/definitions/ExporterQuery"
+      },
+      "type": "object",
+      "properties": {
+        "prefix": {
+          "description": "A name prefix to use for all the metrics gathered from the current level.",
+          "type": "string"
+        },
+        "values": {
+          "description": "The attributes for which metrics are to be output. If not specified and a prefix is defined, all values on the MBean will be selected.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "keyName": {
+          "description": "The name to use for the key in the qualifier; defaults to the name of the attribute.",
+          "type": "string"
+        },
+        "type": {
+          "description": "A filter for subtypes. If specified, only those objects whose type attribute matches will be collected.",
+          "type": "string"
+        },
+        "key": {
+          "description": "The name of the attribute to use as a key for qualifiers in the output.",
+          "type": "string"
+        }
+      }
+    },
     "Istio": {
       "type": "object",
       "properties": {
@@ -1461,7 +1496,8 @@ window.onload = function() {
       "additionalProperties": {
         "type": "string"
       },
-      "type": "object"
+      "type": "object",
+      "properties": {}
     },
     "Model": {
       "type": "object",
@@ -1486,6 +1522,25 @@ window.onload = function() {
         "modelHome": {
           "description": "Location of the WebLogic Deploy Tooling model home. Defaults to /u01/wdt/models.",
           "type": "string"
+        }
+      }
+    },
+    "MonitoringExporterConfiguration": {
+      "type": "object",
+      "properties": {
+        "domainQualifier": {
+          "description": "If true, metrics qualifiers will include the operator domain. Defaults to false.",
+          "type": "boolean"
+        },
+        "metricsNameSnakeCase": {
+          "description": "If true, metrics names will be constructed with underscores between words (snake case). By default, metrics names will be constructed with capital letters separating words (camel case).",
+          "type": "boolean"
+        },
+        "queries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExporterQuery"
+          }
         }
       }
     },

@@ -284,6 +284,8 @@ public abstract class DomainConfigurator {
 
   public abstract DomainConfigurator withPodAnnotation(String name, String value);
 
+  public abstract DomainConfigurator withMonitoringExporterConfiguration(String configuration);
+
   /**
    * Adds a default server configuration to the domain, if not already present.
    *

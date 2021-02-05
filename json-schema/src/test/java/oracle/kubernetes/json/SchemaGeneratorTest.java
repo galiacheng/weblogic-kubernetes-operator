@@ -222,7 +222,7 @@ public class SchemaGeneratorTest {
 
   @Test
   public void whenAdditionalPropertiesDisabled_doNotGenerateTheProperty() {
-    generator.setIncludeAdditionalProperties(false);
+    generator.setForbidAdditionalProperties(false);
 
     Object schema = generator.generate(SimpleObject.class);
 
@@ -320,6 +320,24 @@ public class SchemaGeneratorTest {
   }
 
   @Test
+  void whenFieldIsMap_generateAdditionalProperties() {
+    Object schema = generator.generate(SimpleObject.class);
+
+    assertThat(schema, hasJsonPath("$.definitions.Map.additionalProperties.type", equalTo("string")));
+    assertThat(schema, hasJsonPath("$.properties.keys.$ref", equalTo("#/definitions/Map")));
+  }
+
+  @Test
+  void whenClassExtendsMap_permitEntriesAsAdditionalProperties() {
+    Object schema = generator.generate(AdditionalPropertiesObject.class);
+
+    assertThat(schema, hasJsonPath("$.properties.keyName.type", equalTo("string")));
+    assertThat(schema, hasJsonPath("$.properties.listType.type", equalTo("string")));
+    assertThat(schema, hasJsonPath("$.additionalProperties.$ref", equalTo("#/definitions/SimpleObject")));
+
+  }
+
+  @Test
   public void whenObjectDefinedInExternalSchema_useFullReference() throws IOException {
     URL schemaUrl = getClass().getResource("k8smini.json");
     generator.addExternalSchema(schemaUrl, cacheUrl);
@@ -371,7 +389,7 @@ public class SchemaGeneratorTest {
   }
 
   @Test
-  public void whenNonCachedK8sVersionSpecified_throwException() throws IOException {
+  public void whenNonCachedK8sVersionSpecified_throwException() {
     assertThrows(IOException.class,
           () -> generator.useKubernetesVersion("1.12.0"));
   }

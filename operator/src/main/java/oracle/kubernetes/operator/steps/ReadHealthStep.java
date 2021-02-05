@@ -8,7 +8,6 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -20,7 +19,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
-import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1Service;
 import io.kubernetes.client.openapi.models.V1ServicePort;
@@ -28,9 +26,9 @@ import io.kubernetes.client.openapi.models.V1ServiceSpec;
 import oracle.kubernetes.operator.Pair;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.WebLogicConstants;
+import oracle.kubernetes.operator.helpers.AuthorizationHeaderFactory;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
 import oracle.kubernetes.operator.helpers.SecretHelper;
-import oracle.kubernetes.operator.helpers.SecretType;
 import oracle.kubernetes.operator.http.HttpAsyncRequestStep;
 import oracle.kubernetes.operator.http.HttpResponseStep;
 import oracle.kubernetes.operator.logging.LoggingFacade;
@@ -45,7 +43,6 @@ import oracle.kubernetes.operator.wlsconfig.WlsServerConfig;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
-import oracle.kubernetes.weblogic.domain.model.Domain;
 import oracle.kubernetes.weblogic.domain.model.ServerHealth;
 import oracle.kubernetes.weblogic.domain.model.SubsystemHealth;
 import org.joda.time.DateTime;
@@ -90,84 +87,22 @@ public class ReadHealthStep extends Step {
 
   @Override
   public NextAction apply(Packet packet) {
-    DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
-
-    Domain dom = info.getDomain();
-    V1ObjectMeta meta = dom.getMetadata();
-    String namespace = meta.getNamespace();
-
     String serverName = (String) packet.get(ProcessingConstants.SERVER_NAME);
-
-    String secretName = dom.getWebLogicCredentialsSecretName();
-
+    DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
     V1Service service = info.getServerService(serverName);
-    V1Pod pod = info.getServerPod(serverName);
-    if (service != null) {
-      Step getSecretReadHealthAndProcessResponse =
-          SecretHelper.getSecretData(
-              SecretType.WebLogicCredentials,
-              secretName,
-              namespace,
-              new WithSecretDataStep(
-                  new ReadHealthWithHttpStep(service, pod, getNext())));
-      return doNext(getSecretReadHealthAndProcessResponse, packet);
-    }
-    return doNext(packet);
-  }
 
-  private static class WithSecretDataStep extends Step {
-
-    WithSecretDataStep(Step next) {
-      super(next);
-    }
-
-    @Override
-    public NextAction apply(Packet packet) {
-      @SuppressWarnings("unchecked")
-      Map<String, byte[]> secretData =
-          (Map<String, byte[]>) packet.get(SecretHelper.SECRET_DATA_KEY);
-      if (secretData != null) {
-        byte[] username = secretData.get(SecretHelper.ADMIN_SERVER_CREDENTIALS_USERNAME);
-        byte[] password = secretData.get(SecretHelper.ADMIN_SERVER_CREDENTIALS_PASSWORD);
-        packet.put(ProcessingConstants.ENCODED_CREDENTIALS, createEncodedCredentials(username, password));
-
-        clearCredential(username);
-        clearCredential(password);
-      }
+    if (service == null) {
       return doNext(packet);
+    } else {
+      return doNext(
+            Step.chain(
+                SecretHelper.createAuthorizationHeaderFactoryStep(),
+                new ReadHealthWithHttpStep(service, info.getServerPod(serverName), getNext())),
+            packet);
     }
   }
 
-  /**
-   * Create encoded credentials from username and password.
-   *
-   * @param username Username
-   * @param password Password
-   * @return encoded credentials
-   */
-  private static String createEncodedCredentials(final byte[] username, final byte[] password) {
-    // Get encoded credentials with authentication information.
-    String encodedCredentials = null;
-    if (username != null && password != null) {
-      byte[] usernameAndPassword = new byte[username.length + password.length + 1];
-      System.arraycopy(username, 0, usernameAndPassword, 0, username.length);
-      usernameAndPassword[username.length] = (byte) ':';
-      System.arraycopy(password, 0, usernameAndPassword, username.length + 1, password.length);
-      encodedCredentials = java.util.Base64.getEncoder().encodeToString(usernameAndPassword);
-    }
-    return encodedCredentials;
-  }
-
-  /**
-   * Erase authentication credential so that it is not sitting in memory where a rogue program can
-   * find it.
-   */
-  private static void clearCredential(byte[] credential) {
-    if (credential != null) {
-      Arrays.fill(credential, (byte) 0);
-    }
-  }
-
+  @SuppressWarnings("ConstantConditions")
   static final class ReadHealthProcessing {
     private final Packet packet;
     private final V1Service service;
@@ -186,7 +121,7 @@ public class ReadHealthStep extends Step {
     private HttpRequest createRequest(String url) {
       return HttpRequest.newBuilder()
           .uri(URI.create(url))
-          .header("Authorization", "Basic " + getEncodedCredentials())
+          .header("Authorization", getAuthorizationHeaderFactory().createBasicAuthorizationString())
           .header("Accept", "application/json")
           .header("Content-Type", "application/json")
           .header("X-Requested-By", "WebLogic Operator")
@@ -292,8 +227,8 @@ public class ReadHealthStep extends Step {
       return packet;
     }
 
-    String getEncodedCredentials() {
-      return (String) packet.get(ProcessingConstants.ENCODED_CREDENTIALS);
+    AuthorizationHeaderFactory getAuthorizationHeaderFactory() {
+      return SecretHelper.getAuthorizationHeaderFactory(packet);
     }
 
     public V1Service getService() {
@@ -505,6 +440,7 @@ public class ReadHealthStep extends Step {
     }
   }
 
+  @SuppressWarnings("SameParameterValue")
   private static void decrementIntegerInPacketAtomically(Packet packet, String key) {
     packet.<AtomicInteger>getValue(key).getAndDecrement();
   }

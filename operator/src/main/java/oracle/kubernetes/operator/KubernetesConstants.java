@@ -6,6 +6,9 @@ package oracle.kubernetes.operator;
 /** Kubernetes constants. */
 public interface KubernetesConstants {
   String DEFAULT_IMAGE = "container-registry.oracle.com/middleware/weblogic:12.2.1.4";
+  String MONITORING_EXPORTER_NAME = "monitoring-exporter";
+  // NOTE to reviewers: need to figure out the final name for this
+  String MONITORING_EXPORTER_IMAGE = MONITORING_EXPORTER_NAME + ":2.0-TEMP1";
   String ALWAYS_IMAGEPULLPOLICY = ImagePullPolicy.Always.name();
   String IFNOTPRESENT_IMAGEPULLPOLICY = ImagePullPolicy.IfNotPresent.name();
   String LATEST_IMAGE_SUFFIX = ":latest";
@@ -41,4 +44,6 @@ public interface KubernetesConstants {
   String OPERATOR_NAMESPACE_ENV = "OPERATOR_NAMESPACE";
   String OPERATOR_POD_NAME_ENV = "OPERATOR_POD_NAME";
   String NAMESPACE = "Namespace";
+
+  int DEFAULT_EXPORTER_SIDECAR_PORT = 8080;
 }

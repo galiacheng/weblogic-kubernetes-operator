@@ -70,11 +70,11 @@ public class CrdHelperTest {
   private final TerminalStep terminalStep = new TerminalStep();
 
   private V1CustomResourceDefinition defineDefaultCrd() {
-    return CrdHelper.CrdContext.createModel(KUBERNETES_VERSION_16, PRODUCT_VERSION);
+    return CrdHelper.CrdContext.createModel(PRODUCT_VERSION);
   }
 
   private V1beta1CustomResourceDefinition defineDefaultBetaCrd() {
-    return CrdHelper.CrdContext.createBetaModel(KUBERNETES_VERSION_15, PRODUCT_VERSION);
+    return CrdHelper.CrdContext.createBetaModel(PRODUCT_VERSION);
   }
 
   private V1CustomResourceDefinition defineCrd(SemanticVersion operatorVersion) {

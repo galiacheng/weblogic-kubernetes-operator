@@ -5,12 +5,17 @@ package oracle.kubernetes.operator.helpers;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import io.kubernetes.client.openapi.models.V1Container;
+import io.kubernetes.client.openapi.models.V1ContainerPort;
 import io.kubernetes.client.openapi.models.V1DeleteOptions;
 import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -19,6 +24,7 @@ import io.kubernetes.client.openapi.models.V1PodCondition;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import oracle.kubernetes.operator.DomainStatusUpdater;
+import oracle.kubernetes.operator.KubernetesConstants;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.MakeRightDomainOperation;
 import oracle.kubernetes.operator.PodAwaiterStepFactory;
@@ -38,10 +44,13 @@ import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.weblogic.domain.model.ServerSpec;
 import oracle.kubernetes.weblogic.domain.model.Shutdown;
 
+import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_EXPORTER_SIDECAR_PORT;
+import static oracle.kubernetes.operator.KubernetesConstants.MONITORING_EXPORTER_NAME;
 import static oracle.kubernetes.operator.LabelConstants.CLUSTERNAME_LABEL;
 import static oracle.kubernetes.operator.LabelConstants.SERVERNAME_LABEL;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVERS_TO_ROLL;
 
+@SuppressWarnings("ConstantConditions")
 public class PodHelper {
   static final long DEFAULT_ADDITIONAL_DELETE_TIME = 10;
   private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
@@ -385,13 +394,24 @@ public class PodHelper {
 
     private final String clusterName;
     private final Packet packet;
+    private final ExporterContext exporterContext;
 
     ManagedPodStepContext(Step conflictStep, Packet packet) {
       super(conflictStep, packet);
       this.packet = packet;
       clusterName = (String) packet.get(ProcessingConstants.CLUSTER_NAME);
+      exporterContext = createExporterContext();
 
       init();
+    }
+
+    ExporterContext createExporterContext() {
+      return useSidecar() ? new SidecarExporterContext() : new WebAppExporterContext();
+    }
+
+    // Use the monitoring exporter sidecar if an exporter configuration is part of the domain.
+    private boolean useSidecar() {
+      return getDomain().getMonitoringExporterConfiguration() != null;
     }
 
     @Override
@@ -483,6 +503,11 @@ public class PodHelper {
       if (getClusterName() != null) {
         metadata.putLabelsItem(CLUSTERNAME_LABEL, getClusterName());
       }
+
+      // Add prometheus annotations. This will overwrite any custom annotations with same name.
+      // Prometheus does not support "prometheus.io/scheme".  The scheme(http/https) can be set
+      // in the Prometheus Chart values yaml under the "extraScrapeConfigs:" section.
+      AnnotationHelper.annotateForPrometheus(metadata, exporterContext.getBasePath(), exporterContext.getMetricsPort());
       return metadata;
     }
 
@@ -497,6 +522,13 @@ public class PodHelper {
     }
 
     @Override
+    protected List<V1Container> getContainers() {
+      List<V1Container> containers = new ArrayList<>(super.getContainers());
+      exporterContext.addContainer(containers);
+      return containers;
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     List<V1EnvVar> getConfiguredEnvVars(TuningParameters tuningParameters) {
       List<V1EnvVar> envVars = createCopy((List<V1EnvVar>) packet.get(ProcessingConstants.ENVVARS));
@@ -504,6 +536,104 @@ public class PodHelper {
       List<V1EnvVar> vars = new ArrayList<>(envVars);
       addStartupEnvVars(vars);
       return vars;
+    }
+
+    abstract class ExporterContext {
+
+      int getWebLogicRestPort() {
+        return getContainerPorts().stream()
+              .filter(p -> Objects.equals(getAdminProtocolChannelName(), p.getName()))
+              .findFirst()
+              .map(V1ContainerPort::getContainerPort)
+              .orElseThrow();
+      }
+
+      private String getAdminProtocolChannelName() {
+        return scan.getAdminProtocolChannelName();
+      }
+
+      boolean isWebLogicSecure() {
+        return Objects.equals(getWebLogicRestPort(), getSslListenPort());
+      }
+
+      abstract int getMetricsPort();
+
+      abstract String getBasePath();
+
+      abstract void addContainer(List<V1Container> containers);
+    }
+
+    class WebAppExporterContext extends ExporterContext {
+
+      @Override
+      int getMetricsPort() {
+        return getWebLogicRestPort();
+      }
+
+      @Override
+      String getBasePath() {
+        return "/wls-exporter";
+      }
+
+      @Override
+      void addContainer(List<V1Container> containers) {
+        // do nothing
+      }
+    }
+
+    class SidecarExporterContext extends ExporterContext {
+
+      private int metricsPort;
+
+      public SidecarExporterContext() {
+        metricsPort = DEFAULT_EXPORTER_SIDECAR_PORT;
+        while (getWebLogicPorts().contains(metricsPort)) {
+          metricsPort++;
+        }
+      }
+
+      private Set<Integer> getWebLogicPorts() {
+        final Set<Integer> ports = new HashSet<>();
+        Optional.ofNullable(getListenPort()).ifPresent(ports::add);
+        Optional.ofNullable(getSslListenPort()).ifPresent(ports::add);
+        Optional.ofNullable(getAdminPort()).ifPresent(ports::add);
+        return ports;
+      }
+
+      @Override
+      int getMetricsPort() {
+        return metricsPort;
+      }
+
+      @Override
+      String getBasePath() {
+        return "";
+      }
+
+      @Override
+      void addContainer(List<V1Container> containers) {
+        containers.add(createMonitoringExporterContainer());
+      }
+
+      private V1Container createMonitoringExporterContainer() {
+        return new V1Container()
+              .name(MONITORING_EXPORTER_NAME)
+              .image(KubernetesConstants.MONITORING_EXPORTER_IMAGE)
+              .args(createExporterStartupArgs());
+      }
+
+      private List<String> createExporterStartupArgs() {
+        List<String> args = new ArrayList<>();
+        args.add("-DDOMAIN=" + getDomainUid());
+        args.add("-DWLS_PORT=" + getWebLogicRestPort());
+        if (isWebLogicSecure()) {
+          args.add("-DWLS_SECURE=true");
+        }
+        if (metricsPort != DEFAULT_EXPORTER_SIDECAR_PORT) {
+          args.add("-DEXPORTER_PORT=" + metricsPort);
+        }
+        return args;
+      }
     }
   }
 

@@ -108,16 +108,11 @@ public class ServiceHelper {
   }
 
   static String getLabelValue(V1Service service, String labelName) {
-    if (service == null) {
-      return null;
-    }
-
-    V1ObjectMeta meta = service.getMetadata();
-    Map<String, String> labels = meta.getLabels();
-    if (labels != null) {
-      return labels.get(labelName);
-    }
-    return null;
+    return Optional.ofNullable(service)
+          .map(V1Service::getMetadata)
+          .map(V1ObjectMeta::getLabels)
+          .map(l -> l.get(labelName))
+          .orElse(null);
   }
 
   public static String getServerName(V1Service service) {
@@ -418,8 +413,7 @@ public class ServiceHelper {
 
     void addServicePorts(WlsServerConfig serverConfig) {
       getNetworkAccessPoints(serverConfig).forEach(this::addNapServicePort);
-      boolean istioEnabled = this.getDomain().isIstioEnabled();
-      if (!istioEnabled) {
+      if (!getDomain().isIstioEnabled()) {
         addServicePortIfNeeded("default", serverConfig.getListenPort());
         addServicePortIfNeeded("default-secure", serverConfig.getSslListenPort());
         addServicePortIfNeeded("default-admin", serverConfig.getAdminPort());
@@ -654,13 +648,14 @@ public class ServiceHelper {
     @Override
     public NextAction apply(Packet packet) {
       DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
-      V1Service oldService = info.removeServerService(serverName);
+      return doNext(createActionStep(info), packet);
+    }
 
-      if (oldService != null) {
-        return doNext(
-            deleteService(oldService.getMetadata()), packet);
-      }
-      return doNext(packet);
+    private Step createActionStep(DomainPresenceInfo info) {
+      return Optional.ofNullable(info.removeServerService(serverName))
+            .map(V1Service::getMetadata)
+            .map(this::deleteService)
+            .orElse(getNext());
     }
 
     Step deleteService(V1ObjectMeta metadata) {

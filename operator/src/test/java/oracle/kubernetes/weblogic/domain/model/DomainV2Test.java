@@ -41,6 +41,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
@@ -1332,6 +1333,29 @@ public class DomainV2Test extends DomainTestBase {
     assertThat(nonClusteredServer.getDomainRestartVersion(), nullValue());
     assertThat(nonClusteredServer.getClusterRestartVersion(), nullValue());
     assertThat(nonClusteredServer.getServerRestartVersion(), nullValue());
+  }
+
+  @Test
+  void whenDomain2ReadFromYaml_domainHasNoMonitoringExporterConfiguration() throws IOException {
+    Domain domain = readDomain(DOMAIN_V2_SAMPLE_YAML_2);
+
+    assertThat(domain.getMonitoringExporterConfiguration(), nullValue());
+  }
+
+  @Test
+  void whenDomain3ReadFromYaml_domainHasMonitoringExporterConfiguration() throws IOException {
+    Domain domain = readDomain(DOMAIN_V2_SAMPLE_YAML_3);
+
+    assertThat(domain.getMonitoringExporterConfiguration(), notNullValue());
+    assertThat(domain.getMonitoringExporterConfiguration().getConfiguration(),
+          containsString("WebAppComponentRuntime"));
+  }
+
+  @Test
+  void whenDomain3ReadFromYaml_getExporterConfigurationAsString() throws IOException {
+    Domain domain = readDomain(DOMAIN_V2_SAMPLE_YAML_3);
+
+    assertThat(domain.getMonitoringExporterConfiguration(), notNullValue());
   }
 
   @Test

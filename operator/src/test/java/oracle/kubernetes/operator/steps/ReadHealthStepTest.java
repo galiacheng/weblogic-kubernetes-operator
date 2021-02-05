@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.meterware.httpunit.Base64;
 import com.meterware.simplestub.Memento;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Secret;
@@ -45,8 +46,8 @@ import static oracle.kubernetes.operator.ProcessingConstants.REMAINING_SERVERS_H
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_HEALTH_MAP;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_NAME;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_STATE_MAP;
-import static oracle.kubernetes.operator.helpers.SecretHelper.ADMIN_SERVER_CREDENTIALS_PASSWORD;
-import static oracle.kubernetes.operator.helpers.SecretHelper.ADMIN_SERVER_CREDENTIALS_USERNAME;
+import static oracle.kubernetes.operator.helpers.SecretHelper.PASSWORD_KEY;
+import static oracle.kubernetes.operator.helpers.SecretHelper.USERNAME_KEY;
 import static oracle.kubernetes.operator.logging.MessageKeys.WLS_HEALTH_READ_FAILED;
 import static oracle.kubernetes.operator.logging.MessageKeys.WLS_HEALTH_READ_FAILED_NO_HTTPCLIENT;
 import static oracle.kubernetes.operator.steps.ReadHealthStep.OVERALL_HEALTH_FOR_SERVER_OVERLOADED;
@@ -140,8 +141,8 @@ public class ReadHealthStepTest {
     testSupport.defineResources(
                 new V1Secret()
                       .metadata(new V1ObjectMeta().namespace(NS).name(SECRET_NAME))
-                      .data(Map.of(ADMIN_SERVER_CREDENTIALS_USERNAME, "user".getBytes(),
-                                   ADMIN_SERVER_CREDENTIALS_PASSWORD, "password".getBytes())));
+                      .data(Map.of(USERNAME_KEY, "user".getBytes(),
+                            PASSWORD_KEY, "password".getBytes())));
   }
 
   @AfterEach
@@ -166,7 +167,20 @@ public class ReadHealthStepTest {
   private void defineResponse(int status, String body, String url) {
     httpSupport.defineResponse(
         createExpectedRequest(Objects.requireNonNullElse(url, "127.0.0.1:7001")),
-        createStub(HttpResponseStub.class, status, body));
+        createStub(HttpResponseStub.class, status, body),
+        this::hasAuthenticationCredentials);
+  }
+
+  private boolean hasAuthenticationCredentials(HttpRequest request) {
+    return Objects.equals(getAuthorizationHeader(request), expectedAuthorizationHeader());
+  }
+
+  private String getAuthorizationHeader(HttpRequest request) {
+    return request.headers().firstValue("Authorization").orElse(null);
+  }
+
+  private String expectedAuthorizationHeader() {
+    return "Basic " + Base64.encode("user:password");
   }
 
   private HttpRequest createExpectedRequest(String url) {
