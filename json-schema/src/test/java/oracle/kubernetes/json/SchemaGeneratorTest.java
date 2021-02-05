@@ -65,8 +65,18 @@ public class SchemaGeneratorTest {
   @SuppressWarnings("unused")
   @Description("An annotated field")
   private Double annotatedDouble;
+
   @SuppressWarnings("unused")
   private SimpleObject simpleObject;
+
+  @SuppressWarnings("unused")
+  private Map<String,String> stringMap;
+
+  @SuppressWarnings("unused")
+  private Map<String,Object> objectMap;
+
+  @SuppressWarnings({"unused", "rawtypes"})
+  private Map genericMap;
 
   @BeforeEach
   public void setUp() throws Exception {
@@ -288,6 +298,31 @@ public class SchemaGeneratorTest {
   }
 
   @Test
+  void whenFieldIsMapAndNoObjectReferences_additionalPropertiesTypeDefaultsToString() throws NoSuchFieldException {
+    generator.setSupportObjectReferences(false);
+    Object schema = generateForField(getClass().getDeclaredField("genericMap"));
+
+    assertThat(schema, hasJsonPath("$.genericMap.additionalProperties.type", equalTo("string")));
+  }
+
+  @Test
+  void whenFieldIsStringMapAndNoObjectReferences_additionalPropertiesTypeMatchesField() throws NoSuchFieldException {
+    generator.setSupportObjectReferences(false);
+    Object schema = generateForField(getClass().getDeclaredField("stringMap"));
+
+    assertThat(schema, hasJsonPath("$.stringMap.additionalProperties.type", equalTo("string")));
+  }
+
+  @Test
+  void whenFieldIsObjectMapAndNoObjectReferences_additionalPropertiesTypeMatchesField() throws NoSuchFieldException {
+    generator.setSupportObjectReferences(false);
+    Object schema = generateForField(getClass().getDeclaredField("objectMap"));
+
+    assertThat(schema, hasJsonPath("$.objectMap.additionalProperties.type", equalTo("object")));
+  }
+
+
+  @Test
   public void generateDefinitionsForTransitiveReferences() {
     Object schema = generator.generate(TransitiveObject.class);
 
@@ -317,24 +352,6 @@ public class SchemaGeneratorTest {
     Object schema = generator.generate(ReferencingObject.class);
 
     assertThat(schema, hasJsonPath("$.properties.deprecatedField.type", equalTo("number")));
-  }
-
-  @Test
-  void whenFieldIsMap_generateAdditionalProperties() {
-    Object schema = generator.generate(SimpleObject.class);
-
-    assertThat(schema, hasJsonPath("$.definitions.Map.additionalProperties.type", equalTo("string")));
-    assertThat(schema, hasJsonPath("$.properties.keys.$ref", equalTo("#/definitions/Map")));
-  }
-
-  @Test
-  void whenClassExtendsMap_permitEntriesAsAdditionalProperties() {
-    Object schema = generator.generate(AdditionalPropertiesObject.class);
-
-    assertThat(schema, hasJsonPath("$.properties.keyName.type", equalTo("string")));
-    assertThat(schema, hasJsonPath("$.properties.listType.type", equalTo("string")));
-    assertThat(schema, hasJsonPath("$.additionalProperties.$ref", equalTo("#/definitions/SimpleObject")));
-
   }
 
   @Test

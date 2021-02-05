@@ -7,12 +7,14 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
+import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1SecretReference;
@@ -30,6 +32,7 @@ import oracle.kubernetes.weblogic.domain.EffectiveConfigurationFactory;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.yaml.snakeyaml.Yaml;
 
 import static oracle.kubernetes.operator.KubernetesConstants.ALWAYS_IMAGEPULLPOLICY;
 import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_ALLOW_REPLICAS_BELOW_MIN_DYN_CLUSTER_SIZE;
@@ -305,15 +308,22 @@ public class DomainSpec extends BaseConfiguration {
    */
   @Description("The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will "
         + "deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter")
-  @SerializedName("monitoringExporter")
-  private MonitoringExporterConfiguration monitoringExporterConfiguration;
+  private Map<String,Object> monitoringExporter;
 
   MonitoringExporterConfiguration getMonitoringExporterConfiguration() {
-    return monitoringExporterConfiguration;
+    return Optional.ofNullable(monitoringExporter).map(this::toJson).map(this::toExporterConfiguration).orElse(null);
+  }
+
+  private String toJson(Object object) {
+    return new Gson().toJson(object);
+  }
+
+  private MonitoringExporterConfiguration toExporterConfiguration(String string) {
+    return new Gson().fromJson(string, MonitoringExporterConfiguration.class);
   }
 
   void createMonitoringExporterConfiguration(String yaml) {
-    monitoringExporterConfiguration = MonitoringExporterConfiguration.createFromYaml(yaml);
+    monitoringExporter = new Yaml().load(yaml);
   }
 
   /**

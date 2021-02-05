@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
@@ -233,9 +234,10 @@ public class SchemaGenerator {
     }
     if (isString(field.getType())) {
       addStringRestrictions(result, field);
-    }
-    if (isNumeric(field.getType())) {
+    } else if (isNumeric(field.getType())) {
       addRange(result, field);
+    } else if (isMap(field.getType())) {
+      sub.addMapValueType(result, field);
     }
 
     return result;
@@ -251,6 +253,18 @@ public class SchemaGenerator {
 
   private boolean isNumeric(Class<?> type) {
     return Number.class.isAssignableFrom(type) || PRIMITIVE_NUMBERS.contains(type);
+  }
+
+  private boolean isMap(Class<?> type) {
+    return Map.class.isAssignableFrom(type);
+  }
+
+  private boolean isGenericMap(Field field) {
+    if (!Map.class.isAssignableFrom(field.getType())) {
+      return false;
+    } else {
+      return field.getGenericType() instanceof ParameterizedType;
+    }
   }
 
   private String getDescription(Field field) {
@@ -423,89 +437,44 @@ public class SchemaGenerator {
       result.put("type", "string");
       result.put("format", "date-time");
     } else {
-      final Map<String, Object> properties = new HashMap<>();
-      List<String> requiredFields = new ArrayList<>();
       result.put("type", "object");
-      Optional.ofNullable(getAdditionalProperties(type)).ifPresent(p -> result.put("additionalProperties", p));
+      if (forbidAdditionalProperties) {
+        result.put("additionalProperties", "false");
+      }
       Optional.ofNullable(getDescription(type)).ifPresent(s -> result.put("description", s));
-      result.put("properties", properties);
+      Optional.ofNullable(getPropertyFields(type)).ifPresent(f -> generateProperties(result, f));
+    }
+  }
 
-      for (Field field : getPropertyFields(type)) {
-        if (!isSelfReference(field)) {
-          generateFieldIn(properties, field);
-        }
-        if (isRequired(field) && includeInSchema(field)) {
-          requiredFields.add(getPropertyName(field));
-        }
+  private void generateProperties(Map<String, Object> result, Collection<Field> propertyFields) {
+    final Map<String, Object> properties = new HashMap<>();
+    List<String> requiredFields = new ArrayList<>();
+    result.put("properties", properties);
+
+    for (Field field : propertyFields) {
+      if (!isSelfReference(field)) {
+        generateFieldIn(properties, field);
       }
-
-      if (!requiredFields.isEmpty()) {
-        result.put("required", requiredFields.toArray(new String[0]));
+      if (isRequired(field) && includeInSchema(field)) {
+        requiredFields.add(getPropertyName(field));
       }
     }
-  }
 
-  private Object getAdditionalProperties(Class<?> type) {
-    if (isMapType(type)) {
-      return createMapEntriesSchema(type);
-    } else if (forbidAdditionalProperties) {
-      return "false";
-    } else {
-      return null;
+    if (!requiredFields.isEmpty()) {
+      result.put("required", requiredFields.toArray(new String[0]));
     }
   }
 
-  private boolean isMapType(Class<?> type) {
-    return Map.class.isAssignableFrom(type);
-  }
-
-  @Nonnull
-  private Map<String, Object> createMapEntriesSchema(Class<?> type) {
-    Map<String, Object> entries = new HashMap<>();
-    new TypeReferenceGenerator().generateTypeIn(entries, (Class<?>) getMapValueType(type));
-    return entries;
-  }
-
-  // Given a map type, attempts to determine the actual type of its values. Defaults
-  // to String if unable to determine the type.
-  private Type getMapValueType(Class<?> mapType) {
-    return Optional.ofNullable(mapType.getGenericSuperclass())
-          .map(this::getActualTypeArguments)
-          .map(this::getValueType)
-          .orElse(String.class);
-  }
-
-  private Type[] getActualTypeArguments(Type type) {
-    if (type instanceof ParameterizedType) {
-      return ((ParameterizedType) type).getActualTypeArguments();
-    } else {
-      return new Type[0];
-    }
-  }
-
-  // Given an array of actual parameter types for a Map, returns the one corresponding to the value type.
-  private Type getValueType(Type[] types) {
-    return types.length < 2 ? null : types[1];
-  }
-
-
-
-  private Collection<Field> getPropertyFields(Class<?> type) {
+  private @Nullable Collection<Field> getPropertyFields(Class<?> type) {
     Set<Field> result = new LinkedHashSet<>();
-    for (Class<?> cl = type; cl != null && !isExcludedSuperClass(cl); cl = cl.getSuperclass()) {
+    for (Class<?> cl = type; cl != null && !cl.equals(Object.class); cl = cl.getSuperclass()) {
       result.addAll(Arrays.asList(cl.getDeclaredFields()));
     }
 
     result.removeIf(this::isSelfReference);
 
-    return result;
+    return result.isEmpty() ? null : result;
   }
-
-  private boolean isExcludedSuperClass(Class<?> cl) {
-    return excludedSuperClasses.contains(cl);
-  }
-
-  private final Set<Class<?>> excludedSuperClasses = Set.of(Object.class, HashMap.class);
 
   private boolean isSelfReference(Field field) {
     return field.getName().startsWith("this$");
@@ -537,11 +506,18 @@ public class SchemaGenerator {
     }
   }
 
-  private class TypeReferenceGenerator {
+  private class SubSchemaGenerator {
+    final Field field;
+
+    SubSchemaGenerator(Field field) {
+      this.field = field;
+    }
 
     @SuppressWarnings("unchecked")
-    void generateTypeIn(Map<String, Object> result, Class<?> type) {
-      if (type.equals(Boolean.class) || type.equals(Boolean.TYPE)) {
+    private void generateTypeIn(Map<String, Object> result, Class<?> type) {
+      if (type == null) {
+        result.put("type", "string");
+      } else if (type.equals(Boolean.class) || type.equals(Boolean.TYPE)) {
         result.put("type", "boolean");
       } else if (isNumeric(type)) {
         result.put("type", "number");
@@ -549,12 +525,16 @@ public class SchemaGenerator {
         result.put("type", "string");
       } else if (type.isEnum()) {
         generateEnumTypeIn(result, (Class<? extends Enum<?>>) type);
+      } else if (type.isArray()) {
+        this.generateArrayTypeIn(result, type);
+      } else if (Collection.class.isAssignableFrom(type)) {
+        generateCollectionTypeIn(result);
       } else {
         generateObjectFieldIn(result, type);
       }
     }
 
-    protected void generateObjectFieldIn(Map<String, Object> result, Class<?> type) {
+    private void generateObjectFieldIn(Map<String, Object> result, Class<?> type) {
       if (supportObjectReferences) {
         generateObjectReferenceIn(result, type);
       } else {
@@ -562,27 +542,9 @@ public class SchemaGenerator {
       }
     }
 
-    protected void generateObjectReferenceIn(Map<String, Object> result, Class<?> type) {
+    private void generateObjectReferenceIn(Map<String, Object> result, Class<?> type) {
       addReference(type);
       result.put("$ref", getReferencePath(type));
-    }
-  }
-
-  private class SubSchemaGenerator extends TypeReferenceGenerator {
-    final Field field;
-
-    SubSchemaGenerator(Field field) {
-      this.field = field;
-    }
-
-    void generateTypeIn(Map<String, Object> result, Class<?> type) {
-      if (type.isArray()) {
-        this.generateArrayTypeIn(result, type);
-      } else if (Collection.class.isAssignableFrom(type)) {
-        generateCollectionTypeIn(result);
-      } else {
-        super.generateTypeIn(result, type);
-      }
     }
 
     private void generateCollectionTypeIn(Map<String, Object> result) {
@@ -607,6 +569,28 @@ public class SchemaGenerator {
       result.put("type", "array");
       result.put("items", items);
       generateTypeIn(items, type.getComponentType());
+    }
+
+    private void addMapValueType(Map<String, Object> result, Field field) {
+      Map<String, Object> additionalProperties = new HashMap<>();
+      generateTypeIn(additionalProperties, getMapValueType(field));
+      result.put("additionalProperties", additionalProperties);
+    }
+
+    private Class<?> getMapValueType(Field field) {
+      return Optional.of(field.getGenericType())
+            .map(this::asParameterizedType)
+            .map(ParameterizedType::getActualTypeArguments)
+            .map(this::actualValueType)
+            .orElse(null);
+    }
+
+    private ParameterizedType asParameterizedType(Type type) {
+      return type instanceof ParameterizedType ? (ParameterizedType) type : null;
+    }
+
+    private Class<?> actualValueType(Type[] types) {
+      return (types.length < 2) ? null : (Class<?>) types[1];
     }
   }
 }

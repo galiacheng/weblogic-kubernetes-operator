@@ -1347,15 +1347,14 @@ public class DomainV2Test extends DomainTestBase {
     Domain domain = readDomain(DOMAIN_V2_SAMPLE_YAML_3);
 
     assertThat(domain.getMonitoringExporterConfiguration(), notNullValue());
-    assertThat(domain.getMonitoringExporterConfiguration().getConfiguration(),
-          containsString("WebAppComponentRuntime"));
   }
 
   @Test
   void whenDomain3ReadFromYaml_getExporterConfigurationAsString() throws IOException {
     Domain domain = readDomain(DOMAIN_V2_SAMPLE_YAML_3);
 
-    assertThat(domain.getMonitoringExporterConfiguration(), notNullValue());
+    assertThat(domain.getMonitoringExporterConfiguration().getConfiguration(),
+          containsString("WebAppComponentRuntime"));
   }
 
   @Test

@@ -37,7 +37,7 @@ The specification of the operation of the WebLogic domain. Required.
 | `managedServers` | array of [Managed Server](#managed-server) | Lifecycle options for individual Managed Servers, including Java options, environment variables, additional Pod content, and the ability to explicitly start, stop, or restart a named server instance. The `serverName` field of each entry must match a Managed Server that already exists in the WebLogic domain configuration or that matches a dynamic cluster member based on the server template. |
 | `maxClusterConcurrentShutdown` | number | The default maximum number of WebLogic Server instances that a cluster will shut down in parallel when it is being partially shut down by lowering its replica count. You can override this default on a per cluster basis by setting the cluster's `maxConcurrentShutdown` field. A value of 0 means there is no limit. Defaults to 1. |
 | `maxClusterConcurrentStartup` | number | The maximum number of cluster member Managed Server instances that the operator will start in parallel for a given cluster, if `maxConcurrentStartup` is not specified for a specific cluster under the `clusters` field. A value of 0 means there is no configured limit. Defaults to 0. |
-| `monitoringExporter` | [Monitoring Exporter Configuration](#monitoring-exporter-configuration) | The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter |
+| `monitoringExporter` | Map | The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter |
 | `replicas` | number | The default number of cluster member Managed Server instances to start for each WebLogic cluster in the domain configuration, unless `replicas` is specified for that cluster under the `clusters` field. For each cluster, the operator will sort cluster member Managed Server names from the WebLogic domain configuration by normalizing any numbers in the Managed Server name and then sorting alphabetically. This is done so that server names such as "managed-server10" come after "managed-server9". The operator will then start Managed Servers from the sorted list, up to the `replicas` count, unless specific Managed Servers are specified as starting in their entry under the `managedServers` field. In that case, the specified Managed Servers will be started and then additional cluster members will be started, up to the `replicas` count, by finding further cluster members in the sorted list that are not already started. If cluster members are started because of their entries under `managedServers`, then a cluster may have more cluster members running than its `replicas` count. Defaults to 0. |
 | `restartVersion` | string | Changes to this field cause the operator to restart WebLogic Server instances. More info: https://oracle.github.io/weblogic-kubernetes-operator/userguide/managing-domains/domain-lifecycle/startup/#restarting-servers. |
 | `serverPod` | [Server Pod](#server-pod) | Customization affecting the generation of Pods for WebLogic Server instances. |
@@ -111,14 +111,6 @@ The current status of the operation of the WebLogic domain. Updated automaticall
 | `serverService` | [Server Service](#server-service) | Customization affecting the generation of Kubernetes Services for WebLogic Server instances. |
 | `serverStartPolicy` | string | The strategy for deciding whether to start a WebLogic Server instance. Legal values are ALWAYS, NEVER, or IF_NEEDED. Defaults to IF_NEEDED. More info: https://oracle.github.io/weblogic-kubernetes-operator/userguide/managing-domains/domain-lifecycle/startup/#starting-and-stopping-servers. |
 | `serverStartState` | string | The WebLogic runtime state in which the server is to be started. Use ADMIN if the server should start in the admin state. Defaults to RUNNING. |
-
-### Monitoring Exporter Configuration
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `domainQualifier` | Boolean | If true, metrics qualifiers will include the operator domain. Defaults to false. |
-| `metricsNameSnakeCase` | Boolean | If true, metrics names will be constructed with underscores between words (snake case). By default, metrics names will be constructed with capital letters separating words (camel case). |
-| `queries` | array of [Exporter Query](#exporter-query) |  |
 
 ### Server Pod
 
@@ -226,16 +218,6 @@ The current status of the operation of the WebLogic domain. Updated automaticall
 | --- | --- | --- |
 | `walletFileSecret` | string | Name of a Secret containing the OPSS key wallet file, which must be in a field named `walletFile`. Use this to allow a JRF domain to reuse its entries in the RCU database. This allows you to specify a wallet file that was obtained from the domain home after the domain was booted for the first time. |
 | `walletPasswordSecret` | string | Name of a Secret containing the OPSS key passphrase, which must be in a field named `walletPassword`. Used to encrypt and decrypt the wallet that is used for accessing the domain's entries in its RCU database. |
-
-### Exporter Query
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `key` | string | The name of the attribute to use as a key for qualifiers in the output. |
-| `keyName` | string | The name to use for the key in the qualifier; defaults to the name of the attribute. |
-| `prefix` | string | A name prefix to use for all the metrics gathered from the current level. |
-| `type` | string | A filter for subtypes. If specified, only those objects whose type attribute matches will be collected. |
-| `values` | array of string | The attributes for which metrics are to be output. If not specified and a prefix is defined, all values on the MBean will be selected. |
 
 ### Probe Tuning
 

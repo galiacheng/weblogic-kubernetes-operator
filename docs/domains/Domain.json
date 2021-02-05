@@ -52,10 +52,16 @@
         },
         "annotations": {
           "description": "Annotations to associate with the Administration Server\u0027s Service(s).",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "labels": {
           "description": "Labels to associate with the Administration Server\u0027s Service(s).",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         }
       }
@@ -262,7 +268,10 @@
       "properties": {
         "monitoringExporter": {
           "description": "The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter",
-          "$ref": "#/definitions/MonitoringExporterConfiguration"
+          "additionalProperties": {
+            "$ref": "#/definitions/Object"
+          },
+          "$ref": "#/definitions/Map"
         },
         "configuration": {
           "description": "Models and overrides affecting the WebLogic domain configuration.",
@@ -473,37 +482,6 @@
         }
       }
     },
-    "ExporterQuery": {
-      "additionalProperties": {
-        "$ref": "#/definitions/ExporterQuery"
-      },
-      "type": "object",
-      "properties": {
-        "prefix": {
-          "description": "A name prefix to use for all the metrics gathered from the current level.",
-          "type": "string"
-        },
-        "values": {
-          "description": "The attributes for which metrics are to be output. If not specified and a prefix is defined, all values on the MBean will be selected.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "keyName": {
-          "description": "The name to use for the key in the qualifier; defaults to the name of the attribute.",
-          "type": "string"
-        },
-        "type": {
-          "description": "A filter for subtypes. If specified, only those objects whose type attribute matches will be collected.",
-          "type": "string"
-        },
-        "key": {
-          "description": "The name of the attribute to use as a key for qualifiers in the output.",
-          "type": "string"
-        }
-      }
-    },
     "Istio": {
       "type": "object",
       "properties": {
@@ -522,10 +500,16 @@
       "properties": {
         "annotations": {
           "description": "The annotations to be added to generated resources.",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "labels": {
           "description": "The labels to be added to generated resources. The label names must not start with \"weblogic.\".",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         }
       }
@@ -572,11 +556,7 @@
       ]
     },
     "Map": {
-      "additionalProperties": {
-        "type": "string"
-      },
-      "type": "object",
-      "properties": {}
+      "type": "object"
     },
     "Model": {
       "type": "object",
@@ -604,24 +584,8 @@
         }
       }
     },
-    "MonitoringExporterConfiguration": {
-      "type": "object",
-      "properties": {
-        "domainQualifier": {
-          "description": "If true, metrics qualifiers will include the operator domain. Defaults to false.",
-          "type": "boolean"
-        },
-        "metricsNameSnakeCase": {
-          "description": "If true, metrics names will be constructed with underscores between words (snake case). By default, metrics names will be constructed with capital letters separating words (camel case).",
-          "type": "boolean"
-        },
-        "queries": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ExporterQuery"
-          }
-        }
-      }
+    "Object": {
+      "type": "object"
     },
     "Opss": {
       "type": "object",
@@ -716,6 +680,9 @@
         },
         "annotations": {
           "description": "The annotations to be added to generated resources.",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "env": {
@@ -731,6 +698,9 @@
         },
         "nodeSelector": {
           "description": "Selector which must match a Node\u0027s labels for the Pod to be scheduled on that Node. See `kubectl explain pods.spec.nodeSelector`.",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "volumeMounts": {
@@ -742,6 +712,9 @@
         },
         "labels": {
           "description": "The labels to be added to generated resources. The label names must not start with \"weblogic.\".",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "runtimeClassName": {
@@ -800,10 +773,16 @@
         },
         "annotations": {
           "description": "The annotations to be added to generated resources.",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "labels": {
           "description": "The labels to be added to generated resources. The label names must not start with \"weblogic.\".",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         }
       }

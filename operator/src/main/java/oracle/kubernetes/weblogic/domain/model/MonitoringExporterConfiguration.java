@@ -11,6 +11,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
@@ -39,6 +40,10 @@ public class MonitoringExporterConfiguration {
 
   static MonitoringExporterConfiguration createFromYaml(String yaml) {
     return new Gson().fromJson(JsonParser.parseString(convertToJson(yaml)), MonitoringExporterConfiguration.class);
+  }
+
+  static MonitoringExporterConfiguration createFromJsonElement(JsonElement element) {
+    return new Gson().fromJson(element, MonitoringExporterConfiguration.class);
   }
 
   private static String convertToJson(String yaml) {

@@ -346,7 +346,7 @@ public class CrdHelper {
     static SchemaGenerator createSchemaGenerator() {
       SchemaGenerator generator = new SchemaGenerator();
       generator.setForbidAdditionalProperties(false);
-      generator.setSupportObjectReferences(true);
+      generator.setSupportObjectReferences(false);
       generator.setIncludeSchemaReference(false);
       generator.addPackageToSuppressDescriptions("io.kubernetes.client.openapi.models");
       return generator;
