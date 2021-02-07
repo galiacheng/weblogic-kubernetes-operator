@@ -11,11 +11,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import io.kubernetes.client.openapi.models.V1Container;
-import io.kubernetes.client.openapi.models.V1ContainerPort;
 import io.kubernetes.client.openapi.models.V1DeleteOptions;
 import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -541,11 +541,10 @@ public class PodHelper {
     abstract class ExporterContext {
 
       int getWebLogicRestPort() {
-        return getContainerPorts().stream()
-              .filter(p -> Objects.equals(getAdminProtocolChannelName(), p.getName()))
+        return Stream.of(scan.getAdminPort(), scan.getListenPort(), scan.getSslListenPort())
+              .filter(Objects::nonNull)
               .findFirst()
-              .map(V1ContainerPort::getContainerPort)
-              .orElseThrow();
+              .orElseThrow(() -> new RuntimeException("No ports defined for this server"));
       }
 
       private String getAdminProtocolChannelName() {
