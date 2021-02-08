@@ -6,6 +6,7 @@ package oracle.kubernetes.weblogic.domain.model;
 import java.util.HashMap;
 import java.util.Map;
 
+import oracle.kubernetes.json.AdditionalProperties;
 import oracle.kubernetes.json.Description;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -22,6 +23,7 @@ class KubernetesResource {
   @Description(
       "The labels to be added to generated resources. The label names must "
           + "not start with \"weblogic.\".")
+  @AdditionalProperties
   private final Map<String, String> labels = new HashMap<>();
 
   /**
@@ -30,6 +32,7 @@ class KubernetesResource {
    * @since 2.0
    */
   @Description("The annotations to be added to generated resources.")
+  @AdditionalProperties
   private final Map<String, String> annotations = new HashMap<>();
 
   void fillInFrom(KubernetesResource kubernetesResource1) {

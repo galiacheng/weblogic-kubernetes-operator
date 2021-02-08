@@ -16,6 +16,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import io.kubernetes.client.openapi.models.V1Container;
+import io.kubernetes.client.openapi.models.V1ContainerPort;
 import io.kubernetes.client.openapi.models.V1DeleteOptions;
 import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -539,16 +540,22 @@ public class PodHelper {
     }
 
     abstract class ExporterContext {
-
       int getWebLogicRestPort() {
+        return selectPortByProtocolName().orElse(selectPortFromList());
+      }
+
+      private Optional<Integer> selectPortByProtocolName() {
+        return getContainerPorts().stream()
+              .filter(p -> Objects.equals(scan.getAdminProtocolChannelName(), p.getName()))
+              .findFirst()
+              .map(V1ContainerPort::getContainerPort);
+      }
+
+      private int selectPortFromList() {
         return Stream.of(scan.getAdminPort(), scan.getListenPort(), scan.getSslListenPort())
               .filter(Objects::nonNull)
               .findFirst()
               .orElseThrow(() -> new RuntimeException("No ports defined for this server"));
-      }
-
-      private String getAdminProtocolChannelName() {
-        return scan.getAdminProtocolChannelName();
       }
 
       boolean isWebLogicSecure() {

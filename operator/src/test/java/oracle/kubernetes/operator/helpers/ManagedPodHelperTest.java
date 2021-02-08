@@ -24,6 +24,7 @@ import io.kubernetes.client.openapi.models.V1WeightedPodAffinityTerm;
 import oracle.kubernetes.operator.DomainStatusUpdater;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.ProcessingConstants;
+import oracle.kubernetes.operator.wlsconfig.NetworkAccessPoint;
 import oracle.kubernetes.operator.work.FiberTestSupport;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step.StepAndPacket;
@@ -889,6 +890,31 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
         getCreatedPod().getMetadata().getAnnotations(),
         allOf(
             hasEntry("prometheus.io/port", Integer.toString(getServerTopology().getSslListenPort())),
+            hasEntry("prometheus.io/path", "/wls-exporter/metrics"),
+            hasEntry("prometheus.io/scrape", "true")));
+  }
+
+  @Test
+  public void whenPodCreatedWithAdminPort_prometheusAnnotationsSpecifyIt() {
+    getServerTopology().setAdminPort(8001);
+    getServerTopology().setSslListenPort(7002);
+    assertThat(
+        getCreatedPod().getMetadata().getAnnotations(),
+        allOf(
+            hasEntry("prometheus.io/port", "8001"),
+            hasEntry("prometheus.io/path", "/wls-exporter/metrics"),
+            hasEntry("prometheus.io/scrape", "true")));
+  }
+
+  @Test
+  public void whenPodCreatedWithAdminNap_prometheusAnnotationsSpecifyIt() {
+    getServerTopology().addNetworkAccessPoint(new NetworkAccessPoint("test", "admin", 8001, 8001));
+    getServerTopology().setListenPort(7001);
+    getServerTopology().setSslListenPort(7002);
+    assertThat(
+        getCreatedPod().getMetadata().getAnnotations(),
+        allOf(
+            hasEntry("prometheus.io/port", "8001"),
             hasEntry("prometheus.io/path", "/wls-exporter/metrics"),
             hasEntry("prometheus.io/scrape", "true")));
   }

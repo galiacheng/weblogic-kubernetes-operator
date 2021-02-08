@@ -9,6 +9,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.kubernetes.client.custom.Quantity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +40,8 @@ public class SchemaGeneratorTest {
   @SuppressWarnings("unused")
   private String unAnnotatedString;
   @SuppressWarnings("unused")
+  private Map<String, Quantity> unAnnotatedMap;
+  @SuppressWarnings("unused")
   private int[] intArray;
   @SuppressWarnings("unused")
   private volatile boolean ignoreMe;
@@ -68,14 +71,17 @@ public class SchemaGeneratorTest {
 
   @SuppressWarnings("unused")
   private SimpleObject simpleObject;
-
+  
   @SuppressWarnings("unused")
+  @AdditionalProperties
   private Map<String,String> stringMap;
 
   @SuppressWarnings("unused")
+  @AdditionalProperties
   private Map<String,Object> objectMap;
 
   @SuppressWarnings({"unused", "rawtypes"})
+  @AdditionalProperties
   private Map genericMap;
 
   @BeforeEach
@@ -295,6 +301,14 @@ public class SchemaGeneratorTest {
         schema, hasJsonPath("$.properties.derived.properties.aaString.type", equalTo("string")));
     assertThat(
         schema, hasJsonPath("$.properties.derived.properties.anInt.type", equalTo("number")));
+  }
+
+  @Test
+  void whenFieldIsMapNotAnnotatedWithAdditionalProperties_dontGenerateThem() throws NoSuchFieldException {
+    generator.setSupportObjectReferences(false);
+    Object schema = generateForField(getClass().getDeclaredField("unAnnotatedMap"));
+
+    assertThat(schema, hasJsonPath("$.unAnnotatedMap.additionalProperties", equalTo("false")));
   }
 
   @Test

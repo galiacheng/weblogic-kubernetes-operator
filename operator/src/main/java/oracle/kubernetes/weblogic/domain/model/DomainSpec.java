@@ -18,6 +18,7 @@ import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1SecretReference;
+import oracle.kubernetes.json.AdditionalProperties;
 import oracle.kubernetes.json.Description;
 import oracle.kubernetes.json.EnumClass;
 import oracle.kubernetes.json.Pattern;
@@ -308,6 +309,7 @@ public class DomainSpec extends BaseConfiguration {
    */
   @Description("The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will "
         + "deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter")
+  @AdditionalProperties
   private Map<String,Object> monitoringExporter;
 
   MonitoringExporterConfiguration getMonitoringExporterConfiguration() {

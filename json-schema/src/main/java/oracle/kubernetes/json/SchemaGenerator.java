@@ -259,14 +259,6 @@ public class SchemaGenerator {
     return Map.class.isAssignableFrom(type);
   }
 
-  private boolean isGenericMap(Field field) {
-    if (!Map.class.isAssignableFrom(field.getType())) {
-      return false;
-    } else {
-      return field.getGenericType() instanceof ParameterizedType;
-    }
-  }
-
   private String getDescription(Field field) {
     if (suppressDescriptionForPackages.contains(field.getDeclaringClass().getPackageName())) {
       return null;
@@ -572,6 +564,10 @@ public class SchemaGenerator {
     }
 
     private void addMapValueType(Map<String, Object> result, Field field) {
+      if (field.getAnnotation(AdditionalProperties.class) == null) {
+        return;
+      }
+      
       Map<String, Object> additionalProperties = new HashMap<>();
       generateTypeIn(additionalProperties, getMapValueType(field));
       result.put("additionalProperties", additionalProperties);
