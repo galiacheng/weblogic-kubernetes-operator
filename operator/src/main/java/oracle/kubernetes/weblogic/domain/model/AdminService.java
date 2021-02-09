@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.annotations.SerializedName;
+import oracle.kubernetes.json.AdditionalProperties;
 import oracle.kubernetes.json.Description;
 import oracle.kubernetes.weblogic.domain.ServiceConfigurator;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -26,9 +27,11 @@ public class AdminService implements ServiceConfigurator {
   private final List<Channel> channels = new ArrayList<>();
 
   @Description("Labels to associate with the Administration Server's Service(s).")
+  @AdditionalProperties
   private final Map<String, String> labels = new HashMap<>();
 
   @Description("Annotations to associate with the Administration Server's Service(s).")
+  @AdditionalProperties
   private final Map<String, String> annotations = new HashMap<>();
 
   /**

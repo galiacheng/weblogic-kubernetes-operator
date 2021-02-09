@@ -152,6 +152,10 @@ public class CrdHelperTest {
   void verifyMapPropertiesGenerated() {
     assertThat(getAdditionalPropertiesMap("spec", "serverService", "labels"), hasEntry("type", "string"));
     assertThat(getAdditionalPropertiesMap("spec", "serverService", "annotations"), hasEntry("type", "string"));
+    assertThat(getAdditionalPropertiesMap("spec", "adminServer", "adminService", "labels"), hasEntry("type", "string"));
+    assertThat(
+          getAdditionalPropertiesMap("spec", "adminServer", "adminService", "annotations"),
+          hasEntry("type", "string"));
     assertThat(getAdditionalPropertiesMap("spec", "monitoringExporter", "configuration"), hasEntry("type", "object"));
   }
 

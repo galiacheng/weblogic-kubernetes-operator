@@ -2649,10 +2649,14 @@ spec:
                           - channelName
                       annotations:
                         type: object
+                        additionalProperties:
+                          type: string
                         description: Annotations to associate with the Administration
                           Server's Service(s).
                       labels:
                         type: object
+                        additionalProperties:
+                          type: string
                         description: Labels to associate with the Administration Server's
                           Service(s).
                   restartVersion:

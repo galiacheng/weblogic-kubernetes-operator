@@ -52,10 +52,16 @@
         },
         "annotations": {
           "description": "Annotations to associate with the Administration Server\u0027s Service(s).",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "labels": {
           "description": "Labels to associate with the Administration Server\u0027s Service(s).",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         }
       }
