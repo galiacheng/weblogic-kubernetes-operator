@@ -7,18 +7,15 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
-import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1SecretReference;
-import oracle.kubernetes.json.AdditionalProperties;
 import oracle.kubernetes.json.Description;
 import oracle.kubernetes.json.EnumClass;
 import oracle.kubernetes.json.Pattern;
@@ -29,18 +26,16 @@ import oracle.kubernetes.operator.KubernetesConstants;
 import oracle.kubernetes.operator.ModelInImageDomainType;
 import oracle.kubernetes.operator.OverrideDistributionStrategy;
 import oracle.kubernetes.operator.ServerStartPolicy;
+import oracle.kubernetes.operator.helpers.KubernetesUtils;
 import oracle.kubernetes.weblogic.domain.EffectiveConfigurationFactory;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.yaml.snakeyaml.Yaml;
 
-import static oracle.kubernetes.operator.KubernetesConstants.ALWAYS_IMAGEPULLPOLICY;
 import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_ALLOW_REPLICAS_BELOW_MIN_DYN_CLUSTER_SIZE;
 import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_IMAGE;
 import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_MAX_CLUSTER_CONCURRENT_SHUTDOWN;
 import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_MAX_CLUSTER_CONCURRENT_START_UP;
-import static oracle.kubernetes.operator.KubernetesConstants.IFNOTPRESENT_IMAGEPULLPOLICY;
 import static oracle.kubernetes.weblogic.domain.model.Model.DEFAULT_WDT_MODEL_HOME;
 
 /** DomainSpec is a description of a domain. */
@@ -307,25 +302,46 @@ public class DomainSpec extends BaseConfiguration {
   /**
    * The WebLogic Monitoring Exporter configuration.
    */
-  @Description("The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will "
-        + "deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter")
-  @AdditionalProperties
-  private Map<String,Object> monitoringExporter;
+  private MonitoringExporterSpecification monitoringExporter;
 
   MonitoringExporterConfiguration getMonitoringExporterConfiguration() {
-    return Optional.ofNullable(monitoringExporter).map(this::toJson).map(this::toExporterConfiguration).orElse(null);
-  }
-
-  private String toJson(Object object) {
-    return new Gson().toJson(object);
-  }
-
-  private MonitoringExporterConfiguration toExporterConfiguration(String string) {
-    return new Gson().fromJson(string, MonitoringExporterConfiguration.class);
+    return Optional.ofNullable(monitoringExporter).map(MonitoringExporterSpecification::getConfiguration).orElse(null);
   }
 
   void createMonitoringExporterConfiguration(String yaml) {
-    monitoringExporter = new Yaml().load(yaml);
+    if (monitoringExporter == null) {
+      monitoringExporter = new MonitoringExporterSpecification();
+    }
+
+    monitoringExporter.createConfiguration(yaml);
+  }
+
+  String getMonitoringExporterImage() {
+    return monitoringExporter == null ? null : monitoringExporter.getImage();
+  }
+
+  String getMonitoringExporterImagePullPolicy() {
+    return monitoringExporter == null ? null : monitoringExporter.getImagePullPolicy();
+  }
+
+  /**
+   * Specifies the image for the monitoring exporter sidecar.
+   * @param imageName the name of the docker image
+   */
+  public void setMonitoringExporterImage(String imageName) {
+    assert monitoringExporter != null : "May not set image without configuration";
+
+    monitoringExporter.setImage(imageName);
+  }
+
+  /**
+   * Specifies the pull policy for the exporter image.
+   * @param pullPolicy a Kubernetes pull policy
+   */
+  public void setMonitoringExporterImagePullPolicy(String pullPolicy) {
+    assert monitoringExporter != null : "May not set image pull policy without configuration";
+
+    monitoringExporter.setImagePullPolicy(pullPolicy);
   }
 
   /**
@@ -503,15 +519,7 @@ public class DomainSpec extends BaseConfiguration {
   }
 
   public String getImagePullPolicy() {
-    return Optional.ofNullable(imagePullPolicy).orElse(getInferredPullPolicy());
-  }
-
-  private String getInferredPullPolicy() {
-    return useLatestImage() ? ALWAYS_IMAGEPULLPOLICY : IFNOTPRESENT_IMAGEPULLPOLICY;
-  }
-
-  private boolean useLatestImage() {
-    return getImage().endsWith(KubernetesConstants.LATEST_IMAGE_SUFFIX);
+    return Optional.ofNullable(imagePullPolicy).orElse(KubernetesUtils.getInferredImagePullPolicy(getImage()));
   }
 
   public void setImagePullPolicy(@Nullable String imagePullPolicy) {

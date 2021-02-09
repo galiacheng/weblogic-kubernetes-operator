@@ -25,7 +25,6 @@ import io.kubernetes.client.openapi.models.V1PodCondition;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import oracle.kubernetes.operator.DomainStatusUpdater;
-import oracle.kubernetes.operator.KubernetesConstants;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.MakeRightDomainOperation;
 import oracle.kubernetes.operator.PodAwaiterStepFactory;
@@ -624,7 +623,8 @@ public class PodHelper {
       private V1Container createMonitoringExporterContainer() {
         return new V1Container()
               .name(MONITORING_EXPORTER_NAME)
-              .image(KubernetesConstants.MONITORING_EXPORTER_IMAGE)
+              .image(getDomain().getMonitoringExporterImage())
+              .imagePullPolicy(getDomain().getMonitoringExporterImagePullPolicy())
               .args(createExporterStartupArgs());
       }
 

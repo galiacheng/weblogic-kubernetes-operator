@@ -261,11 +261,7 @@
       "type": "object",
       "properties": {
         "monitoringExporter": {
-          "description": "The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter",
-          "additionalProperties": {
-            "$ref": "#/definitions/Object"
-          },
-          "$ref": "#/definitions/Map"
+          "$ref": "#/definitions/MonitoringExporterSpecification"
         },
         "configuration": {
           "description": "Models and overrides affecting the WebLogic domain configuration.",
@@ -575,6 +571,31 @@
         "modelHome": {
           "description": "Location of the WebLogic Deploy Tooling model home. Defaults to /u01/wdt/models.",
           "type": "string"
+        }
+      }
+    },
+    "MonitoringExporterSpecification": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "description": "The WebLogic Monitoring Exporter sidecar image name. Defaults to monitoring-exporter:2.0-TEMP1",
+          "type": "string"
+        },
+        "imagePullPolicy": {
+          "description": "The image pull policy for the WebLogic Monitoring Exporter sidecar image. Legal values are Always, Never, and IfNotPresent. Defaults to Always if image ends in :latest; IfNotPresent, otherwise.",
+          "type": "string",
+          "enum": [
+            "Always",
+            "Never",
+            "IfNotPresent"
+          ]
+        },
+        "configuration": {
+          "description": "The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter",
+          "additionalProperties": {
+            "$ref": "#/definitions/Object"
+          },
+          "$ref": "#/definitions/Map"
         }
       }
     },

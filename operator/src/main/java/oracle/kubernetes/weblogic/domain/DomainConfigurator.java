@@ -286,6 +286,8 @@ public abstract class DomainConfigurator {
 
   public abstract DomainConfigurator withMonitoringExporterConfiguration(String configuration);
 
+  public abstract DomainConfigurator withMonitoringExporterImage(String imageName);
+
   /**
    * Adds a default server configuration to the domain, if not already present.
    *

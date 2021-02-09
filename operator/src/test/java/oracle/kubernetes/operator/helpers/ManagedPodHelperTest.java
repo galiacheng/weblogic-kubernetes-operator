@@ -32,6 +32,7 @@ import oracle.kubernetes.weblogic.domain.DomainConfigurator;
 import oracle.kubernetes.weblogic.domain.ServerConfigurator;
 import org.junit.jupiter.api.Test;
 
+import static oracle.kubernetes.operator.KubernetesConstants.ALWAYS_IMAGEPULLPOLICY;
 import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_EXPORTER_SIDECAR_PORT;
 import static oracle.kubernetes.operator.KubernetesConstants.MONITORING_EXPORTER_NAME;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVERS_TO_ROLL;
@@ -88,6 +89,7 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
   private static final String END_VALUE_4_DNS1123 = "ess-server1-volume";
   private static final String CLUSTER_NAME = "test-cluster";
   private static final String NOOP_EXPORTER_CONFIG = "queries:\n";
+  public static final String EXPORTER_IMAGE = "monexp:latest";
 
   public ManagedPodHelperTest() {
     super(SERVER_NAME, LISTEN_PORT);
@@ -1157,7 +1159,9 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
   }
 
   private void defineExporterConfiguration() {
-    configureDomain().withMonitoringExporterConfiguration(NOOP_EXPORTER_CONFIG);
+    configureDomain()
+          .withMonitoringExporterConfiguration(NOOP_EXPORTER_CONFIG)
+          .withMonitoringExporterImage(EXPORTER_IMAGE);
   }
 
   @Test
@@ -1177,7 +1181,7 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
   }
 
   private boolean isMonitoringExporterContainer(V1Container container) {
-    return container.getImage().contains(MONITORING_EXPORTER_NAME);
+    return container.getName().contains(MONITORING_EXPORTER_NAME);
   }
 
   @Test
@@ -1192,6 +1196,20 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
     defineExporterConfiguration();
 
     assertThat(getExporterContainer().getCommand(), nullValue());
+  }
+
+  @Test
+  void monitoringExporterContainer_hasDefaultImageName() {
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getImage(), equalTo(EXPORTER_IMAGE));
+  }
+
+  @Test
+  void monitoringExporterContainer_hasInferredPullPolicy() {
+    defineExporterConfiguration();
+
+    assertThat(getExporterContainer().getImagePullPolicy(), equalTo(ALWAYS_IMAGEPULLPOLICY));
   }
 
   @Test

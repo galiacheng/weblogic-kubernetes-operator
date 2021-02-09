@@ -8,7 +8,7 @@ public interface KubernetesConstants {
   String DEFAULT_IMAGE = "container-registry.oracle.com/middleware/weblogic:12.2.1.4";
   String MONITORING_EXPORTER_NAME = "monitoring-exporter";
   // NOTE to reviewers: need to figure out the final name for this
-  String MONITORING_EXPORTER_IMAGE = MONITORING_EXPORTER_NAME + ":2.0-TEMP1";
+  String DEFAULT_EXPORTER_IMAGE = MONITORING_EXPORTER_NAME + ":2.0-TEMP1";
   String ALWAYS_IMAGEPULLPOLICY = ImagePullPolicy.Always.name();
   String IFNOTPRESENT_IMAGEPULLPOLICY = ImagePullPolicy.IfNotPresent.name();
   String LATEST_IMAGE_SUFFIX = ":latest";

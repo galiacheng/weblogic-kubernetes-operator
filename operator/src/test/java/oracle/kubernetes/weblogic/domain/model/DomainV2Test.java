@@ -20,6 +20,7 @@ import io.kubernetes.client.openapi.models.V1Sysctl;
 import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import oracle.kubernetes.operator.DomainSourceType;
+import oracle.kubernetes.operator.KubernetesConstants;
 import oracle.kubernetes.operator.OverrideDistributionStrategy;
 import oracle.kubernetes.weblogic.domain.DomainConfigurator;
 import oracle.kubernetes.weblogic.domain.DomainTestBase;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static oracle.kubernetes.operator.DomainSourceType.FromModel;
+import static oracle.kubernetes.operator.KubernetesConstants.ALWAYS_IMAGEPULLPOLICY;
 import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_IMAGE;
 import static oracle.kubernetes.operator.KubernetesConstants.IFNOTPRESENT_IMAGEPULLPOLICY;
 import static oracle.kubernetes.weblogic.domain.ChannelMatcher.channelWith;
@@ -1355,6 +1357,43 @@ public class DomainV2Test extends DomainTestBase {
 
     assertThat(domain.getMonitoringExporterConfiguration().getConfiguration(),
           containsString("WebAppComponentRuntime"));
+  }
+
+  @Test
+  void whenDomain3ReadFromYaml_useSpecifiedExporterImage() throws IOException {
+    Domain domain = readDomain(DOMAIN_V2_SAMPLE_YAML_3);
+
+    assertThat(domain.getMonitoringExporterImage(), equalTo("monexp:latest"));
+  }
+
+  @Test
+  void whenDomain3ReadFromYaml_useSpecifiedPullPolicy() throws IOException {
+    Domain domain = readDomain(DOMAIN_V2_SAMPLE_YAML_3);
+
+    assertThat(domain.getMonitoringExporterImagePullPolicy(), equalTo(IFNOTPRESENT_IMAGEPULLPOLICY));
+  }
+
+  @Test
+  void whenExporterConfigurationSpecified_useDefaultImage() {
+    configureDomain(domain).withMonitoringExporterConfiguration("queries:\n");
+
+    assertThat(domain.getMonitoringExporterImage(), equalTo(KubernetesConstants.DEFAULT_EXPORTER_IMAGE));
+  }
+
+  @Test
+  void whenExporterConfigurationSpecified_useDefaultImagePullPolicy() {
+    configureDomain(domain).withMonitoringExporterConfiguration("queries:\n");
+
+    assertThat(domain.getMonitoringExporterImagePullPolicy(), equalTo(IFNOTPRESENT_IMAGEPULLPOLICY));
+  }
+
+  @Test
+  void whenExporterConfigurationSpecifiedAndImageLatest_useDefaultImagePullPolicy() {
+    configureDomain(domain)
+          .withMonitoringExporterConfiguration("queries:\n")
+          .withMonitoringExporterImage("someImage:latest");
+
+    assertThat(domain.getMonitoringExporterImagePullPolicy(), equalTo(ALWAYS_IMAGEPULLPOLICY));
   }
 
   @Test

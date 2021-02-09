@@ -1182,11 +1182,7 @@ window.onload = function() {
       "type": "object",
       "properties": {
         "monitoringExporter": {
-          "description": "The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter",
-          "additionalProperties": {
-            "$ref": "#/definitions/Object"
-          },
-          "$ref": "#/definitions/Map"
+          "$ref": "#/definitions/MonitoringExporterSpecification"
         },
         "configuration": {
           "description": "Models and overrides affecting the WebLogic domain configuration.",
@@ -1415,10 +1411,16 @@ window.onload = function() {
       "properties": {
         "annotations": {
           "description": "The annotations to be added to generated resources.",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "labels": {
           "description": "The labels to be added to generated resources. The label names must not start with \"weblogic.\".",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         }
       }
@@ -1490,6 +1492,31 @@ window.onload = function() {
         "modelHome": {
           "description": "Location of the WebLogic Deploy Tooling model home. Defaults to /u01/wdt/models.",
           "type": "string"
+        }
+      }
+    },
+    "MonitoringExporterSpecification": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "description": "The WebLogic Monitoring Exporter sidecar image name. Defaults to monitoring-exporter:2.0-TEMP1",
+          "type": "string"
+        },
+        "imagePullPolicy": {
+          "description": "The image pull policy for the WebLogic Monitoring Exporter sidecar image. Legal values are Always, Never, and IfNotPresent. Defaults to Always if image ends in :latest; IfNotPresent, otherwise.",
+          "type": "string",
+          "enum": [
+            "Always",
+            "Never",
+            "IfNotPresent"
+          ]
+        },
+        "configuration": {
+          "description": "The configuration for the WebLogic Monitoring Exporter sidecar. If specified, the operator will deploy a sidecar alongside each server instance. See https://github.com/oracle/weblogic-monitoring-exporter",
+          "additionalProperties": {
+            "$ref": "#/definitions/Object"
+          },
+          "$ref": "#/definitions/Map"
         }
       }
     },
@@ -1589,6 +1616,9 @@ window.onload = function() {
         },
         "annotations": {
           "description": "The annotations to be added to generated resources.",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "env": {
@@ -1615,6 +1645,9 @@ window.onload = function() {
         },
         "labels": {
           "description": "The labels to be added to generated resources. The label names must not start with \"weblogic.\".",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "runtimeClassName": {
@@ -1673,10 +1706,16 @@ window.onload = function() {
         },
         "annotations": {
           "description": "The annotations to be added to generated resources.",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         },
         "labels": {
           "description": "The labels to be added to generated resources. The label names must not start with \"weblogic.\".",
+          "additionalProperties": {
+            "type": "string"
+          },
           "$ref": "#/definitions/Map"
         }
       }
