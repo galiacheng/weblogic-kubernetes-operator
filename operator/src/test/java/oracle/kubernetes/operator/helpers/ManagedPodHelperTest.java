@@ -1238,12 +1238,12 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
   @Test
   void whenOnlyAdminAndSslPortsAvailable_monitoringExporterSpecifiesAdminPort() {
     getServerTopology().setListenPort(null);
-    getServerTopology().setListenPort(null);
+    getServerTopology().setSslListenPort(7002);
     getServerTopology().setAdminPort(8001);
     defineExporterConfiguration();
 
     assertThat(getExporterContainer().getArgs(),
-               both(hasItem("-DWLS_PORT=" + 8001)).and(not(hasItem("-DWLS_SECURE=true"))));
+               both(hasItem("-DWLS_PORT=" + 8001)).and(hasItem("-DWLS_SECURE=true")));
   }
 
   @Test

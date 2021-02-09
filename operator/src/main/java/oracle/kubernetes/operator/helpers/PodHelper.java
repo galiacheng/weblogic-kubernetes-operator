@@ -508,6 +508,8 @@ public class PodHelper {
       // Prometheus does not support "prometheus.io/scheme".  The scheme(http/https) can be set
       // in the Prometheus Chart values yaml under the "extraScrapeConfigs:" section.
       AnnotationHelper.annotateForPrometheus(metadata, exporterContext.getBasePath(), exporterContext.getMetricsPort());
+      LOGGER.info("REG-> annotations for pod " + metadata.getNamespace() + ":" + metadata.getName()
+            + " are " + metadata.getAnnotations());
       return metadata;
     }
 
@@ -551,14 +553,14 @@ public class PodHelper {
       }
 
       private int selectPortFromList() {
-        return Stream.of(scan.getAdminPort(), scan.getListenPort(), scan.getSslListenPort())
+        return Stream.of(getAdminPort(), getListenPort(), getSslListenPort())
               .filter(Objects::nonNull)
               .findFirst()
               .orElseThrow(() -> new RuntimeException("No ports defined for this server"));
       }
 
       boolean isWebLogicSecure() {
-        return Objects.equals(getWebLogicRestPort(), getSslListenPort());
+        return !Objects.equals(getWebLogicRestPort(), getListenPort());
       }
 
       abstract int getMetricsPort();
