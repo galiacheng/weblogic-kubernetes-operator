@@ -549,7 +549,7 @@ public class EventHelper {
     }
 
     DateTime getCurrentTimestamp() {
-      return DateTime.now();
+      return new DateTime(System.currentTimeMillis());
     }
 
     void addLabels(V1ObjectMeta metadata, EventData eventData) {

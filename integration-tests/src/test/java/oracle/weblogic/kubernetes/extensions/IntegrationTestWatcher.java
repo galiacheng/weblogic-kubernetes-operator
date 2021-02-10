@@ -86,6 +86,9 @@ public class IntegrationTestWatcher implements
   @Override
   public Object resolveParameter(ParameterContext parameterContext,
       ExtensionContext extensionContext) throws ParameterResolutionException {
+    printHeader(String.format("Resolving parameters in Test Suite %s, namespaces:%s, namespaces=%s",
+        className, namespaces), "+");
+
     Namespaces ns = parameterContext.findAnnotation(Namespaces.class).get();
     List<String> namespaces = new ArrayList();
     for (int i = 1; i <= ns.value(); i++) {
@@ -312,7 +315,7 @@ public class IntegrationTestWatcher implements
    */
   @Override
   public void afterAll(ExtensionContext context) {
-    printHeader(String.format("Ending Test Suite %s", className), "+");
+    printHeader(String.format("Ending Test Suite %s, namespaces:%s", className, namespaces), "+");
     // set SKIP_CLEANUP env. var to skip cleanup, mainly used for debugging in local runs
     if (System.getenv("SKIP_CLEANUP") != null
         && System.getenv("SKIP_CLEANUP").toLowerCase().equals("true")) {

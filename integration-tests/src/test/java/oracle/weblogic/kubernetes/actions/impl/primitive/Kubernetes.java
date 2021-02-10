@@ -996,7 +996,11 @@ public class Kubernetes {
           Boolean.FALSE // Boolean | Watch for changes to the described resources.
       );
       events = Optional.ofNullable(list).map(V1EventList::getItems).orElse(Collections.EMPTY_LIST);
-      events.sort(Comparator.comparing(e -> e.getLastTimestamp()));
+      try {
+        events.sort(Comparator.comparing(e -> e.getLastTimestamp()));
+      } catch (NullPointerException npe) {
+        getLogger().info("XX got NPE and the events are: " + events);
+      }
       Collections.reverse(events);
     } catch (ApiException apex) {
       getLogger().warning(apex.getResponseBody());
