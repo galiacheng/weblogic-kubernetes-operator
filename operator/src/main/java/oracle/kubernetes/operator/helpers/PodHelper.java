@@ -507,9 +507,9 @@ public class PodHelper {
       // Add prometheus annotations. This will overwrite any custom annotations with same name.
       // Prometheus does not support "prometheus.io/scheme".  The scheme(http/https) can be set
       // in the Prometheus Chart values yaml under the "extraScrapeConfigs:" section.
-      AnnotationHelper.annotateForPrometheus(metadata, exporterContext.getBasePath(), exporterContext.getMetricsPort());
-      LOGGER.info("REG-> annotations for pod " + metadata.getNamespace() + ":" + metadata.getName()
-            + " are " + metadata.getAnnotations());
+      if (exporterContext.isEnabled()) {
+        AnnotationHelper.annotateForPrometheus(metadata, exporterContext.getBasePath(), exporterContext.getPort());
+      }
       return metadata;
     }
 
@@ -563,7 +563,9 @@ public class PodHelper {
         return !Objects.equals(getWebLogicRestPort(), getListenPort());
       }
 
-      abstract int getMetricsPort();
+      abstract boolean isEnabled();
+
+      abstract int getPort();
 
       abstract String getBasePath();
 
@@ -573,8 +575,13 @@ public class PodHelper {
     class WebAppExporterContext extends ExporterContext {
 
       @Override
-      int getMetricsPort() {
-        return getWebLogicRestPort();
+      boolean isEnabled() {
+        return getListenPort() != null;
+      }
+
+      @Override
+      int getPort() {
+        return getListenPort();
       }
 
       @Override
@@ -608,7 +615,12 @@ public class PodHelper {
       }
 
       @Override
-      int getMetricsPort() {
+      boolean isEnabled() {
+        return true;
+      }
+
+      @Override
+      int getPort() {
         return metricsPort;
       }
 

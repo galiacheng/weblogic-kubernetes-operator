@@ -885,38 +885,26 @@ public class ManagedPodHelperTest extends PodHelperTestBase {
   }
 
   @Test
-  public void whenPodCreatedWithSslAndWithoutExportConfiguration_hasPrometheusAnnotations() {
+  public void whenPodCreatedWithoutPlainPortAndWithoutExportConfiguration_hasNoPrometheusAnnotations() {
     getServerTopology().setListenPort(null);
     getServerTopology().setSslListenPort(7002);
     assertThat(
         getCreatedPod().getMetadata().getAnnotations(),
         allOf(
-            hasEntry("prometheus.io/port", Integer.toString(getServerTopology().getSslListenPort())),
-            hasEntry("prometheus.io/path", "/wls-exporter/metrics"),
-            hasEntry("prometheus.io/scrape", "true")));
+            not(hasKey("prometheus.io/port")),
+            not(hasKey("prometheus.io/path")),
+            not(hasKey("prometheus.io/scrape"))));
   }
 
   @Test
-  public void whenPodCreatedWithAdminPort_prometheusAnnotationsSpecifyIt() {
-    getServerTopology().setAdminPort(8001);
-    getServerTopology().setSslListenPort(7002);
-    assertThat(
-        getCreatedPod().getMetadata().getAnnotations(),
-        allOf(
-            hasEntry("prometheus.io/port", "8001"),
-            hasEntry("prometheus.io/path", "/wls-exporter/metrics"),
-            hasEntry("prometheus.io/scrape", "true")));
-  }
-
-  @Test
-  public void whenPodCreatedWithAdminNap_prometheusAnnotationsSpecifyIt() {
+  public void whenPodCreatedWithAdminNap_prometheusAnnotationsSpecifyPlainTextPort() {
     getServerTopology().addNetworkAccessPoint(new NetworkAccessPoint("test", "admin", 8001, 8001));
     getServerTopology().setListenPort(7001);
     getServerTopology().setSslListenPort(7002);
     assertThat(
         getCreatedPod().getMetadata().getAnnotations(),
         allOf(
-            hasEntry("prometheus.io/port", "8001"),
+            hasEntry("prometheus.io/port", "7001"),
             hasEntry("prometheus.io/path", "/wls-exporter/metrics"),
             hasEntry("prometheus.io/scrape", "true")));
   }
