@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import io.kubernetes.client.custom.Quantity;
@@ -83,6 +84,8 @@ public class SchemaGeneratorTest {
   @SuppressWarnings({"unused", "rawtypes"})
   @AdditionalProperties
   private Map genericMap;
+
+  private Map<String,SpecializedObject> specializedMap;
 
   @BeforeEach
   public void setUp() throws Exception {
@@ -421,8 +424,18 @@ public class SchemaGeneratorTest {
 
   @Test
   public void whenNonCachedK8sVersionSpecified_throwException() {
-    assertThrows(IOException.class,
-          () -> generator.useKubernetesVersion("1.12.0"));
+    assertThrows(IOException.class, () -> generator.useKubernetesVersion("1.12.0"));
+  }
+
+  @Test
+  void useExternalSchemaItem() throws NoSuchFieldException {
+    generator.setSupportObjectReferences(false);
+    generator.defineSubSchema(SpecializedObject.class,
+          Map.of("oneOf", List.of(Map.of("type", "string"), Map.of("type", "integer"))));
+    Object schema = generateForField(getClass().getDeclaredField("specializedMap"));
+
+    assertThat(schema, hasJsonPath("$.specializedMap.additionalProperties.oneOf[0].type", equalTo("string")));
+    assertThat(schema, hasJsonPath("$.specializedMap.additionalProperties.oneOf[1].type", equalTo("integer")));
   }
 
   @SuppressWarnings("unused")

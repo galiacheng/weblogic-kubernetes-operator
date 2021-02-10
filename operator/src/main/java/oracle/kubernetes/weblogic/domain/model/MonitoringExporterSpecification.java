@@ -13,6 +13,9 @@ import oracle.kubernetes.json.Description;
 import oracle.kubernetes.json.EnumClass;
 import oracle.kubernetes.operator.ImagePullPolicy;
 import oracle.kubernetes.operator.helpers.KubernetesUtils;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.yaml.snakeyaml.Yaml;
 
 import static oracle.kubernetes.operator.KubernetesConstants.DEFAULT_EXPORTER_IMAGE;
@@ -70,5 +73,37 @@ public class MonitoringExporterSpecification {
 
   void setImagePullPolicy(@Nullable String imagePullPolicy) {
     this.imagePullPolicy = imagePullPolicy;
+  }
+
+  @Override
+  public String toString() {
+    return new ToStringBuilder(this)
+          .append("configuration", configuration)
+          .append("image", image)
+          .append("imagePullPolicy", imagePullPolicy)
+          .toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return (this == o)
+          || ((o instanceof MonitoringExporterSpecification) && equals((MonitoringExporterSpecification) o));
+  }
+
+  private boolean equals(MonitoringExporterSpecification that) {
+    return new EqualsBuilder()
+          .append(configuration, that.configuration)
+          .append(image, that.image)
+          .append(imagePullPolicy, that.imagePullPolicy)
+          .isEquals();
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(17, 37)
+          .append(configuration)
+          .append(image)
+          .append(imagePullPolicy)
+          .toHashCode();
   }
 }

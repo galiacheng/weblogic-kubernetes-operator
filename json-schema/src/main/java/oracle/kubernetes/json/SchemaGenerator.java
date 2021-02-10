@@ -63,6 +63,7 @@ public class SchemaGenerator {
 
   // suppress descriptions for any contained packages
   private final Collection<String> suppressDescriptionForPackages = new ArrayList<>();
+  private final Map<Class<?>, Map<String, Object>> predefinedSchemas = new HashMap<>();
 
   /**
    * Returns a pretty-printed string corresponding to a generated schema.
@@ -498,6 +499,10 @@ public class SchemaGenerator {
     }
   }
 
+  public void defineSubSchema(Class<?> forClass, Map<String, Object> subSchema) {
+    predefinedSchemas.put(forClass, subSchema);
+  }
+
   private class SubSchemaGenerator {
     final Field field;
 
@@ -564,13 +569,16 @@ public class SchemaGenerator {
     }
 
     private void addMapValueType(Map<String, Object> result, Field field) {
-      if (field.getAnnotation(AdditionalProperties.class) == null) {
-        return;
-      }
-      
       Map<String, Object> additionalProperties = new HashMap<>();
-      generateTypeIn(additionalProperties, getMapValueType(field));
-      result.put("additionalProperties", additionalProperties);
+
+      final Class<?> mapValueType = getMapValueType(field);
+      final Map<String, Object> subSchema = SchemaGenerator.this.predefinedSchemas.get(mapValueType);
+      if (subSchema != null) {
+        result.put("additionalProperties", subSchema);
+      } else if (field.getAnnotation(AdditionalProperties.class) != null) {
+        generateTypeIn(additionalProperties, mapValueType);
+        result.put("additionalProperties", additionalProperties);
+      }
     }
 
     private Class<?> getMapValueType(Field field) {

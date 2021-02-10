@@ -855,6 +855,7 @@ public class DomainSpec extends BaseConfiguration {
         .map(Configuration::getModel).map(Model::getModelHome).orElse(DEFAULT_WDT_MODEL_HOME);
   }
 
+  // todo - should these be put into alphabetical order? It is getting increasingly difficult to find items
   @Override
   public String toString() {
     ToStringBuilder builder =
@@ -877,6 +878,7 @@ public class DomainSpec extends BaseConfiguration {
             .append("replicas", replicas)
             .append("logHome", logHome)
             .append("logHomeEnabled", logHomeEnabled)
+            .append("monitoringExporter", monitoringExporter)
             .append("includeServerOutInPodLog", includeServerOutInPodLog)
             .append("configOverrides", configOverrides)
             .append("configOverrideSecrets", configOverrideSecrets)
@@ -908,6 +910,7 @@ public class DomainSpec extends BaseConfiguration {
             .append(replicas)
             .append(logHome)
             .append(logHomeEnabled)
+            .append(monitoringExporter)
             .append(includeServerOutInPodLog)
             .append(configOverrides)
             .append(configOverrideSecrets)
@@ -948,6 +951,7 @@ public class DomainSpec extends BaseConfiguration {
             .append(replicas, rhs.replicas)
             .append(logHome, rhs.logHome)
             .append(logHomeEnabled, rhs.logHomeEnabled)
+            .append(monitoringExporter, rhs.monitoringExporter)
             .append(includeServerOutInPodLog, rhs.includeServerOutInPodLog)
             .append(configOverrides, rhs.configOverrides)
             .append(configOverrideSecrets, rhs.configOverrideSecrets)

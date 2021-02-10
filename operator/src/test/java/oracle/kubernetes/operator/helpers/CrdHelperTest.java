@@ -34,6 +34,7 @@ import oracle.kubernetes.operator.work.TerminalStep;
 import oracle.kubernetes.utils.TestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.meterware.simplestub.Stub.createStrictStub;
@@ -44,6 +45,7 @@ import static oracle.kubernetes.operator.logging.MessageKeys.CREATE_CRD_FAILED;
 import static oracle.kubernetes.operator.logging.MessageKeys.CREATING_CRD;
 import static oracle.kubernetes.operator.logging.MessageKeys.REPLACE_CRD_FAILED;
 import static oracle.kubernetes.utils.LogMatcher.containsInfo;
+import static org.hamcrest.Matchers.array;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
@@ -149,7 +151,7 @@ public class CrdHelperTest {
   }
 
   @Test
-  void verifyMapPropertiesGenerated() {
+  void verifyOperatorMapPropertiesGenerated() {
     assertThat(getAdditionalPropertiesMap("spec", "serverService", "labels"), hasEntry("type", "string"));
     assertThat(getAdditionalPropertiesMap("spec", "serverService", "annotations"), hasEntry("type", "string"));
     assertThat(getAdditionalPropertiesMap("spec", "adminServer", "adminService", "labels"), hasEntry("type", "string"));
@@ -159,15 +161,24 @@ public class CrdHelperTest {
     assertThat(getAdditionalPropertiesMap("spec", "monitoringExporter", "configuration"), hasEntry("type", "object"));
   }
 
+  @Test
+  @Disabled
+  void verifyKubernetesMapPropertiesSelected() {
+    assertThat(
+          getAdditionalPropertiesMap("spec", "serverPod", "resources", "limits"),
+          hasEntry("oneOf", array(hasEntry("type", "string"), hasEntry("type", "integer"))));
+
+  }
+
   @SuppressWarnings({"ConstantConditions", "unchecked"})
-  Map<String, String> getAdditionalPropertiesMap(String... pathElements) {
+  <T> Map<String, T> getAdditionalPropertiesMap(String... pathElements) {
     V1JSONSchemaProps schemaProps = defaultCrd.getSpec().getVersions().get(0).getSchema().getOpenAPIV3Schema();
     for (String pathElement : pathElements) {
       schemaProps = schemaProps.getProperties().get(pathElement);
     }
 
     assertThat(schemaProps.getAdditionalProperties(), instanceOf(Map.class));
-    return (Map<String,String>) schemaProps.getAdditionalProperties();
+    return (Map<String,T>) schemaProps.getAdditionalProperties();
   }
 
 

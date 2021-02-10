@@ -19,6 +19,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import oracle.kubernetes.json.Description;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.yaml.snakeyaml.Yaml;
 
 /**
@@ -240,4 +242,26 @@ public class MonitoringExporterConfiguration {
     }
   }
 
+  @Override
+  public boolean equals(Object o) {
+    return (this == o)
+          || ((o instanceof MonitoringExporterConfiguration) && equals((MonitoringExporterConfiguration) o));
+  }
+
+  private boolean equals(MonitoringExporterConfiguration that) {
+    return new EqualsBuilder()
+          .append(metricsNameSnakeCase, that.metricsNameSnakeCase)
+          .append(domainQualifier, that.domainQualifier)
+          .append(queries, that.queries)
+          .isEquals();
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(17, 37)
+          .append(metricsNameSnakeCase)
+          .append(domainQualifier)
+          .append(queries)
+          .toHashCode();
+  }
 }

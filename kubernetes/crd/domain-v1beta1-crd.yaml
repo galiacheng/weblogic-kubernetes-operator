@@ -969,8 +969,16 @@ spec:
                       properties:
                         requests:
                           type: object
+                          additionalProperties:
+                            oneOf:
+                            - type: string
+                            - type: integer
                         limits:
                           type: object
+                          additionalProperties:
+                            oneOf:
+                            - type: string
+                            - type: integer
                     annotations:
                       type: object
                       additionalProperties:
@@ -1232,8 +1240,16 @@ spec:
                             type: object
                             properties:
                               requests:
+                                additionalProperties:
+                                  oneOf:
+                                  - type: string
+                                  - type: integer
                                 type: object
                               limits:
+                                additionalProperties:
+                                  oneOf:
+                                  - type: string
+                                  - type: integer
                                 type: object
                           securityContext:
                             type: object
@@ -1855,8 +1871,16 @@ spec:
                             type: object
                             properties:
                               requests:
+                                additionalProperties:
+                                  oneOf:
+                                  - type: string
+                                  - type: integer
                                 type: object
                               limits:
+                                additionalProperties:
+                                  oneOf:
+                                  - type: string
+                                  - type: integer
                                 type: object
                           securityContext:
                             type: object
@@ -3445,8 +3469,16 @@ spec:
                         type: object
                         properties:
                           requests:
+                            additionalProperties:
+                              oneOf:
+                              - type: string
+                              - type: integer
                             type: object
                           limits:
+                            additionalProperties:
+                              oneOf:
+                              - type: string
+                              - type: integer
                             type: object
                       annotations:
                         description: The annotations to be added to generated resources.
@@ -3712,8 +3744,16 @@ spec:
                               type: object
                               properties:
                                 requests:
+                                  additionalProperties:
+                                    oneOf:
+                                    - type: string
+                                    - type: integer
                                   type: object
                                 limits:
+                                  additionalProperties:
+                                    oneOf:
+                                    - type: string
+                                    - type: integer
                                   type: object
                             securityContext:
                               type: object
@@ -4336,8 +4376,16 @@ spec:
                               type: object
                               properties:
                                 requests:
+                                  additionalProperties:
+                                    oneOf:
+                                    - type: string
+                                    - type: integer
                                   type: object
                                 limits:
+                                  additionalProperties:
+                                    oneOf:
+                                    - type: string
+                                    - type: integer
                                   type: object
                             securityContext:
                               type: object
@@ -5944,8 +5992,16 @@ spec:
                   properties:
                     requests:
                       type: object
+                      additionalProperties:
+                        oneOf:
+                        - type: string
+                        - type: integer
                     limits:
                       type: object
+                      additionalProperties:
+                        oneOf:
+                        - type: string
+                        - type: integer
                 annotations:
                   type: object
                   additionalProperties:
@@ -6207,8 +6263,16 @@ spec:
                         type: object
                         properties:
                           requests:
+                            additionalProperties:
+                              oneOf:
+                              - type: string
+                              - type: integer
                             type: object
                           limits:
+                            additionalProperties:
+                              oneOf:
+                              - type: string
+                              - type: integer
                             type: object
                       securityContext:
                         type: object
@@ -6830,8 +6894,16 @@ spec:
                         type: object
                         properties:
                           requests:
+                            additionalProperties:
+                              oneOf:
+                              - type: string
+                              - type: integer
                             type: object
                           limits:
+                            additionalProperties:
+                              oneOf:
+                              - type: string
+                              - type: integer
                             type: object
                       securityContext:
                         type: object
@@ -8314,8 +8386,16 @@ spec:
                         type: object
                         properties:
                           requests:
+                            additionalProperties:
+                              oneOf:
+                              - type: string
+                              - type: integer
                             type: object
                           limits:
+                            additionalProperties:
+                              oneOf:
+                              - type: string
+                              - type: integer
                             type: object
                       annotations:
                         description: The annotations to be added to generated resources.
@@ -8581,8 +8661,16 @@ spec:
                               type: object
                               properties:
                                 requests:
+                                  additionalProperties:
+                                    oneOf:
+                                    - type: string
+                                    - type: integer
                                   type: object
                                 limits:
+                                  additionalProperties:
+                                    oneOf:
+                                    - type: string
+                                    - type: integer
                                   type: object
                             securityContext:
                               type: object
@@ -9205,8 +9293,16 @@ spec:
                               type: object
                               properties:
                                 requests:
+                                  additionalProperties:
+                                    oneOf:
+                                    - type: string
+                                    - type: integer
                                   type: object
                                 limits:
+                                  additionalProperties:
+                                    oneOf:
+                                    - type: string
+                                    - type: integer
                                   type: object
                             securityContext:
                               type: object

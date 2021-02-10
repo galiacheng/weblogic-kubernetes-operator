@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.models.V1CustomResourceDefinition;
 import io.kubernetes.client.openapi.models.V1CustomResourceDefinitionNames;
 import io.kubernetes.client.openapi.models.V1CustomResourceDefinitionSpec;
@@ -345,6 +346,8 @@ public class CrdHelper {
 
     static SchemaGenerator createSchemaGenerator() {
       SchemaGenerator generator = new SchemaGenerator();
+      generator.defineSubSchema(Quantity.class, Map.of("oneOf",
+            List.of(Map.of("type", "string"), Map.of("type", "integer"))));
       generator.setForbidAdditionalProperties(false);
       generator.setSupportObjectReferences(false);
       generator.setIncludeSchemaReference(false);
