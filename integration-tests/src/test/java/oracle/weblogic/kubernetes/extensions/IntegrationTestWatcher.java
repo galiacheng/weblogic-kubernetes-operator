@@ -86,7 +86,7 @@ public class IntegrationTestWatcher implements
   @Override
   public Object resolveParameter(ParameterContext parameterContext,
       ExtensionContext extensionContext) throws ParameterResolutionException {
-    printHeader(String.format("Resolving parameters in Test Suite %s, namespaces:%s, namespaces=%s",
+    printHeader(String.format("Resolving parameters in Test Suite %s, namespaces:%s",
         className, namespaces), "+");
 
     Namespaces ns = parameterContext.findAnnotation(Namespaces.class).get();
