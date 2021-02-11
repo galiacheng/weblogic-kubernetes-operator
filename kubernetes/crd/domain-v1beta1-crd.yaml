@@ -414,6 +414,8 @@ spec:
                               driver:
                                 type: string
                               options:
+                                additionalProperties:
+                                  type: string
                                 type: object
                               secretRef:
                                 type: object
@@ -873,6 +875,8 @@ spec:
                               fsType:
                                 type: string
                               volumeAttributes:
+                                additionalProperties:
+                                  type: string
                                 type: object
                             required:
                             - driver
@@ -970,15 +974,11 @@ spec:
                         requests:
                           type: object
                           additionalProperties:
-                            oneOf:
-                            - type: string
-                            - type: integer
+                            type: string
                         limits:
                           type: object
                           additionalProperties:
-                            oneOf:
-                            - type: string
-                            - type: integer
+                            type: string
                     annotations:
                       type: object
                       additionalProperties:
@@ -1060,6 +1060,8 @@ spec:
                         See `kubectl explain pods.spec.restartPolicy`.'
                     nodeSelector:
                       type: object
+                      additionalProperties:
+                        type: string
                       description: Selector which must match a Node's labels for the
                         Pod to be scheduled on that Node. See `kubectl explain pods.spec.nodeSelector`.
                     volumeMounts:
@@ -1241,15 +1243,11 @@ spec:
                             properties:
                               requests:
                                 additionalProperties:
-                                  oneOf:
-                                  - type: string
-                                  - type: integer
+                                  type: string
                                 type: object
                               limits:
                                 additionalProperties:
-                                  oneOf:
-                                  - type: string
-                                  - type: integer
+                                  type: string
                                 type: object
                           securityContext:
                             type: object
@@ -1872,15 +1870,11 @@ spec:
                             properties:
                               requests:
                                 additionalProperties:
-                                  oneOf:
-                                  - type: string
-                                  - type: integer
+                                  type: string
                                 type: object
                               limits:
                                 additionalProperties:
-                                  oneOf:
-                                  - type: string
-                                  - type: integer
+                                  type: string
                                 type: object
                           securityContext:
                             type: object
@@ -2485,6 +2479,8 @@ spec:
                                           - key
                                           - operator
                                       matchLabels:
+                                        additionalProperties:
+                                          type: string
                                         type: object
                                   topologyKey:
                                     type: string
@@ -2522,6 +2518,8 @@ spec:
                                               - key
                                               - operator
                                           matchLabels:
+                                            additionalProperties:
+                                              type: string
                                             type: object
                                       topologyKey:
                                         type: string
@@ -2564,6 +2562,8 @@ spec:
                                           - key
                                           - operator
                                       matchLabels:
+                                        additionalProperties:
+                                          type: string
                                         type: object
                                   topologyKey:
                                     type: string
@@ -2601,6 +2601,8 @@ spec:
                                               - key
                                               - operator
                                           matchLabels:
+                                            additionalProperties:
+                                              type: string
                                             type: object
                                       topologyKey:
                                         type: string
@@ -2915,6 +2917,8 @@ spec:
                                 driver:
                                   type: string
                                 options:
+                                  additionalProperties:
+                                    type: string
                                   type: object
                                 secretRef:
                                   type: object
@@ -3374,6 +3378,8 @@ spec:
                                 fsType:
                                   type: string
                                 volumeAttributes:
+                                  additionalProperties:
+                                    type: string
                                   type: object
                               required:
                               - driver
@@ -3470,15 +3476,11 @@ spec:
                         properties:
                           requests:
                             additionalProperties:
-                              oneOf:
-                              - type: string
-                              - type: integer
+                              type: string
                             type: object
                           limits:
                             additionalProperties:
-                              oneOf:
-                              - type: string
-                              - type: integer
+                              type: string
                             type: object
                       annotations:
                         description: The annotations to be added to generated resources.
@@ -3564,6 +3566,8 @@ spec:
                         description: Selector which must match a Node's labels for
                           the Pod to be scheduled on that Node. See `kubectl explain
                           pods.spec.nodeSelector`.
+                        additionalProperties:
+                          type: string
                         type: object
                       volumeMounts:
                         description: Additional volume mounts for the container running
@@ -3745,15 +3749,11 @@ spec:
                               properties:
                                 requests:
                                   additionalProperties:
-                                    oneOf:
-                                    - type: string
-                                    - type: integer
+                                    type: string
                                   type: object
                                 limits:
                                   additionalProperties:
-                                    oneOf:
-                                    - type: string
-                                    - type: integer
+                                    type: string
                                   type: object
                             securityContext:
                               type: object
@@ -4377,15 +4377,11 @@ spec:
                               properties:
                                 requests:
                                   additionalProperties:
-                                    oneOf:
-                                    - type: string
-                                    - type: integer
+                                    type: string
                                   type: object
                                 limits:
                                   additionalProperties:
-                                    oneOf:
-                                    - type: string
-                                    - type: integer
+                                    type: string
                                   type: object
                             securityContext:
                               type: object
@@ -4990,6 +4986,8 @@ spec:
                                             - key
                                             - operator
                                         matchLabels:
+                                          additionalProperties:
+                                            type: string
                                           type: object
                                     topologyKey:
                                       type: string
@@ -5027,6 +5025,8 @@ spec:
                                                 - key
                                                 - operator
                                             matchLabels:
+                                              additionalProperties:
+                                                type: string
                                               type: object
                                         topologyKey:
                                           type: string
@@ -5069,6 +5069,8 @@ spec:
                                             - key
                                             - operator
                                         matchLabels:
+                                          additionalProperties:
+                                            type: string
                                           type: object
                                     topologyKey:
                                       type: string
@@ -5106,6 +5108,8 @@ spec:
                                                 - key
                                                 - operator
                                             matchLabels:
+                                              additionalProperties:
+                                                type: string
                                               type: object
                                         topologyKey:
                                           type: string
@@ -5437,6 +5441,8 @@ spec:
                           driver:
                             type: string
                           options:
+                            additionalProperties:
+                              type: string
                             type: object
                           secretRef:
                             type: object
@@ -5896,6 +5902,8 @@ spec:
                           fsType:
                             type: string
                           volumeAttributes:
+                            additionalProperties:
+                              type: string
                             type: object
                         required:
                         - driver
@@ -5993,15 +6001,11 @@ spec:
                     requests:
                       type: object
                       additionalProperties:
-                        oneOf:
-                        - type: string
-                        - type: integer
+                        type: string
                     limits:
                       type: object
                       additionalProperties:
-                        oneOf:
-                        - type: string
-                        - type: integer
+                        type: string
                 annotations:
                   type: object
                   additionalProperties:
@@ -6083,6 +6087,8 @@ spec:
                     See `kubectl explain pods.spec.restartPolicy`.'
                 nodeSelector:
                   type: object
+                  additionalProperties:
+                    type: string
                   description: Selector which must match a Node's labels for the Pod
                     to be scheduled on that Node. See `kubectl explain pods.spec.nodeSelector`.
                 volumeMounts:
@@ -6264,15 +6270,11 @@ spec:
                         properties:
                           requests:
                             additionalProperties:
-                              oneOf:
-                              - type: string
-                              - type: integer
+                              type: string
                             type: object
                           limits:
                             additionalProperties:
-                              oneOf:
-                              - type: string
-                              - type: integer
+                              type: string
                             type: object
                       securityContext:
                         type: object
@@ -6895,15 +6897,11 @@ spec:
                         properties:
                           requests:
                             additionalProperties:
-                              oneOf:
-                              - type: string
-                              - type: integer
+                              type: string
                             type: object
                           limits:
                             additionalProperties:
-                              oneOf:
-                              - type: string
-                              - type: integer
+                              type: string
                             type: object
                       securityContext:
                         type: object
@@ -7508,6 +7506,8 @@ spec:
                                       - key
                                       - operator
                                   matchLabels:
+                                    additionalProperties:
+                                      type: string
                                     type: object
                               topologyKey:
                                 type: string
@@ -7545,6 +7545,8 @@ spec:
                                           - key
                                           - operator
                                       matchLabels:
+                                        additionalProperties:
+                                          type: string
                                         type: object
                                   topologyKey:
                                     type: string
@@ -7587,6 +7589,8 @@ spec:
                                       - key
                                       - operator
                                   matchLabels:
+                                    additionalProperties:
+                                      type: string
                                     type: object
                               topologyKey:
                                 type: string
@@ -7624,6 +7628,8 @@ spec:
                                           - key
                                           - operator
                                       matchLabels:
+                                        additionalProperties:
+                                          type: string
                                         type: object
                                   topologyKey:
                                     type: string
@@ -7832,6 +7838,8 @@ spec:
                                 driver:
                                   type: string
                                 options:
+                                  additionalProperties:
+                                    type: string
                                   type: object
                                 secretRef:
                                   type: object
@@ -8291,6 +8299,8 @@ spec:
                                 fsType:
                                   type: string
                                 volumeAttributes:
+                                  additionalProperties:
+                                    type: string
                                   type: object
                               required:
                               - driver
@@ -8387,15 +8397,11 @@ spec:
                         properties:
                           requests:
                             additionalProperties:
-                              oneOf:
-                              - type: string
-                              - type: integer
+                              type: string
                             type: object
                           limits:
                             additionalProperties:
-                              oneOf:
-                              - type: string
-                              - type: integer
+                              type: string
                             type: object
                       annotations:
                         description: The annotations to be added to generated resources.
@@ -8481,6 +8487,8 @@ spec:
                         description: Selector which must match a Node's labels for
                           the Pod to be scheduled on that Node. See `kubectl explain
                           pods.spec.nodeSelector`.
+                        additionalProperties:
+                          type: string
                         type: object
                       volumeMounts:
                         description: Additional volume mounts for the container running
@@ -8662,15 +8670,11 @@ spec:
                               properties:
                                 requests:
                                   additionalProperties:
-                                    oneOf:
-                                    - type: string
-                                    - type: integer
+                                    type: string
                                   type: object
                                 limits:
                                   additionalProperties:
-                                    oneOf:
-                                    - type: string
-                                    - type: integer
+                                    type: string
                                   type: object
                             securityContext:
                               type: object
@@ -9294,15 +9298,11 @@ spec:
                               properties:
                                 requests:
                                   additionalProperties:
-                                    oneOf:
-                                    - type: string
-                                    - type: integer
+                                    type: string
                                   type: object
                                 limits:
                                   additionalProperties:
-                                    oneOf:
-                                    - type: string
-                                    - type: integer
+                                    type: string
                                   type: object
                             securityContext:
                               type: object
@@ -9907,6 +9907,8 @@ spec:
                                             - key
                                             - operator
                                         matchLabels:
+                                          additionalProperties:
+                                            type: string
                                           type: object
                                     topologyKey:
                                       type: string
@@ -9944,6 +9946,8 @@ spec:
                                                 - key
                                                 - operator
                                             matchLabels:
+                                              additionalProperties:
+                                                type: string
                                               type: object
                                         topologyKey:
                                           type: string
@@ -9986,6 +9990,8 @@ spec:
                                             - key
                                             - operator
                                         matchLabels:
+                                          additionalProperties:
+                                            type: string
                                           type: object
                                     topologyKey:
                                       type: string
@@ -10023,6 +10029,8 @@ spec:
                                                 - key
                                                 - operator
                                             matchLabels:
+                                              additionalProperties:
+                                                type: string
                                               type: object
                                         topologyKey:
                                           type: string

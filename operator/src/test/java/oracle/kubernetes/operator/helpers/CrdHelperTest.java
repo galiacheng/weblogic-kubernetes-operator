@@ -34,7 +34,6 @@ import oracle.kubernetes.operator.work.TerminalStep;
 import oracle.kubernetes.utils.TestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.meterware.simplestub.Stub.createStrictStub;
@@ -45,7 +44,6 @@ import static oracle.kubernetes.operator.logging.MessageKeys.CREATE_CRD_FAILED;
 import static oracle.kubernetes.operator.logging.MessageKeys.CREATING_CRD;
 import static oracle.kubernetes.operator.logging.MessageKeys.REPLACE_CRD_FAILED;
 import static oracle.kubernetes.utils.LogMatcher.containsInfo;
-import static org.hamcrest.Matchers.array;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
@@ -159,15 +157,7 @@ public class CrdHelperTest {
           getAdditionalPropertiesMap("spec", "adminServer", "adminService", "annotations"),
           hasEntry("type", "string"));
     assertThat(getAdditionalPropertiesMap("spec", "monitoringExporter", "configuration"), hasEntry("type", "object"));
-  }
-
-  @Test
-  @Disabled
-  void verifyKubernetesMapPropertiesSelected() {
-    assertThat(
-          getAdditionalPropertiesMap("spec", "serverPod", "resources", "limits"),
-          hasEntry("oneOf", array(hasEntry("type", "string"), hasEntry("type", "integer"))));
-
+    assertThat(getAdditionalPropertiesMap("spec", "serverPod", "resources", "limits"), hasEntry("type", "string"));
   }
 
   @SuppressWarnings({"ConstantConditions", "unchecked"})

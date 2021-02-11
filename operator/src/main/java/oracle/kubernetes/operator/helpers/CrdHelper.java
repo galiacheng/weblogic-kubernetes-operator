@@ -346,8 +346,7 @@ public class CrdHelper {
 
     static SchemaGenerator createSchemaGenerator() {
       SchemaGenerator generator = new SchemaGenerator();
-      generator.defineSubSchema(Quantity.class, Map.of("oneOf",
-            List.of(Map.of("type", "string"), Map.of("type", "integer"))));
+      generator.defineAdditionalProperties(Quantity.class, "string");
       generator.setForbidAdditionalProperties(false);
       generator.setSupportObjectReferences(false);
       generator.setIncludeSchemaReference(false);

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import io.kubernetes.client.custom.Quantity;
@@ -74,17 +73,19 @@ public class SchemaGeneratorTest {
   private SimpleObject simpleObject;
   
   @SuppressWarnings("unused")
-  @AdditionalProperties
   private Map<String,String> stringMap;
 
   @SuppressWarnings("unused")
   @AdditionalProperties
+  private Map<String,Object> annotatedObjectMap;
+
+  @SuppressWarnings("unused")
   private Map<String,Object> objectMap;
 
   @SuppressWarnings({"unused", "rawtypes"})
-  @AdditionalProperties
   private Map genericMap;
 
+  @SuppressWarnings("unused")
   private Map<String,SpecializedObject> specializedMap;
 
   @BeforeEach
@@ -335,7 +336,16 @@ public class SchemaGeneratorTest {
     generator.setSupportObjectReferences(false);
     Object schema = generateForField(getClass().getDeclaredField("objectMap"));
 
-    assertThat(schema, hasJsonPath("$.objectMap.additionalProperties.type", equalTo("object")));
+    assertThat(schema, hasJsonPath("$.objectMap.additionalProperties", equalTo("false")));
+  }
+
+  @Test
+  void whenFieldIsAnnotatedObjectMapAndNoObjectReferences_additionalPropertiesTypeMatchesField()
+        throws NoSuchFieldException {
+    generator.setSupportObjectReferences(false);
+    Object schema = generateForField(getClass().getDeclaredField("annotatedObjectMap"));
+
+    assertThat(schema, hasJsonPath("$.annotatedObjectMap.additionalProperties.type", equalTo("object")));
   }
 
 
@@ -430,12 +440,10 @@ public class SchemaGeneratorTest {
   @Test
   void useExternalSchemaItem() throws NoSuchFieldException {
     generator.setSupportObjectReferences(false);
-    generator.defineSubSchema(SpecializedObject.class,
-          Map.of("oneOf", List.of(Map.of("type", "string"), Map.of("type", "integer"))));
+    generator.defineAdditionalProperties(SpecializedObject.class, "string");
     Object schema = generateForField(getClass().getDeclaredField("specializedMap"));
 
-    assertThat(schema, hasJsonPath("$.specializedMap.additionalProperties.oneOf[0].type", equalTo("string")));
-    assertThat(schema, hasJsonPath("$.specializedMap.additionalProperties.oneOf[1].type", equalTo("integer")));
+    assertThat(schema, hasJsonPath("$.specializedMap.additionalProperties.type", equalTo("string")));
   }
 
   @SuppressWarnings("unused")

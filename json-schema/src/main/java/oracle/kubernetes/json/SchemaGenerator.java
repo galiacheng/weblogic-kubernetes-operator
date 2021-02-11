@@ -63,7 +63,7 @@ public class SchemaGenerator {
 
   // suppress descriptions for any contained packages
   private final Collection<String> suppressDescriptionForPackages = new ArrayList<>();
-  private final Map<Class<?>, Map<String, Object>> predefinedSchemas = new HashMap<>();
+  private final Map<Class<?>, String> additionalPropertiesTypes = new HashMap<>();
 
   /**
    * Returns a pretty-printed string corresponding to a generated schema.
@@ -499,8 +499,8 @@ public class SchemaGenerator {
     }
   }
 
-  public void defineSubSchema(Class<?> forClass, Map<String, Object> subSchema) {
-    predefinedSchemas.put(forClass, subSchema);
+  public void defineAdditionalProperties(Class<?> forClass, String additionalPropertyType) {
+    additionalPropertiesTypes.put(forClass, additionalPropertyType);
   }
 
   private class SubSchemaGenerator {
@@ -569,15 +569,26 @@ public class SchemaGenerator {
     }
 
     private void addMapValueType(Map<String, Object> result, Field field) {
-      Map<String, Object> additionalProperties = new HashMap<>();
 
       final Class<?> mapValueType = getMapValueType(field);
-      final Map<String, Object> subSchema = SchemaGenerator.this.predefinedSchemas.get(mapValueType);
-      if (subSchema != null) {
-        result.put("additionalProperties", subSchema);
-      } else if (field.getAnnotation(AdditionalProperties.class) != null) {
-        generateTypeIn(additionalProperties, mapValueType);
-        result.put("additionalProperties", additionalProperties);
+      final String type = additionalPropertiesTypes.get(mapValueType);
+
+      final boolean savedForbidAdditionalProperties = forbidAdditionalProperties;
+      forbidAdditionalProperties = false;
+      try {
+        Map<String, Object> additionalProperties = new HashMap<>();
+        if (type != null) {
+          additionalProperties.put("type", type);
+          result.put("additionalProperties", additionalProperties);
+        } else if (field.getAnnotation(AdditionalProperties.class) != null) {
+          generateTypeIn(additionalProperties, mapValueType);
+          result.put("additionalProperties", additionalProperties);
+        } else if (mapValueType == null || mapValueType.equals(String.class)) {
+          generateTypeIn(additionalProperties, String.class);
+          result.put("additionalProperties", additionalProperties);
+        }
+      } finally {
+        forbidAdditionalProperties = savedForbidAdditionalProperties;
       }
     }
 
