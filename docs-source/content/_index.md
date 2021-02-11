@@ -3,7 +3,7 @@
 Oracle is finding ways for organizations using WebLogic Server to run important workloads, to move those workloads into the cloud. By certifying on industry standards, such as Docker and Kubernetes, WebLogic now runs in a cloud neutral infrastructure. In addition, we've provided an open source Oracle WebLogic Server Kubernetes Operator (the “operator”) which has several key features to assist you with deploying and managing WebLogic domains in a Kubernetes environment. You can:
 
 * Create WebLogic domains in a Kubernetes PersistentVolume. This PersistentVolume can reside in an NFS file system or other Kubernetes volume types.
-* Create a WebLogic domain in a Docker image.
+* Create a WebLogic domain in a container image.
 * Override certain aspects of the WebLogic domain configuration.
 * Define WebLogic domains as a Kubernetes resource (using a Kubernetes custom resource definition).
 * Start servers based on declarative startup parameters and desired states.
@@ -23,12 +23,8 @@ using the operator to deploy and run a WebLogic domain container-packaged web ap
 ***
 #### Current production release
 
-The [current release of the operator](https://github.com/oracle/weblogic-kubernetes-operator/releases) is 3.1.0.
-This release was published on September ?, 2020. See the operator prerequisites and supported environments [here]({{< relref "/userguide/introduction/introduction#operator-prerequisites" >}}).
-
-This release introduces _non-backward compatible_ changes; however, operators using this release can be run in the same
-Kubernetes cluster as operators using the 2.6.0 version allowing for staged migration. You can replace a 2.6.0 operator with a 3.x operator without needing to recreate any existing domains; however, you must delete the 2.6.0 Helm release and then install the 3.x version rather than using a Helm upgrade. When the 3.x operator starts, it will roll any running WebLogic Server instances
-started by the 2.6.0 operator. See the operator upgrade guide [here]({{< relref "/userguide/managing-operators/installation/_index.md#upgrade-the-operator" >}}).
+The [current release of the operator](https://github.com/oracle/weblogic-kubernetes-operator/releases) is 3.2.0.
+This release was published on December ??, 2020. See the operator prerequisites and supported environments [here]({{< relref "/userguide/introduction/introduction#operator-prerequisites" >}}).
 
 ***
 

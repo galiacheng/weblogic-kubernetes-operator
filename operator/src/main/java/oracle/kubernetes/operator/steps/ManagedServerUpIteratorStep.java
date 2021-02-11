@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.steps;
@@ -24,10 +24,13 @@ import oracle.kubernetes.operator.helpers.PodHelper;
 import oracle.kubernetes.operator.helpers.ServiceHelper;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
+import oracle.kubernetes.operator.wlsconfig.WlsDomainConfig;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.weblogic.domain.model.Domain;
+
+import static oracle.kubernetes.operator.ProcessingConstants.DOMAIN_TOPOLOGY;
 
 /**
  * A step which will bring up the specified managed servers in parallel.
@@ -90,14 +93,15 @@ public class ManagedServerUpIteratorStep extends Step {
       work.add(
               new StepAndPacket(
                       new StartManagedServersStep(entry.getKey(), entry.getValue().getMaxConcurrency(),
-                              entry.getValue().getServerStartsStepAndPackets(), null), packet.clone()));
+                              entry.getValue().getServerStartsStepAndPackets(), null), packet.copy()));
     }
 
     if (!work.isEmpty()) {
-      return doForkJoin(DomainStatusUpdater.createStatusUpdateStep(getNext()), packet, work);
+      return doForkJoin(DomainStatusUpdater.createStatusUpdateStep(
+              new ManagedServerUpAfterStep(getNext())), packet, work);
     }
 
-    return doNext(DomainStatusUpdater.createStatusUpdateStep(getNext()), packet);
+    return doNext(DomainStatusUpdater.createStatusUpdateStep(new ManagedServerUpAfterStep(getNext())), packet);
   }
 
 
@@ -115,7 +119,7 @@ public class ManagedServerUpIteratorStep extends Step {
   }
 
   private Packet createPacketForServer(Packet packet, ServerStartupInfo ssi) {
-    Packet p = packet.clone();
+    Packet p = packet.copy();
     p.put(ProcessingConstants.CLUSTER_NAME, ssi.getClusterName());
     p.put(ProcessingConstants.SERVER_NAME, ssi.getName());
     p.put(ProcessingConstants.SERVER_SCAN, ssi.serverConfig);
@@ -145,7 +149,6 @@ public class ManagedServerUpIteratorStep extends Step {
   }
 
   static class StartManagedServersStep extends Step {
-    final Collection<StepAndPacket> startDetails;
     final Queue<StepAndPacket> startDetailsQueue = new ConcurrentLinkedQueue<>();
     final String clusterName;
     final int maxConcurrency;
@@ -154,7 +157,6 @@ public class ManagedServerUpIteratorStep extends Step {
     StartManagedServersStep(String clusterName, int maxConcurrency, Collection<StepAndPacket> startDetails, Step next) {
       super(next);
       this.clusterName = clusterName;
-      this.startDetails = startDetails;
       this.maxConcurrency = maxConcurrency;
       startDetails.forEach(this::add);
     }
@@ -167,8 +169,8 @@ public class ManagedServerUpIteratorStep extends Step {
     public NextAction apply(Packet packet) {
 
       if (startDetailsQueue.isEmpty()) {
-        return doNext(new ManagedServerUpAfterStep(getNext()), packet);
-      } else if (hasServerAvailableToStart(packet.getSpi(DomainPresenceInfo.class))) {
+        return doNext(packet);
+      } else if (hasServerAvailableToStart(packet)) {
         numStarted.getAndIncrement();
         return doForkJoin(this, packet, Collections.singletonList(startDetailsQueue.poll()));
       } else {
@@ -176,14 +178,27 @@ public class ManagedServerUpIteratorStep extends Step {
       }
     }
 
-    private boolean hasServerAvailableToStart(DomainPresenceInfo info) {
-      return ((numStarted.get() < info.getNumScheduledServers(clusterName))
-              && (canStartConcurrently(info.getNumReadyServers(clusterName))));
+    private boolean hasServerAvailableToStart(Packet packet) {
+      DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
+      String adminServerName = ((WlsDomainConfig) packet.get(DOMAIN_TOPOLOGY)).getAdminServerName();
+      return ((getNumServersStarted() <= info.getNumScheduledManagedServers(clusterName, adminServerName)
+              && (canStartConcurrently(info.getNumReadyManagedServers(clusterName, adminServerName)))));
     }
 
     private boolean canStartConcurrently(long numReady) {
-      return ((this.maxConcurrency > 0) && (numStarted.get() < (this.maxConcurrency + numReady - 1)))
-          || (this.maxConcurrency == 0);
+      return (ignoreConcurrencyLimits() || numNotReady(numReady) < this.maxConcurrency);
+    }
+
+    private long numNotReady(long numReady) {
+      return getNumServersStarted() - numReady;
+    }
+
+    private int getNumServersStarted() {
+      return numStarted.get();
+    }
+
+    private boolean ignoreConcurrencyLimits() {
+      return this.maxConcurrency == 0;
     }
   }
 

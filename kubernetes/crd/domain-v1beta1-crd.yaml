@@ -1,9 +1,11 @@
-# Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    weblogic.sha256: 6caf4a510d06a920feb2d5172d293c6c8e700c7ea188991e7c61a9044ab4631c
   name: domains.weblogic.oracle
 spec:
   group: weblogic.oracle
@@ -39,7 +41,7 @@ spec:
                     distributed to already running WebLogic Server instances following
                     introspection when the `domainHomeSourceType` is PersistentVolume
                     or Image. Configuration overrides are generated during introspection
-                    from Secrets, the `overrideConfigMap` field, and WebLogic domain
+                    from Secrets, the `overridesConfigMap` field, and WebLogic domain
                     topology. Legal values are DYNAMIC, which means that the operator
                     will distribute updated configuration overrides dynamically to
                     running servers, and ON_RESTART, which means that servers will
@@ -133,8 +135,7 @@ spec:
                 type: string
             imagePullSecrets:
               type: array
-              description: A list of image pull Secrets for the WebLogic container
-                image.
+              description: A list of image pull Secrets for the WebLogic Server image.
               items:
                 type: object
                 properties:
@@ -309,6 +310,15 @@ spec:
                               type: string
                         fsGroup:
                           type: number
+                        seccompProfile:
+                          type: object
+                          properties:
+                            localhostProfile:
+                              type: string
+                            type:
+                              type: string
+                          required:
+                          - type
                         windowsOptions:
                           type: object
                           properties:
@@ -406,6 +416,155 @@ spec:
                                 type: string
                             required:
                             - driver
+                          ephemeral:
+                            type: object
+                            properties:
+                              readOnly:
+                                type: boolean
+                              volumeClaimTemplate:
+                                type: object
+                                properties:
+                                  metadata:
+                                    type: object
+                                    properties:
+                                      generation:
+                                        type: number
+                                      finalizers:
+                                        type: array
+                                        items:
+                                          type: string
+                                      resourceVersion:
+                                        type: string
+                                      annotations:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                      generateName:
+                                        type: string
+                                      deletionTimestamp:
+                                        format: date-time
+                                        type: string
+                                      labels:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                      ownerReferences:
+                                        type: array
+                                        items:
+                                          type: object
+                                          properties:
+                                            uid:
+                                              type: string
+                                            controller:
+                                              type: boolean
+                                            apiVersion:
+                                              type: string
+                                            kind:
+                                              type: string
+                                            name:
+                                              type: string
+                                            blockOwnerDeletion:
+                                              type: boolean
+                                          required:
+                                          - apiVersion
+                                          - kind
+                                          - name
+                                          - uid
+                                      selfLink:
+                                        type: string
+                                      deletionGracePeriodSeconds:
+                                        type: number
+                                      uid:
+                                        type: string
+                                      managedFields:
+                                        type: array
+                                        items:
+                                          type: object
+                                          properties:
+                                            apiVersion:
+                                              type: string
+                                            fieldsV1:
+                                              type: object
+                                              properties: {}
+                                            manager:
+                                              type: string
+                                            time:
+                                              format: date-time
+                                              type: string
+                                            operation:
+                                              type: string
+                                            fieldsType:
+                                              type: string
+                                      clusterName:
+                                        type: string
+                                      creationTimestamp:
+                                        format: date-time
+                                        type: string
+                                      name:
+                                        type: string
+                                      namespace:
+                                        type: string
+                                  spec:
+                                    type: object
+                                    properties:
+                                      storageClassName:
+                                        type: string
+                                      volumeName:
+                                        type: string
+                                      resources:
+                                        type: object
+                                        properties:
+                                          requests:
+                                            additionalProperties:
+                                              type: string
+                                            type: object
+                                          limits:
+                                            additionalProperties:
+                                              type: string
+                                            type: object
+                                      selector:
+                                        type: object
+                                        properties:
+                                          matchExpressions:
+                                            type: array
+                                            items:
+                                              type: object
+                                              properties:
+                                                values:
+                                                  type: array
+                                                  items:
+                                                    type: string
+                                                key:
+                                                  type: string
+                                                operator:
+                                                  type: string
+                                              required:
+                                              - key
+                                              - operator
+                                          matchLabels:
+                                            additionalProperties:
+                                              type: string
+                                            type: object
+                                      accessModes:
+                                        type: array
+                                        items:
+                                          type: string
+                                      dataSource:
+                                        type: object
+                                        properties:
+                                          apiGroup:
+                                            type: string
+                                          kind:
+                                            type: string
+                                          name:
+                                            type: string
+                                        required:
+                                        - kind
+                                        - name
+                                      volumeMode:
+                                        type: string
+                                required:
+                                - spec
                           secret:
                             type: object
                             properties:
@@ -1256,6 +1415,15 @@ spec:
                                     type: string
                                   user:
                                     type: string
+                              seccompProfile:
+                                type: object
+                                properties:
+                                  localhostProfile:
+                                    type: string
+                                  type:
+                                    type: string
+                                required:
+                                - type
                               windowsOptions:
                                 type: object
                                 properties:
@@ -1716,6 +1884,15 @@ spec:
                               type: string
                             user:
                               type: string
+                        seccompProfile:
+                          type: object
+                          properties:
+                            localhostProfile:
+                              type: string
+                            type:
+                              type: string
+                          required:
+                          - type
                         windowsOptions:
                           type: object
                           properties:
@@ -1883,6 +2060,15 @@ spec:
                                     type: string
                                   user:
                                     type: string
+                              seccompProfile:
+                                type: object
+                                properties:
+                                  localhostProfile:
+                                    type: string
+                                  type:
+                                    type: string
+                                required:
+                                - type
                               windowsOptions:
                                 type: object
                                 properties:
@@ -2812,6 +2998,15 @@ spec:
                                 type: string
                           fsGroup:
                             type: number
+                          seccompProfile:
+                            type: object
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
                           windowsOptions:
                             type: object
                             properties:
@@ -2909,6 +3104,155 @@ spec:
                                   type: string
                               required:
                               - driver
+                            ephemeral:
+                              type: object
+                              properties:
+                                readOnly:
+                                  type: boolean
+                                volumeClaimTemplate:
+                                  type: object
+                                  properties:
+                                    metadata:
+                                      type: object
+                                      properties:
+                                        generation:
+                                          type: number
+                                        finalizers:
+                                          type: array
+                                          items:
+                                            type: string
+                                        resourceVersion:
+                                          type: string
+                                        annotations:
+                                          additionalProperties:
+                                            type: string
+                                          type: object
+                                        generateName:
+                                          type: string
+                                        deletionTimestamp:
+                                          format: date-time
+                                          type: string
+                                        labels:
+                                          additionalProperties:
+                                            type: string
+                                          type: object
+                                        ownerReferences:
+                                          type: array
+                                          items:
+                                            type: object
+                                            properties:
+                                              uid:
+                                                type: string
+                                              controller:
+                                                type: boolean
+                                              apiVersion:
+                                                type: string
+                                              kind:
+                                                type: string
+                                              name:
+                                                type: string
+                                              blockOwnerDeletion:
+                                                type: boolean
+                                            required:
+                                            - apiVersion
+                                            - kind
+                                            - name
+                                            - uid
+                                        selfLink:
+                                          type: string
+                                        deletionGracePeriodSeconds:
+                                          type: number
+                                        uid:
+                                          type: string
+                                        managedFields:
+                                          type: array
+                                          items:
+                                            type: object
+                                            properties:
+                                              apiVersion:
+                                                type: string
+                                              fieldsV1:
+                                                type: object
+                                                properties: {}
+                                              manager:
+                                                type: string
+                                              time:
+                                                format: date-time
+                                                type: string
+                                              operation:
+                                                type: string
+                                              fieldsType:
+                                                type: string
+                                        clusterName:
+                                          type: string
+                                        creationTimestamp:
+                                          format: date-time
+                                          type: string
+                                        name:
+                                          type: string
+                                        namespace:
+                                          type: string
+                                    spec:
+                                      type: object
+                                      properties:
+                                        storageClassName:
+                                          type: string
+                                        volumeName:
+                                          type: string
+                                        resources:
+                                          type: object
+                                          properties:
+                                            requests:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                            limits:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                        selector:
+                                          type: object
+                                          properties:
+                                            matchExpressions:
+                                              type: array
+                                              items:
+                                                type: object
+                                                properties:
+                                                  values:
+                                                    type: array
+                                                    items:
+                                                      type: string
+                                                  key:
+                                                    type: string
+                                                  operator:
+                                                    type: string
+                                                required:
+                                                - key
+                                                - operator
+                                            matchLabels:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                        accessModes:
+                                          type: array
+                                          items:
+                                            type: string
+                                        dataSource:
+                                          type: object
+                                          properties:
+                                            apiGroup:
+                                              type: string
+                                            kind:
+                                              type: string
+                                            name:
+                                              type: string
+                                          required:
+                                          - kind
+                                          - name
+                                        volumeMode:
+                                          type: string
+                                  required:
+                                  - spec
                             secret:
                               type: object
                               properties:
@@ -3762,6 +4106,15 @@ spec:
                                       type: string
                                     user:
                                       type: string
+                                seccompProfile:
+                                  type: object
+                                  properties:
+                                    localhostProfile:
+                                      type: string
+                                    type:
+                                      type: string
+                                  required:
+                                  - type
                                 windowsOptions:
                                   type: object
                                   properties:
@@ -4223,6 +4576,15 @@ spec:
                                 type: string
                               user:
                                 type: string
+                          seccompProfile:
+                            type: object
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
                           windowsOptions:
                             type: object
                             properties:
@@ -4390,6 +4752,15 @@ spec:
                                       type: string
                                     user:
                                       type: string
+                                seccompProfile:
+                                  type: object
+                                  properties:
+                                    localhostProfile:
+                                      type: string
+                                    type:
+                                      type: string
+                                  required:
+                                  - type
                                 windowsOptions:
                                   type: object
                                   properties:
@@ -5160,13 +5531,13 @@ spec:
               - ADMIN
             image:
               type: string
-              description: The WebLogic container image; required when `domainHomeSourceType`
+              description: The WebLogic Server image; required when `domainHomeSourceType`
                 is Image or FromModel; otherwise, defaults to container-registry.oracle.com/middleware/weblogic:12.2.1.4.
             imagePullPolicy:
               type: string
-              description: The image pull policy for the WebLogic container image.
-                Legal values are Always, Never, and IfNotPresent. Defaults to Always
-                if image ends in :latest; IfNotPresent, otherwise.
+              description: The image pull policy for the WebLogic Server image. Legal
+                values are Always, Never, and IfNotPresent. Defaults to Always if
+                image ends in :latest; IfNotPresent, otherwise.
               enum:
               - Always
               - Never
@@ -5221,6 +5592,16 @@ spec:
               - NEVER
               - IF_NEEDED
               - ADMIN_ONLY
+            livenessProbeCustomScript:
+              type: string
+              description: Full path of an optional liveness probe custom script for
+                WebLogic Server instance pods. The existing liveness probe script
+                `livenessProbe.sh` will invoke this custom script after the existing
+                script performs its own checks. This element is optional and is for
+                advanced usage only. Its value is not set by default. If the custom
+                script fails with non-zero exit status, then pod will fail the liveness
+                probe and Kubernetes will restart the container. If the script specified
+                by this element value is not found, then it is ignored.
             restartVersion:
               type: string
               description: 'Changes to this field cause the operator to restart WebLogic
@@ -5238,7 +5619,7 @@ spec:
                 For the FromModel `domainHomeSourceType`, introspection also occurs
                 when a running server must be restarted because of changes to any
                 of the fields listed here: https://oracle.github.io/weblogic-kubernetes-operator/userguide/managing-domains/domain-lifecycle/startup/#properties-that-cause-servers-to-be-restarted.
-                See also `domains.spec.configuration.overridesConfigurationStrategy`.'
+                See also `domains.spec.configuration.overrideDistributionStrategy`.'
             dataHome:
               type: string
               description: An optional directory in a server's container for data
@@ -5326,6 +5707,15 @@ spec:
                           type: string
                     fsGroup:
                       type: number
+                    seccompProfile:
+                      type: object
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                     windowsOptions:
                       type: object
                       properties:
@@ -5423,6 +5813,155 @@ spec:
                             type: string
                         required:
                         - driver
+                      ephemeral:
+                        type: object
+                        properties:
+                          readOnly:
+                            type: boolean
+                          volumeClaimTemplate:
+                            type: object
+                            properties:
+                              metadata:
+                                type: object
+                                properties:
+                                  generation:
+                                    type: number
+                                  finalizers:
+                                    type: array
+                                    items:
+                                      type: string
+                                  resourceVersion:
+                                    type: string
+                                  annotations:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  generateName:
+                                    type: string
+                                  deletionTimestamp:
+                                    format: date-time
+                                    type: string
+                                  labels:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  ownerReferences:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        uid:
+                                          type: string
+                                        controller:
+                                          type: boolean
+                                        apiVersion:
+                                          type: string
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                        blockOwnerDeletion:
+                                          type: boolean
+                                      required:
+                                      - apiVersion
+                                      - kind
+                                      - name
+                                      - uid
+                                  selfLink:
+                                    type: string
+                                  deletionGracePeriodSeconds:
+                                    type: number
+                                  uid:
+                                    type: string
+                                  managedFields:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        apiVersion:
+                                          type: string
+                                        fieldsV1:
+                                          type: object
+                                          properties: {}
+                                        manager:
+                                          type: string
+                                        time:
+                                          format: date-time
+                                          type: string
+                                        operation:
+                                          type: string
+                                        fieldsType:
+                                          type: string
+                                  clusterName:
+                                    type: string
+                                  creationTimestamp:
+                                    format: date-time
+                                    type: string
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                              spec:
+                                type: object
+                                properties:
+                                  storageClassName:
+                                    type: string
+                                  volumeName:
+                                    type: string
+                                  resources:
+                                    type: object
+                                    properties:
+                                      requests:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                      limits:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                  selector:
+                                    type: object
+                                    properties:
+                                      matchExpressions:
+                                        type: array
+                                        items:
+                                          type: object
+                                          properties:
+                                            values:
+                                              type: array
+                                              items:
+                                                type: string
+                                            key:
+                                              type: string
+                                            operator:
+                                              type: string
+                                          required:
+                                          - key
+                                          - operator
+                                      matchLabels:
+                                        additionalProperties:
+                                          type: string
+                                        type: object
+                                  accessModes:
+                                    type: array
+                                    items:
+                                      type: string
+                                  dataSource:
+                                    type: object
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                  volumeMode:
+                                    type: string
+                            required:
+                            - spec
                       secret:
                         type: object
                         properties:
@@ -6273,6 +6812,15 @@ spec:
                                 type: string
                               user:
                                 type: string
+                          seccompProfile:
+                            type: object
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
                           windowsOptions:
                             type: object
                             properties:
@@ -6733,6 +7281,15 @@ spec:
                           type: string
                         user:
                           type: string
+                    seccompProfile:
+                      type: object
+                      properties:
+                        localhostProfile:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
                     windowsOptions:
                       type: object
                       properties:
@@ -6900,6 +7457,15 @@ spec:
                                 type: string
                               user:
                                 type: string
+                          seccompProfile:
+                            type: object
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
                           windowsOptions:
                             type: object
                             properties:
@@ -7723,6 +8289,15 @@ spec:
                                 type: string
                           fsGroup:
                             type: number
+                          seccompProfile:
+                            type: object
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
                           windowsOptions:
                             type: object
                             properties:
@@ -7820,6 +8395,155 @@ spec:
                                   type: string
                               required:
                               - driver
+                            ephemeral:
+                              type: object
+                              properties:
+                                readOnly:
+                                  type: boolean
+                                volumeClaimTemplate:
+                                  type: object
+                                  properties:
+                                    metadata:
+                                      type: object
+                                      properties:
+                                        generation:
+                                          type: number
+                                        finalizers:
+                                          type: array
+                                          items:
+                                            type: string
+                                        resourceVersion:
+                                          type: string
+                                        annotations:
+                                          additionalProperties:
+                                            type: string
+                                          type: object
+                                        generateName:
+                                          type: string
+                                        deletionTimestamp:
+                                          format: date-time
+                                          type: string
+                                        labels:
+                                          additionalProperties:
+                                            type: string
+                                          type: object
+                                        ownerReferences:
+                                          type: array
+                                          items:
+                                            type: object
+                                            properties:
+                                              uid:
+                                                type: string
+                                              controller:
+                                                type: boolean
+                                              apiVersion:
+                                                type: string
+                                              kind:
+                                                type: string
+                                              name:
+                                                type: string
+                                              blockOwnerDeletion:
+                                                type: boolean
+                                            required:
+                                            - apiVersion
+                                            - kind
+                                            - name
+                                            - uid
+                                        selfLink:
+                                          type: string
+                                        deletionGracePeriodSeconds:
+                                          type: number
+                                        uid:
+                                          type: string
+                                        managedFields:
+                                          type: array
+                                          items:
+                                            type: object
+                                            properties:
+                                              apiVersion:
+                                                type: string
+                                              fieldsV1:
+                                                type: object
+                                                properties: {}
+                                              manager:
+                                                type: string
+                                              time:
+                                                format: date-time
+                                                type: string
+                                              operation:
+                                                type: string
+                                              fieldsType:
+                                                type: string
+                                        clusterName:
+                                          type: string
+                                        creationTimestamp:
+                                          format: date-time
+                                          type: string
+                                        name:
+                                          type: string
+                                        namespace:
+                                          type: string
+                                    spec:
+                                      type: object
+                                      properties:
+                                        storageClassName:
+                                          type: string
+                                        volumeName:
+                                          type: string
+                                        resources:
+                                          type: object
+                                          properties:
+                                            requests:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                            limits:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                        selector:
+                                          type: object
+                                          properties:
+                                            matchExpressions:
+                                              type: array
+                                              items:
+                                                type: object
+                                                properties:
+                                                  values:
+                                                    type: array
+                                                    items:
+                                                      type: string
+                                                  key:
+                                                    type: string
+                                                  operator:
+                                                    type: string
+                                                required:
+                                                - key
+                                                - operator
+                                            matchLabels:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                        accessModes:
+                                          type: array
+                                          items:
+                                            type: string
+                                        dataSource:
+                                          type: object
+                                          properties:
+                                            apiGroup:
+                                              type: string
+                                            kind:
+                                              type: string
+                                            name:
+                                              type: string
+                                          required:
+                                          - kind
+                                          - name
+                                        volumeMode:
+                                          type: string
+                                  required:
+                                  - spec
                             secret:
                               type: object
                               properties:
@@ -8673,6 +9397,15 @@ spec:
                                       type: string
                                     user:
                                       type: string
+                                seccompProfile:
+                                  type: object
+                                  properties:
+                                    localhostProfile:
+                                      type: string
+                                    type:
+                                      type: string
+                                  required:
+                                  - type
                                 windowsOptions:
                                   type: object
                                   properties:
@@ -9134,6 +9867,15 @@ spec:
                                 type: string
                               user:
                                 type: string
+                          seccompProfile:
+                            type: object
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            required:
+                            - type
                           windowsOptions:
                             type: object
                             properties:
@@ -9301,6 +10043,15 @@ spec:
                                       type: string
                                     user:
                                       type: string
+                                seccompProfile:
+                                  type: object
+                                  properties:
+                                    localhostProfile:
+                                      type: string
+                                    type:
+                                      type: string
+                                  required:
+                                  - type
                                 windowsOptions:
                                   type: object
                                   properties:

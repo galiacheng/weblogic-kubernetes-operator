@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator;
@@ -10,6 +10,7 @@ public interface ProcessingConstants {
   String DOMAIN_COMPONENT_NAME = "domain";
   String FIBER_COMPONENT_NAME = "fiber";
   String PODWATCHER_COMPONENT_NAME = "podWatcher";
+  String JOBWATCHER_COMPONENT_NAME = "jobWatcher";
 
   /** key to an object of type WlsServerConfig. */
   String SERVER_SCAN = "serverScan";
@@ -33,7 +34,7 @@ public interface ProcessingConstants {
 
   String ENCODED_CREDENTIALS = "encodedCredentials";
   String DOMAIN_VALIDATION_ERRORS = "domainValidationErrors";
-  String INTROSPECTOR_JOB_FAILURE_LOGGED = "introspectorJobfailureLogged";
+  String INTROSPECTOR_JOB_FAILURE_LOGGED = "introspectorJobFailureLogged";
   String WAIT_FOR_POD_READY = "waitForPodReady";
 
   /** Key to an object of type MakeRightDomainOperation. */
@@ -42,4 +43,16 @@ public interface ProcessingConstants {
   /** Field selectors to filter the events the operator will watch. */
   String READINESS_PROBE_FAILURE_EVENT_FILTER =
       "reason=Unhealthy,type=Warning,involvedObject.fieldPath=spec.containers{weblogic-server}";
+
+  String EVENT_TYPE = "eventType";
+  String FATAL_INTROSPECTOR_ERROR = "FatalIntrospectorError";
+
+  String EXCEEDED_INTROSPECTOR_MAX_RETRY_COUNT_ERROR_MSG = "Stop introspection retry - "
+      + "exceeded configured domainPresenceFailureRetryMaxCount: "
+      + DomainPresence.getDomainPresenceFailureRetryMaxCount()
+      + " The domainPresenceFailureRetryMaxCount is an operator tuning parameter and can be controlled"
+      + " by adding it to the weblogic-operator-cm configmap.";
+
+  String FATAL_INTROSPECTOR_ERROR_MSG = "Stop introspection retry - MII Fatal Error: ";
+  String DOMAIN_EVENT_LABEL_FILTER = LabelConstants.getCreatedByOperatorSelector();
 }

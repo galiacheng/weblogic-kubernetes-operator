@@ -1,4 +1,4 @@
-// Copyright (c) 2019, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.utils;
@@ -8,8 +8,9 @@ import org.joda.time.DateTime;
 /** A wrapper for the system clock that facilitates unit testing of time. */
 public abstract class SystemClock {
 
-  private static SystemClock DELEGATE =
-      new SystemClock() {
+  // Leave as non-final; unit tests may replace this value
+  @SuppressWarnings({"FieldMayBeFinal", "CanBeFinal"})
+  private static SystemClock DELEGATE = new SystemClock() {
         @Override
         public DateTime getCurrentTime() {
           return DateTime.now();

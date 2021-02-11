@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.actions.impl;
@@ -68,12 +68,14 @@ public class Domain {
    * Create a domain custom resource.
    *
    * @param domain Domain custom resource model object
+   * @param domainVersion custom resource's version
    * @return true on success, false otherwise
    * @throws ApiException if Kubernetes client API call fails
    */
-  public static boolean createDomainCustomResource(oracle.weblogic.domain.Domain domain) throws ApiException {
-    return Kubernetes.createDomainCustomResource(domain);
-  }
+  public static boolean createDomainCustomResource(oracle.weblogic.domain.Domain domain,
+                                                   String... domainVersion) throws ApiException {
+    return Kubernetes.createDomainCustomResource(domain, domainVersion);
+  }   
 
   /**
    * List all Custom Resource Domains in a namespace.
@@ -418,7 +420,7 @@ public class Domain {
                 condition.getRemainingTimeInMS()))
         .until(() -> {
           return copyFileToPod(domainNamespace, adminServerPodName, null,
-              Paths.get(PROJECT_ROOT + "/../src/scripts/scaling/scalingAction.sh"),
+              Paths.get(PROJECT_ROOT + "/../operator/scripts/scaling/scalingAction.sh"),
               Paths.get(domainHomeLocation + "/bin/scripts/scalingAction.sh"));
         });
 
@@ -544,6 +546,21 @@ public class Domain {
   }
 
   /**
+   * Get current introspectVersion for a given domain.
+   *
+   * @param domainUid domain id
+   * @param namespace namespace in which the domain resource exists
+   * @return String containing current introspectVersion
+   * @throws ApiException when getting domain resource fails
+   */
+  public static String getCurrentIntrospectVersion(String domainUid, String namespace) throws ApiException {
+    oracle.weblogic.domain.Domain domain = getDomainCustomResource(domainUid, namespace);
+    String introspectVersion = domain.getSpec().getIntrospectVersion();
+
+    return introspectVersion;
+  }
+
+  /**
    * Create cluster role, cluster role binding and role binding used by WLDF script action.
    *
    * @param domainNamespace WebLogic domain namespace
@@ -566,6 +583,7 @@ public class Domain {
               .addResourcesItem("domains")
               .addVerbsItem("get")
               .addVerbsItem("list")
+              .addVerbsItem("patch")
               .addVerbsItem("update"))
           .addRulesItem(new V1PolicyRule()
               .addApiGroupsItem("apiextensions.k8s.io")

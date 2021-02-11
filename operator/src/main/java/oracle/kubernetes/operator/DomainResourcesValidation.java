@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator;
@@ -14,7 +14,10 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1Service;
 import io.kubernetes.client.openapi.models.V1ServiceList;
+import io.kubernetes.client.openapi.models.V1beta1PodDisruptionBudget;
+import io.kubernetes.client.openapi.models.V1beta1PodDisruptionBudgetList;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
+import oracle.kubernetes.operator.helpers.PodDisruptionBudgetHelper;
 import oracle.kubernetes.operator.helpers.PodHelper;
 import oracle.kubernetes.operator.helpers.ServiceHelper;
 import oracle.kubernetes.operator.work.Packet;
@@ -46,6 +49,11 @@ class DomainResourcesValidation {
       @Override
       Consumer<V1ServiceList> getServiceListProcessing() {
         return l -> addServiceList(l);
+      }
+
+      @Override
+      Consumer<V1beta1PodDisruptionBudgetList> getPodDisruptionBudgetListProcessing() {
+        return l -> addPodDisruptionBudgetList(l);
       }
 
       @Override
@@ -86,6 +94,17 @@ class DomainResourcesValidation {
     String domainUid = ServiceHelper.getServiceDomainUid(service);
     if (domainUid != null) {
       ServiceHelper.addToPresence(getDomainPresenceInfo(domainUid), service);
+    }
+  }
+
+  private void addPodDisruptionBudgetList(V1beta1PodDisruptionBudgetList list) {
+    list.getItems().forEach(this::addPodDisruptionBudget);
+  }
+
+  private void addPodDisruptionBudget(V1beta1PodDisruptionBudget pdb) {
+    String domainUid = PodDisruptionBudgetHelper.getDomainUid(pdb);
+    if (domainUid != null) {
+      PodDisruptionBudgetHelper.addToPresence(getDomainPresenceInfo(domainUid), pdb);
     }
   }
 

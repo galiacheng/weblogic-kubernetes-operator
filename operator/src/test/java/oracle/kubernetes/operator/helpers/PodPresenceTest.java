@@ -1,4 +1,4 @@
-// Copyright (c) 2019, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -30,9 +30,9 @@ import oracle.kubernetes.utils.TestUtils;
 import oracle.kubernetes.weblogic.domain.model.Domain;
 import org.hamcrest.junit.MatcherAssert;
 import org.joda.time.DateTime;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static oracle.kubernetes.operator.DomainProcessorTestSetup.NS;
 import static oracle.kubernetes.operator.DomainProcessorTestSetup.UID;
@@ -60,25 +60,21 @@ public class PodPresenceTest {
   private static final String POD_NAME = SERVER;
   private static final String RESOURCE_VERSION = "1233489";
   private static final String ADMIN_SERVER_NAME = "admin";
-  private DomainPresenceInfo info = new DomainPresenceInfo(NS, UID);
-  private List<Memento> mementos = new ArrayList<>();
-  private Map<String, Map<String, DomainPresenceInfo>> domains = new HashMap<>();
-  private KubernetesTestSupport testSupport = new KubernetesTestSupport();
-  private DomainProcessorImpl processor =
+  private final DomainPresenceInfo info = new DomainPresenceInfo(NS, UID);
+  private final List<Memento> mementos = new ArrayList<>();
+  private final Map<String, Map<String, DomainPresenceInfo>> domains = new HashMap<>();
+  private final KubernetesTestSupport testSupport = new KubernetesTestSupport();
+  private final DomainProcessorImpl processor =
       new DomainProcessorImpl(DomainProcessorDelegateStub.createDelegate(testSupport));
   private long clock;
-  private Packet packet = new Packet();
-  private V1Pod pod =
+  private final Packet packet = new Packet();
+  private final V1Pod pod =
       new V1Pod()
           .metadata(
               KubernetesUtils.withOperatorLabels(
                   "uid", new V1ObjectMeta().name(POD_NAME).namespace(NS)));
 
-  /**
-   * Setup test.
-   * @throws Exception on failure
-   */
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     mementos.add(TestUtils.silenceOperatorLogger());
     mementos.add(testSupport.install());
@@ -99,8 +95,7 @@ public class PodPresenceTest {
         new WlsDomainConfigSupport(UID).withAdminServerName(ADMIN_SERVER_NAME);
     configSupport.addWlsServer("admin", 8001);
     configSupport.addWlsServer(SERVER, 7001);
-    new DomainProcessorTestSetup(testSupport)
-        .defineKubernetesResources(configSupport.createDomainConfig());
+    IntrospectionTestUtils.defineResources(testSupport, configSupport.createDomainConfig());
 
     packet.put(DOMAIN_TOPOLOGY, configSupport.createDomainConfig());
     packet.put(CLUSTER_NAME, CLUSTER);
@@ -117,14 +112,9 @@ public class PodPresenceTest {
     info.setDeleting(false);
   }
 
-  /**
-   * Tear down test.
-   */
-  @After
+  @AfterEach
   public void tearDown() {
-    for (Memento memento : mementos) {
-      memento.revert();
-    }
+    mementos.forEach(Memento::revert);
   }
 
   @Test
@@ -195,12 +185,14 @@ public class PodPresenceTest {
     MatcherAssert.assertThat(PodHelper.isFailed(pod), is(true));
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   public void whenPodHasNoDomainUid_returnNull() {
     pod.getMetadata().getLabels().remove(DOMAINUID_LABEL);
     MatcherAssert.assertThat(PodHelper.getPodDomainUid(pod), nullValue());
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   public void whenPodHasDomainUid_returnIt() {
     pod.getMetadata().labels(ImmutableMap.of(DOMAINUID_LABEL, "domain1"));
@@ -213,6 +205,7 @@ public class PodPresenceTest {
     MatcherAssert.assertThat(PodHelper.getPodServerName(pod), nullValue());
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Test
   public void whenPodHasServerName_returnIt() {
     pod.getMetadata().labels(ImmutableMap.of(SERVERNAME_LABEL, "myserver"));
@@ -334,7 +327,7 @@ public class PodPresenceTest {
   @Test
   public void onDeleteEventWithNoRecordedServerPod_ignoreIt() {
     V1Pod service = createServerPod();
-    Watch.Response<V1Pod> event = WatchEvent.createDeleteEvent(service).toWatchResponse();
+    Watch.Response<V1Pod> event = WatchEvent.createDeletedEvent(service).toWatchResponse();
 
     processor.dispatchPodWatch(event);
 
@@ -346,7 +339,7 @@ public class PodPresenceTest {
     V1Pod oldPod = createServerPod();
     V1Pod currentPod = createServerPod();
     info.setServerPod(SERVER, currentPod);
-    Watch.Response<V1Pod> event = WatchEvent.createDeleteEvent(oldPod).toWatchResponse();
+    Watch.Response<V1Pod> event = WatchEvent.createDeletedEvent(oldPod).toWatchResponse();
 
     processor.dispatchPodWatch(event);
 
@@ -357,7 +350,7 @@ public class PodPresenceTest {
   public void onDeleteEventWithSameServerPod_removeIt() {
     V1Pod currentPod = createServerPod();
     info.setServerPod(SERVER, currentPod);
-    Watch.Response<V1Pod> event = WatchEvent.createDeleteEvent(currentPod).toWatchResponse();
+    Watch.Response<V1Pod> event = WatchEvent.createDeletedEvent(currentPod).toWatchResponse();
 
     processor.dispatchPodWatch(event);
 
@@ -369,7 +362,7 @@ public class PodPresenceTest {
     V1Pod currentPod = createServerPod();
     V1Pod newerPod = createServerPod();
     info.setServerPod(SERVER, currentPod);
-    Watch.Response<V1Pod> event = WatchEvent.createDeleteEvent(newerPod).toWatchResponse();
+    Watch.Response<V1Pod> event = WatchEvent.createDeletedEvent(newerPod).toWatchResponse();
 
     processor.dispatchPodWatch(event);
 
@@ -381,7 +374,7 @@ public class PodPresenceTest {
     V1Pod currentPod = createServerPod();
     V1Pod newerPod = createServerPod();
     info.setServerPod(SERVER, currentPod);
-    Watch.Response<V1Pod> event = WatchEvent.createDeleteEvent(newerPod).toWatchResponse();
+    Watch.Response<V1Pod> event = WatchEvent.createDeletedEvent(newerPod).toWatchResponse();
 
     processor.dispatchPodWatch(event);
 
@@ -394,7 +387,7 @@ public class PodPresenceTest {
     V1Pod currentPod = createServerPod();
     V1Pod newerPod = createServerPod();
     info.setServerPod(SERVER, currentPod);
-    Watch.Response<V1Pod> event = WatchEvent.createDeleteEvent(newerPod).toWatchResponse();
+    Watch.Response<V1Pod> event = WatchEvent.createDeletedEvent(newerPod).toWatchResponse();
 
     processor.dispatchPodWatch(event);
 
@@ -405,6 +398,7 @@ public class PodPresenceTest {
     return withTimeAndVersion(PodHelper.createManagedServerPodModel(packet));
   }
 
+  @SuppressWarnings("ConstantConditions")
   private V1Pod withTimeAndVersion(V1Pod pod) {
     pod.getMetadata().creationTimestamp(getDateTime()).resourceVersion(RESOURCE_VERSION);
     return pod;

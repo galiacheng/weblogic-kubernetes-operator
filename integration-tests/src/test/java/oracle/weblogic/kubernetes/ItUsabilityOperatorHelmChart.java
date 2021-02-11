@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -79,6 +79,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithU
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.dockerLoginAndPushImageToRegistry;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.getExternalServicePodName;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.upgradeAndVerifyOperator;
 import static oracle.weblogic.kubernetes.utils.ExecCommand.exec;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
@@ -817,7 +818,7 @@ class ItUsabilityOperatorHelmChart {
                 .model(new Model()
                     .domainType(WLS_DOMAIN_TYPE)
                     .runtimeEncryptionSecret(encryptionSecretName))));
-
+    setPodAntiAffinity(domain);
     // create model in image domain
     logger.info("Creating model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, domainNamespace, miiImage);

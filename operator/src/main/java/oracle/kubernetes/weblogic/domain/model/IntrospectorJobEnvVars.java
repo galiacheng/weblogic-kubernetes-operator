@@ -1,4 +1,4 @@
-// Copyright (c) 2019, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.weblogic.domain.model;
@@ -34,11 +34,6 @@ public class IntrospectorJobEnvVars {
    * The credentials used by the introspection job - opss wallet file.
    */
   public static final String OPSS_WALLETFILE_SECRET_NAME = "OPSS_WALLETFILE_SECRET_NAME";
-
-  /**
-   * The credentials used by the introspection job - wdt encryption passphrase.
-   */
-  public static final String WDT_ENCRYPTION_PASSPHRASE_NAME = "WDT_ENCRYPTION_PASSPHRASE_NAME";
 
   /**
    * The credentials used by the introspection job - runtime encryption secret name.

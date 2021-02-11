@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -14,7 +14,7 @@ import oracle.kubernetes.operator.logging.MessageKeys;
 /** Delegate authentication decisions to Kubernetes. */
 public class AuthenticationProxy {
   private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
-
+  @SuppressWarnings({"FieldMayBeFinal", "CanBeFinal"})
   private static AuthorizationProxy authorizationProxy = new AuthorizationProxy();
 
   /**
@@ -22,6 +22,7 @@ public class AuthenticationProxy {
    *
    * @param principal The user, group or service account.
    * @param token The access token that identifies the user.
+   * @param namespace Namespace
    * @return V1TokenReviewStatus containing either info about the authenticated user or an error
    *     explaining why the user couldn't be authenticated
    */

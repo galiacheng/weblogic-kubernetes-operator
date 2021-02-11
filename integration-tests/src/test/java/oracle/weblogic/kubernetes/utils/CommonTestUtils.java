@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.utils;
@@ -19,10 +19,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.google.gson.JsonObject;
 import io.kubernetes.client.custom.Quantity;
+import io.kubernetes.client.custom.V1Patch;
 import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.models.V1Affinity;
 import io.kubernetes.client.openapi.models.V1ConfigMap;
 import io.kubernetes.client.openapi.models.V1ConfigMapVolumeSource;
 import io.kubernetes.client.openapi.models.V1Container;
@@ -31,7 +34,10 @@ import io.kubernetes.client.openapi.models.V1HostPathVolumeSource;
 import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobCondition;
 import io.kubernetes.client.openapi.models.V1JobSpec;
+import io.kubernetes.client.openapi.models.V1LabelSelector;
+import io.kubernetes.client.openapi.models.V1LabelSelectorRequirement;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
+import io.kubernetes.client.openapi.models.V1NFSVolumeSource;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1ObjectReference;
 import io.kubernetes.client.openapi.models.V1PersistentVolume;
@@ -40,6 +46,8 @@ import io.kubernetes.client.openapi.models.V1PersistentVolumeClaimSpec;
 import io.kubernetes.client.openapi.models.V1PersistentVolumeClaimVolumeSource;
 import io.kubernetes.client.openapi.models.V1PersistentVolumeSpec;
 import io.kubernetes.client.openapi.models.V1Pod;
+import io.kubernetes.client.openapi.models.V1PodAffinityTerm;
+import io.kubernetes.client.openapi.models.V1PodAntiAffinity;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1PodTemplateSpec;
 import io.kubernetes.client.openapi.models.V1ResourceRequirements;
@@ -50,7 +58,10 @@ import io.kubernetes.client.openapi.models.V1ServiceAccount;
 import io.kubernetes.client.openapi.models.V1ServiceAccountList;
 import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
+import io.kubernetes.client.openapi.models.V1WeightedPodAffinityTerm;
+import oracle.weblogic.domain.Cluster;
 import oracle.weblogic.domain.Domain;
+import oracle.weblogic.domain.ServerPod;
 import oracle.weblogic.kubernetes.TestConstants;
 import oracle.weblogic.kubernetes.actions.TestActions;
 import oracle.weblogic.kubernetes.actions.impl.ApacheParams;
@@ -71,9 +82,12 @@ import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import org.awaitility.core.ConditionFactory;
 import org.joda.time.DateTime;
 
+import static java.nio.file.Files.createDirectories;
 import static java.nio.file.Files.readString;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static oracle.weblogic.kubernetes.TestConstants.ADMIN_PASSWORD_DEFAULT;
+import static oracle.weblogic.kubernetes.TestConstants.ADMIN_USERNAME_DEFAULT;
 import static oracle.weblogic.kubernetes.TestConstants.APACHE_RELEASE_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.APACHE_SAMPLE_CHART_DIR;
 import static oracle.weblogic.kubernetes.TestConstants.APPSCODE_REPO_NAME;
@@ -89,7 +103,10 @@ import static oracle.weblogic.kubernetes.TestConstants.ELASTICSEARCH_HTTP_PORT;
 import static oracle.weblogic.kubernetes.TestConstants.ELASTICSEARCH_IMAGE;
 import static oracle.weblogic.kubernetes.TestConstants.ELASTICSEARCH_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.ELKSTACK_NAMESPACE;
+import static oracle.weblogic.kubernetes.TestConstants.FSS_DIR;
 import static oracle.weblogic.kubernetes.TestConstants.GEN_EXTERNAL_REST_IDENTITY_FILE;
+import static oracle.weblogic.kubernetes.TestConstants.GRAFANA_REPO_NAME;
+import static oracle.weblogic.kubernetes.TestConstants.GRAFANA_REPO_URL;
 import static oracle.weblogic.kubernetes.TestConstants.JAVA_LOGGING_LEVEL_VALUE;
 import static oracle.weblogic.kubernetes.TestConstants.K8S_NODEPORT_HOST;
 import static oracle.weblogic.kubernetes.TestConstants.KIBANA_IMAGE;
@@ -97,6 +114,7 @@ import static oracle.weblogic.kubernetes.TestConstants.KIBANA_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.KIBANA_PORT;
 import static oracle.weblogic.kubernetes.TestConstants.KIBANA_TYPE;
 import static oracle.weblogic.kubernetes.TestConstants.LOGSTASH_IMAGE;
+import static oracle.weblogic.kubernetes.TestConstants.NFS_SERVER;
 import static oracle.weblogic.kubernetes.TestConstants.NGINX_CHART_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.NGINX_CHART_VERSION;
 import static oracle.weblogic.kubernetes.TestConstants.NGINX_RELEASE_NAME;
@@ -112,6 +130,7 @@ import static oracle.weblogic.kubernetes.TestConstants.OCR_PASSWORD;
 import static oracle.weblogic.kubernetes.TestConstants.OCR_REGISTRY;
 import static oracle.weblogic.kubernetes.TestConstants.OCR_SECRET_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.OCR_USERNAME;
+import static oracle.weblogic.kubernetes.TestConstants.OKE_CLUSTER;
 import static oracle.weblogic.kubernetes.TestConstants.OPERATOR_CHART_DIR;
 import static oracle.weblogic.kubernetes.TestConstants.OPERATOR_RELEASE_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.PROMETHEUS_REPO_NAME;
@@ -129,7 +148,9 @@ import static oracle.weblogic.kubernetes.TestConstants.VOYAGER_RELEASE_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.WDT_IMAGE_DOMAINHOME_BASE_DIR;
 import static oracle.weblogic.kubernetes.TestConstants.WEBLOGIC_IMAGE_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.WEBLOGIC_IMAGE_TAG;
+import static oracle.weblogic.kubernetes.TestConstants.WEBLOGIC_IMAGE_TO_USE_IN_SPEC;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.ARCHIVE_DIR;
+import static oracle.weblogic.kubernetes.actions.ActionConstants.ITTESTS_DIR;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.MODEL_DIR;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.WDT_VERSION;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.WIT_BUILD_DIR;
@@ -168,6 +189,7 @@ import static oracle.weblogic.kubernetes.actions.TestActions.installTraefik;
 import static oracle.weblogic.kubernetes.actions.TestActions.installVoyager;
 import static oracle.weblogic.kubernetes.actions.TestActions.listIngresses;
 import static oracle.weblogic.kubernetes.actions.TestActions.listPods;
+import static oracle.weblogic.kubernetes.actions.TestActions.patchDomainCustomResource;
 import static oracle.weblogic.kubernetes.actions.TestActions.scaleCluster;
 import static oracle.weblogic.kubernetes.actions.TestActions.scaleClusterWithRestApi;
 import static oracle.weblogic.kubernetes.actions.TestActions.scaleClusterWithWLDF;
@@ -176,6 +198,8 @@ import static oracle.weblogic.kubernetes.actions.TestActions.uninstallGrafana;
 import static oracle.weblogic.kubernetes.actions.TestActions.uninstallKibana;
 import static oracle.weblogic.kubernetes.actions.TestActions.upgradeOperator;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.listSecrets;
+import static oracle.weblogic.kubernetes.assertions.TestAssertions.appAccessibleInPod;
+import static oracle.weblogic.kubernetes.assertions.TestAssertions.checkHelmReleaseRevision;
 import static oracle.weblogic.kubernetes.assertions.TestAssertions.credentialsNotValid;
 import static oracle.weblogic.kubernetes.assertions.TestAssertions.credentialsValid;
 import static oracle.weblogic.kubernetes.assertions.TestAssertions.doesImageExist;
@@ -208,6 +232,7 @@ import static oracle.weblogic.kubernetes.utils.TestUtils.callWebAppAndCheckForSe
 import static oracle.weblogic.kubernetes.utils.TestUtils.callWebAppAndWaitTillReady;
 import static oracle.weblogic.kubernetes.utils.TestUtils.getNextFreePort;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
+import static org.apache.commons.io.FileUtils.deleteDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.with;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -1050,15 +1075,13 @@ public class CommonTestUtils {
    *
    * @param filter the value of weblogicLoggingExporterFilters to be added to WebLogic Logging Exporter YAML file
    * @param wlsLoggingExporterYamlFileLoc the directory where WebLogic Logging Exporter YAML file stores
-   * @param wlsLoggingExporterArchiveLoc the directory where WebLogic Logging Exporter jar files store
    * @return true if WebLogic Logging Exporter is successfully installed, false otherwise.
    */
   public static boolean installAndVerifyWlsLoggingExporter(String filter,
-                                                           String wlsLoggingExporterYamlFileLoc,
-                                                           String wlsLoggingExporterArchiveLoc) {
+                                                           String wlsLoggingExporterYamlFileLoc) {
     // Install WebLogic Logging Exporter
     assertThat(TestActions.installWlsLoggingExporter(filter,
-        wlsLoggingExporterYamlFileLoc, wlsLoggingExporterArchiveLoc))
+        wlsLoggingExporterYamlFileLoc))
         .as("WebLogic Logging Exporter installation succeeds")
         .withFailMessage("WebLogic Logging Exporter installation failed")
         .isTrue();
@@ -1139,8 +1162,13 @@ public class CommonTestUtils {
    *
    * @param domain the oracle.weblogic.domain.Domain object to create domain custom resource
    * @param domainNamespace namespace in which the domain will be created
+   * @param domVersion custom resource's version
    */
-  public static void createDomainAndVerify(Domain domain, String domainNamespace) {
+  public static void createDomainAndVerify(Domain domain, 
+                                           String domainNamespace,
+                                           String... domVersion) {
+    String domainVersion = (domVersion.length == 0) ? DOMAIN_VERSION : domVersion[0];
+
     LoggingFacade logger = getLogger();
     // create the domain CR
     assertNotNull(domain, "domain is null");
@@ -1149,7 +1177,7 @@ public class CommonTestUtils {
 
     logger.info("Creating domain custom resource for domainUid {0} in namespace {1}",
         domainUid, domainNamespace);
-    assertTrue(assertDoesNotThrow(() -> createDomainCustomResource(domain),
+    assertTrue(assertDoesNotThrow(() -> createDomainCustomResource(domain, domainVersion),
         String.format("Create domain custom resource failed with ApiException for %s in namespace %s",
             domainUid, domainNamespace)),
         String.format("Create domain custom resource failed with ApiException for %s in namespace %s",
@@ -1165,7 +1193,7 @@ public class CommonTestUtils {
                 domainNamespace,
                 condition.getElapsedTimeInMS(),
                 condition.getRemainingTimeInMS()))
-        .until(domainExists(domainUid, DOMAIN_VERSION, domainNamespace));
+        .until(domainExists(domainUid, domainVersion, domainNamespace));
   }
 
   /**
@@ -1627,6 +1655,22 @@ public class CommonTestUtils {
         .until(assertDoesNotThrow(() -> serviceDoesNotExist(serviceName, null, namespace),
             String.format("serviceDoesNotExist failed with ApiException for service %s in namespace %s",
                 serviceName, namespace)));
+  }
+
+  /**
+   * Check whether the cluster's replica count matches with input parameter value.
+   *
+   * @param clusterName Name of cluster to check
+   * @param domainName Name of domain to which cluster belongs
+   * @param namespace cluster's namespace
+   * @param replicaCount replica count value to match
+   * @return true if matches false if not
+   */
+  public static boolean checkClusterReplicaCountMatches(String clusterName, String domainName,
+                                                        String namespace, Integer replicaCount) throws ApiException {
+    Cluster cluster = TestActions.getDomainCustomResource(domainName, namespace).getSpec().getClusters()
+            .stream().filter(c -> c.clusterName().equals(clusterName)).findAny().orElse(null);
+    return Optional.ofNullable(cluster).get().replicas() == replicaCount;
   }
 
   /**
@@ -2167,6 +2211,83 @@ public class CommonTestUtils {
     assertTrue(secretCreated, String.format("create secret failed for %s", secretName));
   }
 
+  /**
+   * Create a RcuAccess secret with RCU schema prefix, RCU schema password and RCU database connection string in the
+   * specified namespace.
+   *
+   * @param secretName secret name to create
+   * @param namespace namespace in which the secret will be created
+   * @param rcuPrefix  RCU schema prefix
+   * @param password RCU schema passoword
+   * @param rcuDbConnString RCU database connection string
+   */
+  public static void createRcuAccessSecret(String secretName, String namespace,
+      String rcuPrefix, String password, String rcuDbConnString) {
+    Map<String, String> secretMap = new HashMap<>();
+    secretMap.put("rcu_db_conn_string", rcuDbConnString);
+    secretMap.put("rcu_prefix", rcuPrefix);
+    secretMap.put("rcu_schema_password", password);
+
+    getLogger().info("Create RcuAccessSecret: {0} in namespace: {1}, with rcuPrefix {2}, password {3}, "
+        + "rcuDbConnString {4} ", secretName, namespace, rcuPrefix, password, rcuDbConnString);
+    boolean secretCreated = assertDoesNotThrow(() -> createSecret(new V1Secret()
+        .metadata(new V1ObjectMeta()
+            .name(secretName)
+            .namespace(namespace))
+        .stringData(secretMap)), "Create secret failed with ApiException");
+    assertTrue(secretCreated, String.format("create secret failed for %s", secretName));
+  }
+
+  /**
+   * Create a RcuAccess secret with RCU schema prefix, RCU schema password and RCU database connection string
+   * in the specified namespace.
+   *
+   * @param secretName secret name to create
+   * @param namespace namespace in which the secret will be created
+   * @param opsswalletpassword  OPSS wallet password
+   */
+  public static void createOpsswalletpasswordSecret(String secretName, String namespace,
+      String opsswalletpassword) {
+    Map<String, String> secretMap = new HashMap<>();
+    secretMap.put("walletPassword", opsswalletpassword);
+
+    boolean secretCreated = assertDoesNotThrow(() -> createSecret(new V1Secret()
+        .metadata(new V1ObjectMeta()
+            .name(secretName)
+            .namespace(namespace))
+        .stringData(secretMap)), "Create secret failed with ApiException");
+    assertTrue(secretCreated, String.format("create secret failed for %s", secretName));
+  }
+
+  /**
+   * Create a secret with username and password and Elasticsearch host and port in the specified namespace.
+   *
+   * @param secretName secret name to create
+   * @param namespace namespace in which the secret will be created
+   * @param username username in the secret
+   * @param password passowrd in the secret
+   * @param elasticsearchhost Elasticsearch host in the secret
+   * @param elasticsearchport Elasticsearch port in the secret
+   */
+  public static void createSecretWithUsernamePasswordElk(String secretName,
+                                                         String namespace,
+                                                         String username,
+                                                         String password,
+                                                         String elasticsearchhost,
+                                                         String elasticsearchport) {
+    Map<String, String> secretMap = new HashMap<>();
+    secretMap.put("username", username);
+    secretMap.put("password", password);
+    secretMap.put("elasticsearchhost", elasticsearchhost);
+    secretMap.put("elasticsearchport", elasticsearchport);
+
+    boolean secretCreated = assertDoesNotThrow(() -> createSecret(new V1Secret()
+        .metadata(new V1ObjectMeta()
+            .name(secretName)
+            .namespace(namespace))
+        .stringData(secretMap)), "Create secret failed with ApiException");
+    assertTrue(secretCreated, String.format("create secret failed for %s", secretName));
+  }
 
   /** Scale the WebLogic cluster to specified number of servers.
    *  Verify the sample app can be accessed through NGINX if curlCmd is not null.
@@ -2453,7 +2574,9 @@ public class CommonTestUtils {
     HelmParams grafanaHelmParams = new HelmParams()
         .releaseName(grafanaReleaseName)
         .namespace(grafanaNamespace)
-        .chartDir("stable/grafana")
+        .repoUrl(GRAFANA_REPO_URL)
+        .repoName(GRAFANA_REPO_NAME)
+        .chartName("grafana")
         .chartValuesFile(grafanaValueFile);
 
     if (grafanaVersion != null) {
@@ -2582,6 +2705,50 @@ public class CommonTestUtils {
         .until(assertDoesNotThrow(() -> pvcExists(pvcName, namespace),
             String.format("pvcExists failed with ApiException when checking pvc %s in namespace %s",
                 pvcName, namespace)));
+  }
+
+  /**
+   * Create a persistent volume and persistent volume claim.
+   *
+   * @param v1pv V1PersistentVolume object to create the persistent volume
+   * @param v1pvc V1PersistentVolumeClaim object to create the persistent volume claim
+   * @param labelSelector String containing the labels the PV is decorated with
+   * @param namespace the namespace in which the persistence volume claim to be created
+   * @param storageClassName the name for storage class
+   * @param pvHostPath path to pv dir if hostpath is used, ignored if nfs
+   *
+   **/
+  public static void createPVPVCAndVerify(V1PersistentVolume v1pv,
+                                          V1PersistentVolumeClaim v1pvc,
+                                          String labelSelector,
+                                          String namespace, String storageClassName, Path pvHostPath) {
+    LoggingFacade logger = getLogger();
+    if (!OKE_CLUSTER) {
+      logger.info("Creating PV directory {0}", pvHostPath);
+      assertDoesNotThrow(() -> deleteDirectory(pvHostPath.toFile()), "deleteDirectory failed with IOException");
+      assertDoesNotThrow(() -> createDirectories(pvHostPath), "createDirectories failed with IOException");
+    }
+    if (OKE_CLUSTER) {
+      v1pv.getSpec()
+          .storageClassName("oci-fss")
+          .nfs(new V1NFSVolumeSource()
+              .path(FSS_DIR)
+              .server(NFS_SERVER)
+              .readOnly(false));
+    } else {
+      v1pv.getSpec()
+          .storageClassName(storageClassName)
+          .hostPath(new V1HostPathVolumeSource()
+              .path(pvHostPath.toString()));
+    }
+    if (OKE_CLUSTER) {
+      v1pvc.getSpec()
+          .storageClassName("oci-fss");
+    } else {
+      v1pvc.getSpec()
+          .storageClassName(storageClassName);
+    }
+    createPVPVCAndVerify(v1pv, v1pvc, labelSelector, namespace);
   }
 
   /**
@@ -2864,6 +3031,43 @@ public class CommonTestUtils {
     return true;
   }
 
+  /**
+   * Check if the the application is accessible inside the WebLogic server pod.
+   * @param conditionFactory condition factory
+   * @param namespace namespace of the domain
+   * @param podName name of the pod
+   * @param internalPort internal port of the managed server running in the pod
+   * @param appPath path to access the application
+   * @param expectedStr expected response from the app
+   */
+  public static void checkAppIsRunning(
+      ConditionFactory conditionFactory,
+      String namespace,
+      String podName,
+      String internalPort,
+      String appPath,
+      String expectedStr
+  ) {
+
+    // check if the application is accessible inside of a server pod
+    conditionFactory
+        .conditionEvaluationListener(
+            condition -> getLogger().info("Waiting for application {0} is running on pod {1} in namespace {2} "
+                    + "(elapsed time {3}ms, remaining time {4}ms)",
+                appPath,
+                podName,
+                namespace,
+                condition.getElapsedTimeInMS(),
+                condition.getRemainingTimeInMS()))
+        .until(() -> appAccessibleInPod(
+            namespace,
+            podName,
+            internalPort,
+            appPath,
+            expectedStr));
+
+  }
+
   /** Create a persistent volume.
    * @param pvName name of the persistent volume to create
    * @param domainUid domain UID
@@ -2876,31 +3080,43 @@ public class CommonTestUtils {
         pvName, domainUid, className);
     Path pvHostPath = null;
     // when tests are running in local box the PV directories need to exist
-    try {
-      pvHostPath = Files.createDirectories(Paths.get(
-          PV_ROOT, className, pvName));
-      logger.info("Creating PV directory host path {0}", pvHostPath);
-      org.apache.commons.io.FileUtils.deleteDirectory(pvHostPath.toFile());
-      Files.createDirectories(pvHostPath);
-    } catch (IOException ioex) {
-      logger.severe(ioex.getMessage());
-      fail("Create persistent volume host path failed");
+    if (!OKE_CLUSTER) {
+      try {
+        pvHostPath = Files.createDirectories(Paths.get(
+            PV_ROOT, className, pvName));
+        logger.info("Creating PV directory host path {0}", pvHostPath);
+        deleteDirectory(pvHostPath.toFile());
+        createDirectories(pvHostPath);
+      } catch (IOException ioex) {
+        logger.severe(ioex.getMessage());
+        fail("Create persistent volume host path failed");
+      }
     }
 
     V1PersistentVolume v1pv = new V1PersistentVolume()
         .spec(new V1PersistentVolumeSpec()
             .addAccessModesItem("ReadWriteMany")
-            .storageClassName("weblogic-domain-storage-class")
             .volumeMode("Filesystem")
             .putCapacityItem("storage", Quantity.fromString("5Gi"))
             .persistentVolumeReclaimPolicy("Recycle")
-            .accessModes(Arrays.asList("ReadWriteMany"))
-            .hostPath(new V1HostPathVolumeSource()
-                .path(pvHostPath.toString())))
+            .accessModes(Arrays.asList("ReadWriteMany")))
         .metadata(new V1ObjectMeta()
             .name(pvName)
             .putLabelsItem("weblogic.resourceVersion", "domain-v2")
             .putLabelsItem("weblogic.domainUid", domainUid));
+    if (OKE_CLUSTER) {
+      v1pv.getSpec()
+          .storageClassName("oci-fss")
+          .nfs(new V1NFSVolumeSource()
+          .path(FSS_DIR)
+          .server(NFS_SERVER)
+          .readOnly(false));
+    } else {
+      v1pv.getSpec()
+          .storageClassName("weblogic-domain-storage-class")
+          .hostPath(new V1HostPathVolumeSource()
+          .path(pvHostPath.toString()));
+    }
     boolean success = assertDoesNotThrow(() -> createPersistentVolume(v1pv),
         "Failed to create persistent volume");
     assertTrue(success, "PersistentVolume creation failed");
@@ -2922,7 +3138,6 @@ public class CommonTestUtils {
     V1PersistentVolumeClaim v1pvc = new V1PersistentVolumeClaim()
         .spec(new V1PersistentVolumeClaimSpec()
             .addAccessModesItem("ReadWriteMany")
-            .storageClassName("weblogic-domain-storage-class")
             .volumeName(pvName)
             .resources(new V1ResourceRequirements()
                 .putRequestsItem("storage", Quantity.fromString("5Gi"))))
@@ -2932,6 +3147,13 @@ public class CommonTestUtils {
             .putLabelsItem("weblogic.resourceVersion", "domain-v2")
             .putLabelsItem("weblogic.domainUid", domainUid));
 
+    if (OKE_CLUSTER) {
+      v1pvc.getSpec()
+          .storageClassName("oci-fss");
+    } else {
+      v1pvc.getSpec()
+          .storageClassName("weblogic-domain-storage-class");
+    }
     boolean success = assertDoesNotThrow(() -> createPersistentVolumeClaim(v1pvc),
         "Failed to create persistent volume claim");
     assertTrue(success, "PersistentVolumeClaim creation failed");
@@ -3005,19 +3227,7 @@ public class CommonTestUtils {
             .template(new V1PodTemplateSpec()
                 .spec(new V1PodSpec()
                     .restartPolicy("Never")
-                    .initContainers(Arrays.asList(new V1Container()
-                        .name("fix-pvc-owner") // change the ownership of the pv to opc:opc
-                        .image(image)
-                        .addCommandItem("/bin/sh")
-                        .addArgsItem("-c")
-                        .addArgsItem("chown -R 1000:1000 /shared")
-                        .volumeMounts(Arrays.asList(
-                            new V1VolumeMount()
-                                .name(pvName)
-                                .mountPath("/shared")))
-                        .securityContext(new V1SecurityContext()
-                            .runAsGroup(0L)
-                            .runAsUser(0L))))
+                    .initContainers(Arrays.asList(createfixPVCOwnerContainer(pvName, "/shared")))
                     .containers(Arrays.asList(jobContainer  // container containing WLST or WDT details
                         .name("create-weblogic-domain-onpv-container")
                         .image(image)
@@ -3151,5 +3361,233 @@ public class CommonTestUtils {
 
   public static String getIntrospectJobName(String domainUid) {
     return domainUid + TestConstants.DEFAULT_INTROSPECTOR_JOB_NAME_SUFFIX;
+  }
+
+  /**
+   * Set the inter-pod anti-affinity  for the domain custom resource
+   * so that server instances spread over the available Nodes.
+   *
+   * @param domain custom resource object
+   */
+  public static synchronized void setPodAntiAffinity(Domain domain) {
+    domain.getSpec()
+        .getClusters()
+        .stream()
+        .forEach(
+            cluster -> {
+              cluster
+                  .serverPod(new ServerPod()
+                      .affinity(new V1Affinity().podAntiAffinity(
+                          new V1PodAntiAffinity()
+                              .addPreferredDuringSchedulingIgnoredDuringExecutionItem(
+                                  new V1WeightedPodAffinityTerm()
+                                      .weight(100)
+                                      .podAffinityTerm(new V1PodAffinityTerm()
+                                          .topologyKey("kubernetes.io/hostname")
+                                          .labelSelector(new V1LabelSelector()
+                                              .addMatchExpressionsItem(new V1LabelSelectorRequirement()
+                                                  .key("weblogic.clusterName")
+                                                  .operator("In")
+
+                                                  .addValuesItem("$(CLUSTER_NAME)")))
+                                      )))));
+
+            }
+        );
+
+  }
+
+  /**
+   * Create container to fix pvc owner for pod.
+   *
+   * @param pvName name of pv
+   * @param mountPath mounting path for pv
+   * @return container object with required ownership based on OKE_CLUSTER variable value.
+   */
+  public static synchronized V1Container createfixPVCOwnerContainer(String pvName, String mountPath) {
+    String argCommand = "chown -R 1000:0 " + mountPath;
+    if (OKE_CLUSTER) {
+      argCommand = "chown 1000:0 " + mountPath
+          + "/. && find "
+          + mountPath
+          + "/. -maxdepth 1 ! -name '.snapshot' ! -name '.' -print0 | xargs -r -0  chown -R 1000:0";
+    }
+    V1Container container = new V1Container()
+            .name("fix-pvc-owner") // change the ownership of the pv to opc:opc
+            .image(WEBLOGIC_IMAGE_TO_USE_IN_SPEC)
+            .addCommandItem("/bin/sh")
+            .addArgsItem("-c")
+            .addArgsItem(argCommand)
+            .volumeMounts(Arrays.asList(
+                new V1VolumeMount()
+                    .name(pvName)
+                    .mountPath(mountPath)))
+            .securityContext(new V1SecurityContext()
+                .runAsGroup(0L)
+                .runAsUser(0L));
+    return container;
+  }
+
+  /**
+   * Patch the domain with server start policy.
+   *
+   * @param patchPath JSON path of the patch
+   * @param policy server start policy
+   * @param domainNamespace namespace where domain exists
+   * @param domainUid unique id of domain
+   */
+  public static void patchServerStartPolicy(String patchPath, String policy, String domainNamespace,
+      String domainUid) {
+    final LoggingFacade logger = getLogger();
+    StringBuffer patchStr = null;
+    patchStr = new StringBuffer("[{");
+    patchStr.append("\"op\": \"replace\",")
+        .append(" \"path\": \"")
+        .append(patchPath)
+        .append("\",")
+        .append(" \"value\":  \"")
+        .append(policy)
+        .append("\"")
+        .append(" }]");
+
+    logger.info("The domain resource patch string: {0}", patchStr);
+    V1Patch patch = new V1Patch(new String(patchStr));
+    boolean crdPatched = assertDoesNotThrow(() ->
+            patchDomainCustomResource(domainUid, domainNamespace, patch, "application/json-patch+json"),
+        "patchDomainCustomResource(managedShutdown) failed");
+    assertTrue(crdPatched, "patchDomainCustomResource failed");
+  }
+
+  /**
+   * Check if the pods are deleted.
+   * @param podName pod name
+   * @param domainUid unique id of the domain
+   * @param domNamespace namespace where domain exists
+   */
+  public static void checkPodDeleted(String podName, String domainUid, String domNamespace) {
+    final LoggingFacade logger = getLogger();
+    withStandardRetryPolicy
+        .conditionEvaluationListener(
+            condition -> logger.info("Waiting for pod {0} to be deleted in namespace {1} "
+                    + "(elapsed time {2}ms, remaining time {3}ms)",
+                podName,
+                domNamespace,
+                condition.getElapsedTimeInMS(),
+                condition.getRemainingTimeInMS()))
+        .until(assertDoesNotThrow(() -> podDoesNotExist(podName, domainUid, domNamespace),
+            String.format("podDoesNotExist failed with ApiException for %s in namespace in %s",
+                podName, domNamespace)));
+  }
+
+  /**
+   * Deploy application and access the application once to make sure the app is accessible.
+   * @param domainNamespace namespace where domain exists
+   * @param domainUid the domain to which the cluster belongs
+   * @param clusterName the WebLogic cluster name that the app deploys to
+   * @param adminServerName the WebLogic admin server name that the app deploys to
+   * @param adminServerPodName WebLogic admin pod prefix
+   * @param managedServerPodNamePrefix WebLogic managed server pod prefix
+   * @param replicaCount replica count of the cluster
+   * @param adminInternalPort admin server's internal port
+   * @param msInternalPort managed server's internal port
+   */
+  public static void deployAndAccessApplication(String domainNamespace,
+                                                String domainUid,
+                                                String clusterName,
+                                                String adminServerName,
+                                                String adminServerPodName,
+                                                String managedServerPodNamePrefix,
+                                                int replicaCount,
+                                                String adminInternalPort,
+                                                String msInternalPort) {
+    final LoggingFacade logger = getLogger();
+
+    Path archivePath = Paths.get(ITTESTS_DIR, "../operator/integration-tests/apps/testwebapp.war");
+    logger.info("Deploying application {0} to domain {1} cluster target cluster-1 in namespace {2}",
+        archivePath, domainUid, domainNamespace);
+    logger.info("Deploying webapp {0} to admin server and cluster", archivePath);
+    DeployUtil.deployUsingWlst(adminServerPodName,
+                               adminInternalPort,
+                               ADMIN_USERNAME_DEFAULT,
+                               ADMIN_PASSWORD_DEFAULT,
+                               clusterName + "," + adminServerName,
+                               archivePath,
+                               domainNamespace);
+
+    // check if the application is accessible inside of a server pod using quick retry policy
+    logger.info("Check and wait for the application to become ready");
+    for (int i = 1; i <= replicaCount; i++) {
+      checkAppIsRunning(withQuickRetryPolicy, domainNamespace, managedServerPodNamePrefix + i,
+          msInternalPort, "testwebapp/index.jsp", managedServerPodNamePrefix + i);
+    }
+    checkAppIsRunning(withQuickRetryPolicy, domainNamespace, adminServerPodName,
+        adminInternalPort, "testwebapp/index.jsp", adminServerPodName);
+  }
+
+  /**
+   * Check application availability while the operator upgrade is happening and once the ugprade is complete
+   * by accessing the application inside the managed server pods.
+   * @param domainNamespace namespace where domain exists
+   * @param operatorNamespace namespace where operator exists
+   * @param appAvailability application's availability
+   * @param adminPodName WebLogic admin server pod name
+   * @param managedServerPodNamePrefix WebLogic managed server pod prefix
+   * @param replicaCount replica count of the cluster
+   * @param adminInternalPort admin server's internal port
+   * @param msInternalPort managed server's internal port
+   * @param appPath application path
+   */
+  public static void collectAppAvailability(String domainNamespace,
+                                            String operatorNamespace,
+                                            List<Integer> appAvailability,
+                                            String adminPodName,
+                                            String managedServerPodNamePrefix,
+                                            int replicaCount,
+                                            String adminInternalPort,
+                                            String msInternalPort,
+                                            String appPath) {
+    final LoggingFacade logger = getLogger();
+
+    // Access the pod periodically to check application's availability during
+    // upgrade and after upgrade is complete.
+    // appAccessedAfterUpgrade is used to access the app once after upgrade is complete
+    boolean appAccessedAfterUpgrade = false;
+    while (!appAccessedAfterUpgrade) {
+      boolean isUpgradeComplete = checkHelmReleaseRevision(OPERATOR_RELEASE_NAME, operatorNamespace, "2");
+      // upgrade is not complete or app is not accessed after upgrade
+      if (!isUpgradeComplete || !appAccessedAfterUpgrade) {
+        // Check application accessibility on admin server
+        if (appAccessibleInPod(domainNamespace,
+                               adminPodName,
+                               adminInternalPort,
+                               appPath,
+                               adminPodName)) {
+          appAvailability.add(1);
+          logger.info("application accessible in admin pod " + adminPodName);
+        } else {
+          appAvailability.add(0);
+          logger.info("application not accessible in admin pod " + adminPodName);
+        }
+
+        // Check application accessibility on managed servers
+        for (int i = 1; i <= replicaCount; i++) {
+          if (appAccessibleInPod(domainNamespace,
+                       managedServerPodNamePrefix + i,
+                                 msInternalPort,
+                                 appPath,
+                                managedServerPodNamePrefix + i)) {
+            appAvailability.add(1);
+            logger.info("application is accessible in pod " + managedServerPodNamePrefix + i);
+          } else {
+            appAvailability.add(0);
+            logger.info("application is not accessible in pod " + managedServerPodNamePrefix + i);
+          }
+        }
+      }
+      if (isUpgradeComplete) {
+        logger.info("Upgrade is complete and app is accessed after upgrade");
+        appAccessedAfterUpgrade = true;
+      }
+    }
   }
 }

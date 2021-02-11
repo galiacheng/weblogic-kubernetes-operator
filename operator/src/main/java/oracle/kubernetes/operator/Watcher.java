@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator;
@@ -25,8 +25,8 @@ import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
 import oracle.kubernetes.operator.watcher.WatchListener;
 
-import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.net.HttpURLConnection.HTTP_GONE;
+import static oracle.kubernetes.utils.OperatorUtils.isNullOrEmpty;
 
 /**
  * This class handles the Watching interface and drives the watch support for a specific type of
@@ -35,7 +35,7 @@ import static java.net.HttpURLConnection.HTTP_GONE;
  * @param <T> The type of the object to be watched.
  */
 abstract class Watcher<T> {
-  @SuppressWarnings("FieldMayBeFinal") // not final so unit tests can set it
+  @SuppressWarnings({"FieldMayBeFinal", "CanBeFinal"}) // not final so unit tests can set it
   private static WatcherStarter STARTER = Watcher::startAsynchronousWatch;
 
   static final String HAS_NEXT_EXCEPTION_MESSAGE = "IO Exception during hasNext method.";
@@ -146,7 +146,7 @@ abstract class Watcher<T> {
 
   private void watchForEvents() {
     long now = System.currentTimeMillis();
-    long delay = (tuning.watchMinimumDelay * 1000) - (now - lastInitialize);
+    long delay = (getWatchMinimumDelay() * 1000L) - (now - lastInitialize);
     if (lastInitialize != 0 && delay > 0) {
       try {
         Thread.sleep(delay);
@@ -162,7 +162,7 @@ abstract class Watcher<T> {
         initiateWatch(
             new WatchBuilder()
                 .withResourceVersion(resourceVersion)
-                .withTimeoutSeconds(tuning.watchLifetime))) {
+                .withTimeoutSeconds(getWatchLifetime()))) {
       while (hasNext(watch)) {
         Watch.Response<T> item = watch.next();
 
@@ -185,6 +185,14 @@ abstract class Watcher<T> {
     } catch (Throwable ex) {
       LOGGER.warning(MessageKeys.EXCEPTION, ex);
     }
+  }
+
+  private int getWatchLifetime() {
+    return Optional.ofNullable(tuning).map(t -> t.watchLifetime).orElse(5);
+  }
+
+  private int getWatchMinimumDelay() {
+    return Optional.ofNullable(tuning).map(t -> t.watchMinimumDelay).orElse(1);
   }
 
   private boolean hasNext(Watchable<T> watch) {
@@ -215,6 +223,7 @@ abstract class Watcher<T> {
   /**
    * Gets the domainUID associated with a watch response.
    *
+   * @param item Response item
    * @return String object or null if the watch response is not associated with a domain
    */
   public abstract String getDomainUid(Watch.Response<T> item);

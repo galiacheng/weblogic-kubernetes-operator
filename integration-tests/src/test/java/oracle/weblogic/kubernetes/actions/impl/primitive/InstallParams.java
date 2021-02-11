@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.actions.impl.primitive;
@@ -14,8 +14,8 @@ public class InstallParams {
 
   // The download site location or local file system location to get the installer
   // Examples:
-  // https://github.com/oracle/weblogic-deploy-tooling/releases/download/release-1.9.3/weblogic-deploy.zip
-  // https://github.com/oracle/weblogic-image-tool/releases/download/release-1.8.5/imagetool.zip
+  // https://github.com/oracle/weblogic-deploy-tooling/releases/download/release-1.9.7/weblogic-deploy.zip
+  // https://github.com/oracle/weblogic-image-tool/releases/download/release-1.9.5/imagetool.zip
   private String location;
 
   // Whether verify before download

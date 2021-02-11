@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -6,8 +6,8 @@ package oracle.weblogic.kubernetes;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 
 import oracle.weblogic.kubernetes.actions.impl.OperatorParams;
@@ -16,7 +16,6 @@ import oracle.weblogic.kubernetes.actions.impl.primitive.CommandParams;
 import oracle.weblogic.kubernetes.actions.impl.primitive.HelmParams;
 import oracle.weblogic.kubernetes.annotations.IntegrationTest;
 import oracle.weblogic.kubernetes.annotations.Namespaces;
-import oracle.weblogic.kubernetes.annotations.tags.MustNotRunInParallel;
 import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import oracle.weblogic.kubernetes.utils.CleanupUtil;
 import org.awaitility.core.ConditionFactory;
@@ -32,6 +31,8 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static oracle.weblogic.kubernetes.TestConstants.ADMIN_PASSWORD_DEFAULT;
 import static oracle.weblogic.kubernetes.TestConstants.ADMIN_USERNAME_DEFAULT;
+import static oracle.weblogic.kubernetes.TestConstants.DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX;
+import static oracle.weblogic.kubernetes.TestConstants.OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX;
 import static oracle.weblogic.kubernetes.TestConstants.OPERATOR_CHART_DIR;
 import static oracle.weblogic.kubernetes.TestConstants.OPERATOR_GITHUB_CHART_REPO_URL;
 import static oracle.weblogic.kubernetes.TestConstants.OPERATOR_RELEASE_NAME;
@@ -46,8 +47,10 @@ import static oracle.weblogic.kubernetes.actions.TestActions.uninstallOperator;
 import static oracle.weblogic.kubernetes.assertions.TestAssertions.adminNodePortAccessible;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReady;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkServiceExists;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.collectAppAvailability;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createOcirRepoSecret;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithUsernamePassword;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.deployAndAccessApplication;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.getExternalServicePodName;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.scaleAndVerifyCluster;
@@ -65,11 +68,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Operator upgrade tests")
 @IntegrationTest
-@MustNotRunInParallel
 public class ItOperatorUpgrade {
 
-  private static ConditionFactory withStandardRetryPolicy = null;
-  private static Map<String, Object> secretNameMap;
+  private static ConditionFactory withStandardRetryPolicy;
+  private static ConditionFactory withQuickRetryPolicy;
   private static LoggingFacade logger = null;
   private String domainUid = "domain1";
   private String adminServerPodName = domainUid + "-admin-server";
@@ -90,20 +92,11 @@ public class ItOperatorUpgrade {
         .and().with().pollInterval(10, SECONDS)
         .atMost(5, MINUTES).await();
 
-  }
+    // create a reusable quick retry policy
+    withQuickRetryPolicy = with().pollDelay(0, SECONDS)
+        .and().with().pollInterval(4, SECONDS)
+        .atMost(10, SECONDS).await();
 
-  /**
-   * Operator upgrade from 2.5.0 to latest.
-   * Install 2.5.0 release Operator from GitHub chart repository and create a domain.
-   * Delete Operator and install latest Operator and verify CRD version is updated
-   * and the domain can be managed by scaling the cluster using operator REST api.
-   */
-  @Test
-  @DisplayName("Upgrade Operator from 2.5.0 to latest")
-  @MustNotRunInParallel
-  public void testOperatorUpgradeFrom2_5_0(@Namespaces(3) List<String> namespaces) {
-    this.namespaces = namespaces;
-    upgradeOperator("2.5.0", false);
   }
 
   /**
@@ -114,53 +107,100 @@ public class ItOperatorUpgrade {
    */
   @Test
   @DisplayName("Upgrade Operator from 2.6.0 to latest")
-  @MustNotRunInParallel
   public void testOperatorUpgradeFrom2_6_0(@Namespaces(3) List<String> namespaces) {
     this.namespaces = namespaces;
-    upgradeOperator("2.6.0", false);
+    upgradeOperator("2.6.0", OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX,  false);
   }
 
   /**
    * Operator upgrade from 3.0.0 to latest.
    * Install 3.0.0 Operator from GitHub chart repository and create a domain.
+   * Deploy an application to the cluster in domain and verify the application can be
+   * accessed while the operator is upgraded and after the upgrade.
    * Upgrade operator with latest Operator image and verify CRD version and image are updated
    * and the domain can be managed by scaling the cluster using operator REST api.
    */
   @Test
   @DisplayName("Upgrade Operator from 3.0.0 to latest")
-  @MustNotRunInParallel
   public void testOperatorUpgradeFrom3_0_0(@Namespaces(3) List<String> namespaces) {
     this.namespaces = namespaces;
-    upgradeOperator("3.0.0", true);
+    upgradeOperator("3.0.0", OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX, true);
   }
 
   /**
    * Operator upgrade from 3.0.1 to latest.
    * Install 3.0.1 Operator from GitHub chart repository and create a domain.
+   * Deploy an application to the cluster in domain and verify the application can be
+   * accessed while the operator is upgraded and after the upgrade.
    * Upgrade operator with latest Operator image and verify CRD version and image are updated
    * and the domain can be managed by scaling the cluster using operator REST api.
    */
   @Test
   @DisplayName("Upgrade Operator from 3.0.1 to latest")
-  @MustNotRunInParallel
   public void testOperatorUpgradeFrom3_0_1(@Namespaces(3) List<String> namespaces) {
     this.namespaces = namespaces;
-    upgradeOperator("3.0.1", true);
+    upgradeOperator("3.0.1", OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX, true);
   }
 
 
   /**
    * Operator upgrade from 3.0.2 to latest.
    * Install 3.0.2 Operator from GitHub chart repository and create a domain.
+   * Deploy an application to the cluster in domain and verify the application can be
+   * accessed while the operator is upgraded and after the upgrade.
    * Upgrade operator with latest Operator image and verify CRD version and image are updated
    * and the domain can be managed by scaling the cluster using operator REST api.
    */
   @Test
   @DisplayName("Upgrade Operator from 3.0.2 to latest")
-  @MustNotRunInParallel
   public void testOperatorUpgradeFrom3_0_2(@Namespaces(3) List<String> namespaces) {
     this.namespaces = namespaces;
-    upgradeOperator("3.0.2", true);
+    upgradeOperator("3.0.2", OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX, true);
+  }
+
+  /**
+   * Operator upgrade from 3.0.3 to latest.
+   * Install 3.0.3 Operator from GitHub chart repository and create a domain.
+   * Deploy an application to the cluster in domain and verify the application can be
+   * accessed while the operator is upgraded and after the upgrade.
+   * Upgrade operator with latest Operator image and verify CRD version and image are updated
+   * and the domain can be managed by scaling the cluster using operator REST api.
+   */
+  @Test
+  @DisplayName("Upgrade Operator from 3.0.3 to latest")
+  public void testOperatorUpgradeFrom3_0_3(@Namespaces(3) List<String> namespaces) {
+    this.namespaces = namespaces;
+    upgradeOperator("3.0.3", OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX, true);
+  }
+
+  /**
+   * Operator upgrade from 3.0.4 to latest.
+   * Install 3.0.4 Operator from GitHub chart repository and create a domain.
+   * Deploy an application to the cluster in domain and verify the application can be
+   * accessed while the operator is upgraded and after the upgrade.
+   * Upgrade operator with latest Operator image and verify CRD version and image are updated
+   * and the domain can be managed by scaling the cluster using operator REST api.
+   */
+  @Test
+  @DisplayName("Upgrade Operator from 3.0.4 to latest")
+  public void testOperatorUpgradeFrom3_0_4(@Namespaces(3) List<String> namespaces) {
+    this.namespaces = namespaces;
+    upgradeOperator("3.0.4", OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX, true);
+  }
+
+  /**
+   * Operator upgrade from 3.1.0 to latest.
+   * Install 3.1.0 Operator from GitHub chart repository and create a domain.
+   * Deploy an application to the cluster in domain and verify the application can be
+   * accessed while the operator is upgraded and after the upgrade.
+   * Upgrade operator with latest Operator image and verify CRD version and image are updated
+   * and the domain can be managed by scaling the cluster using operator REST api.
+   */
+  @Test
+  @DisplayName("Upgrade Operator from 3.1.0 to latest")
+  public void testOperatorUpgradeFrom3_1_0(@Namespaces(3) List<String> namespaces) {
+    this.namespaces = namespaces;
+    upgradeOperator("3.1.0", DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX, true);
   }
 
   /**
@@ -169,7 +209,9 @@ public class ItOperatorUpgrade {
    */
   @AfterEach
   public void tearDown() {
-    if (System.getenv("SKIP_CLEANUP") == null) {
+    if (System.getenv("SKIP_CLEANUP") == null
+        || (System.getenv("SKIP_CLEANUP") != null
+        && System.getenv("SKIP_CLEANUP").equalsIgnoreCase("false"))) {
       CleanupUtil.cleanup(namespaces);
       new Command()
           .withParams(new CommandParams()
@@ -178,7 +220,10 @@ public class ItOperatorUpgrade {
     }
   }
 
-  private void upgradeOperator(String operatorVersion, boolean useHelmUpgrade) {
+  // Since Operator version 3.1.0 the service pod prefix has been changed 
+  // from -external to -ext e.g.
+  // domain1-adminserver-ext  NodePort    10.96.46.242   30001:30001/TCP 
+  private void upgradeOperator(String operatorVersion, String externalServiceNameSuffix, boolean useHelmUpgrade) {
     logger.info("Assign a unique namespace for operator {0}", operatorVersion);
     assertNotNull(namespaces.get(0), "Namespace is null");
     final String opNamespace1 = namespaces.get(0);
@@ -212,39 +257,84 @@ public class ItOperatorUpgrade {
 
     // create domain
     createDomainHomeInImageAndVerify(
-        domainNamespace, operatorVersion, TestConstants.OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX);
+        domainNamespace, operatorVersion, externalServiceNameSuffix);
 
     if (useHelmUpgrade) {
-      // upgrade to latest operator
-      HelmParams upgradeHelmParams = new HelmParams()
-          .releaseName(OPERATOR_RELEASE_NAME)
-          .namespace(opNamespace)
-          .chartDir(OPERATOR_CHART_DIR)
-          .repoUrl(null)
-          .chartVersion(null)
-          .chartName(null);
+      // deploy application and access the application once to make sure the app is accessible
+      deployAndAccessApplication(domainNamespace,
+                                 domainUid,
+                                "cluster-1",
+                                "admin-server",
+                                 adminServerPodName,
+                                 managedServerPodNamePrefix,
+                                 replicaCount,
+                                "7001",
+                                "8001");
 
-      // operator chart values
-      OperatorParams opParams = new OperatorParams()
-          .helmParams(upgradeHelmParams)
-          .image(latestOperatorImageName)
-          .externalRestEnabled(true);
+      // start a new thread to collect the availability data of the application while the
+      // main thread performs operator upgrade
+      List<Integer> appAvailability = new ArrayList<Integer>();
+      logger.info("Start a thread to keep track of the application's availability");
+      Thread accountingThread =
+          new Thread(
+              () -> {
+                collectAppAvailability(
+                    domainNamespace,
+                    opNamespace1,
+                    appAvailability,
+                    adminServerPodName,
+                    managedServerPodNamePrefix,
+                    replicaCount,
+                    "7001",
+                    "8001",
+                    "testwebapp/index.jsp");
+              });
+      accountingThread.start();
 
-      assertTrue(upgradeAndVerifyOperator(opNamespace, opParams),
-          String.format("Failed to upgrade operator in namespace %s", opNamespace));
+      try {
+        // upgrade to latest operator
+        HelmParams upgradeHelmParams = new HelmParams()
+            .releaseName(OPERATOR_RELEASE_NAME)
+            .namespace(opNamespace)
+            .chartDir(OPERATOR_CHART_DIR)
+            .repoUrl(null)
+            .chartVersion(null)
+            .chartName(null);
 
-      // check operator image name after upgrade
-      logger.info("Checking image name in operator container ");
-      withStandardRetryPolicy
-          .conditionEvaluationListener(
-              condition -> logger.info("Checking operator image name in namespace {0} after upgrade "
-                      + "(elapsed time {1}ms, remaining time {2}ms)",
-                  opNamespace1,
-                  condition.getElapsedTimeInMS(),
-                  condition.getRemainingTimeInMS()))
-          .until(assertDoesNotThrow(() -> getOpContainerImageName(opNamespace1),
-              "Exception while getting the operator image name"));
+        // operator chart values
+        OperatorParams opParams = new OperatorParams()
+            .helmParams(upgradeHelmParams)
+            .image(latestOperatorImageName)
+            .externalRestEnabled(true);
 
+        assertTrue(upgradeAndVerifyOperator(opNamespace, opParams),
+            String.format("Failed to upgrade operator in namespace %s", opNamespace));
+
+        // check operator image name after upgrade
+        logger.info("Checking image name in operator container ");
+        withStandardRetryPolicy
+            .conditionEvaluationListener(
+                condition -> logger.info("Checking operator image name in namespace {0} after upgrade "
+                        + "(elapsed time {1}ms, remaining time {2}ms)",
+                    opNamespace1,
+                    condition.getElapsedTimeInMS(),
+                    condition.getRemainingTimeInMS()))
+            .until(assertDoesNotThrow(() -> getOpContainerImageName(opNamespace1),
+                "Exception while getting the operator image name"));
+      } finally {
+        if (accountingThread != null) {
+          try {
+            accountingThread.join();
+          } catch (InterruptedException ie) {
+            // do nothing
+          }
+          // check the app availability data that we have collected, and see if
+          // the application has been available all the time during the upgrade
+          logger.info("Verify that application was available during upgrade");
+          assertTrue(appAlwaysAvailable(appAvailability),
+              "Application was not always available during operator upgrade");
+        }
+      }
     } else {
       opNamespace = opNamespace2;
       opServiceAccount = opNamespace2 + "-sa";
@@ -400,6 +490,16 @@ public class ItOperatorUpgrade {
       }
       return false;
     };
+  }
+
+  private static boolean appAlwaysAvailable(List<Integer> appAvailability) {
+    for (Integer count : appAvailability) {
+      if (count == 0) {
+        logger.warning("Application was not available during operator upgrade.");
+        return false;
+      }
+    }
+    return true;
   }
 
 }

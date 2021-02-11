@@ -1,4 +1,4 @@
-// Copyright (c) 2019, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -54,9 +54,18 @@ public abstract class TuningParametersStub implements TuningParameters {
         INTROSPECTOR_JOB_ACTIVE_DEADLINE_SECONDS);
   }
 
+  /**
+   * Sets a tuning parameter for testing purposes.
+   * @param key the parameter to set
+   * @param value its test value
+   */
+  public static void setParameter(String key, String value) {
+    namedParameters.put(key, value);
+  }
+
   @Override
   public MainTuning getMainTuning() {
-    return new MainTuning(2, 2, 2, 2, 2, 2, 2L, 2L);
+    return new MainTuning(5, 2, 2, 2, 2, 2, 2, 30, 2L, 2L);
   }
 
   @Override

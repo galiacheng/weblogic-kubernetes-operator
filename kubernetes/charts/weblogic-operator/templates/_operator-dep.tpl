@@ -1,4 +1,4 @@
-# Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 {{- define "operator.operatorDeployment" }}
@@ -41,6 +41,14 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: "metadata.namespace"
+        - name: "OPERATOR_POD_NAME"
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.name"
+        - name: "OPERATOR_POD_UID"
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.uid"
         - name: "OPERATOR_VERBOSE"
           value: "false"
         - name: "JAVA_LOGGING_LEVEL"

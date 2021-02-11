@@ -24,7 +24,7 @@ In this use case, you set up an initial WebLogic domain. This involves:
 
   - A WDT archive ZIP file that contains your applications.
   - A WDT model that describes your WebLogic configuration.
-  - A Docker image that contains your WDT model files and archive.
+  - A container image that contains your WDT model files and archive.
   - Creating secrets for the domain.
   - Creating a Domain YAML for the domain that references your Secrets and image.
 
@@ -60,7 +60,7 @@ The archive top directory, named `wlsdeploy`, contains a directory named `applic
 {{%expand "If you are interested in the web application source, click here to see the JSP code." %}}
 
 ```
-<%-- Copyright (c) 2019, 2020, Oracle Corporation and/or its affiliates. --%>
+<%-- Copyright (c) 2019, 2021, Oracle and/or its affiliates. --%>
 <%-- Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl. --%>
 <%@ page import="javax.naming.InitialContext" %>
 <%@ page import="javax.management.*" %>
@@ -283,7 +283,7 @@ If you don't see the `imagetool` directory, then you missed a step in the [prere
 
 This command runs the WebLogic Image Tool in its Model in Image mode, and does the following:
 
-  - Builds the final Docker image as a layer on the `container-registry.oracle.com/middleware/weblogic:12.2.1.4` base image.
+  - Builds the final container image as a layer on the `container-registry.oracle.com/middleware/weblogic:12.2.1.4` base image.
   - Copies the WDT ZIP file that's referenced in the WIT cache into the image.
     - Note that you cached WDT in WIT using the keyword `latest` when you set up the cache during the sample prerequisites steps.
     - This lets WIT implicitly assume it's the desired WDT version and removes the need to pass a `-wdtVersion` flag.
@@ -295,7 +295,7 @@ When the command succeeds, it should end with output like the following:
   [INFO   ] Build successful. Build time=36s. Image tag=model-in-image:WLS-v1
   ```
 
-Also, if you run the `docker images` command, then you will see a Docker image named `model-in-image:WLS-v1`.
+Also, if you run the `docker images` command, then you will see an image named `model-in-image:WLS-v1`.
 
 > Note: If you have Kubernetes cluster worker nodes that are remote to your local machine, then you need to put the image in a location that these nodes can access. See [Ensuring your Kubernetes cluster can access images](#ensuring-your-kubernetes-cluster-can-access-images).
 
@@ -409,7 +409,7 @@ Copy the following to a file called `/tmp/mii-sample/mii-initial.yaml` or simila
       # the image for 'Model in Image' domains.
       domainHome: /u01/domains/sample-domain1
 
-      # The WebLogic Server Docker image that the Operator uses to start the domain
+      # The WebLogic Server image that the Operator uses to start the domain
       image: "model-in-image:WLS-v1"
 
       # Defaults to "Always" if image tag (version) is ':latest'
@@ -510,7 +510,7 @@ Copy the following to a file called `/tmp/mii-sample/mii-initial.yaml` or simila
 
   {{%expand "Click here to view the JRF Domain YAML file." %}}
   ```
-  # Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+  # Copyright (c) 2020, 2021, Oracle and/or its affiliates.
   # Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
   #
   # This is an example of how to define a Domain resource.
@@ -531,7 +531,7 @@ Copy the following to a file called `/tmp/mii-sample/mii-initial.yaml` or simila
     # the image for 'Model in Image' domains.
     domainHome: /u01/domains/sample-domain1
 
-    # The WebLogic Server Docker image that the Operator uses to start the domain
+    # The WebLogic Server image that the Operator uses to start the domain
     image: "model-in-image:JRF-v1"
 
     # Defaults to "Always" if image tag (version) is ':latest'

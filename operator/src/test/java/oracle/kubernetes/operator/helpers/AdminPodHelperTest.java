@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -21,15 +21,16 @@ import oracle.kubernetes.operator.utils.InMemoryCertificates;
 import oracle.kubernetes.operator.work.FiberTestSupport;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
-import oracle.kubernetes.weblogic.domain.DomainConfigurator;
 import oracle.kubernetes.weblogic.domain.ServerConfigurator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static oracle.kubernetes.operator.WebLogicConstants.ADMIN_STATE;
 import static oracle.kubernetes.operator.WebLogicConstants.RUNNING_STATE;
 import static oracle.kubernetes.operator.helpers.DomainStatusMatcher.hasStatus;
 import static oracle.kubernetes.operator.helpers.Matchers.hasContainer;
 import static oracle.kubernetes.operator.helpers.Matchers.hasEnvVar;
+import static oracle.kubernetes.operator.helpers.Matchers.hasInitContainer;
+import static oracle.kubernetes.operator.helpers.Matchers.hasInitContainerWithEnvVar;
 import static oracle.kubernetes.operator.helpers.Matchers.hasPvClaimVolume;
 import static oracle.kubernetes.operator.helpers.Matchers.hasVolume;
 import static oracle.kubernetes.operator.helpers.Matchers.hasVolumeMount;
@@ -78,11 +79,6 @@ public class AdminPodHelperTest extends PodHelperTestBase {
   @Override
   ServerConfigurator configureServer() {
     return getConfigurator().configureAdminServer();
-  }
-
-  @Override
-  protected ServerConfigurator configureServer(DomainConfigurator configurator, String serverName) {
-    return configurator.configureAdminServer();
   }
 
   @Override
@@ -344,7 +340,7 @@ public class AdminPodHelperTest extends PodHelperTestBase {
         .withAdditionalVolume("volume2", "/source-$(DOMAIN_NAME)");
 
     assertThat(
-        getCreatedPod().getSpec().getVolumes(),
+        Objects.requireNonNull(getCreatedPod().getSpec()).getVolumes(),
         allOf(
             hasVolume("volume1", "/source-ADMIN_SERVER"),
             hasVolume("volume2", "/source-domain1")));
@@ -355,10 +351,7 @@ public class AdminPodHelperTest extends PodHelperTestBase {
     configureAdminServer()
         .withAdditionalVolumeMount("volume1", RAW_MOUNT_PATH_1);
 
-    assertThat(
-        getCreatedPodSpecContainer().getVolumeMounts(),
-        allOf(
-            hasVolumeMount("volume1", END_MOUNT_PATH_1)));
+    assertThat(getCreatedPodSpecContainer().getVolumeMounts(), hasVolumeMount("volume1", END_MOUNT_PATH_1));
   }
 
   @Test
@@ -375,7 +368,7 @@ public class AdminPodHelperTest extends PodHelperTestBase {
 
     assertThat(testSupport.getResources(KubernetesTestSupport.POD).isEmpty(), is(false));
     assertThat(logRecords, containsInfo(getCreatedMessageKey()));
-    assertThat(getCreatedPod().getSpec().getContainers().get(0).getVolumeMounts(),
+    assertThat(Objects.requireNonNull(getCreatedPod().getSpec()).getContainers().get(0).getVolumeMounts(),
         hasVolumeMount("volume1", END_VOLUME_MOUNT_PATH_1));
   }
 
@@ -515,8 +508,27 @@ public class AdminPodHelperTest extends PodHelperTestBase {
     assertThat(
         getCreatedPodSpecInitContainers(),
         allOf(
-            hasContainer("container1", "busybox", "sh", "-c", "echo admin server && sleep 120"),
-            hasContainer("container2", "oraclelinux", "ls /oracle")));
+            hasInitContainer("container1", "busybox", ADMIN_SERVER, "sh", "-c", "echo admin server && sleep 120"),
+            hasInitContainer("container2", "oraclelinux", ADMIN_SERVER, "ls /oracle")));
+  }
+
+  @Test
+  public void whenDomainWithEnvVarHasInitContainers_verifyAdminPodInitContainersHaveEnvVar() {
+    getConfigurator().withEnvironmentVariable("item1", "value1")
+            .withInitContainer(
+                    createContainer("container1", "busybox", "sh",
+                            "-c", "echo admin server && sleep 120"))
+            .withInitContainer(createContainer("container2", "oraclelinux",
+                    "ls /oracle"));
+
+    assertThat(
+            getCreatedPodSpecInitContainers(),
+            allOf(
+                    hasInitContainerWithEnvVar("container1", "busybox", ADMIN_SERVER,
+                            new V1EnvVar().name("item1").value("value1"),
+                            "sh", "-c", "echo admin server && sleep 120"),
+                    hasInitContainerWithEnvVar("container2", "oraclelinux", ADMIN_SERVER,
+                            new V1EnvVar().name("item1").value("value1"),  "ls /oracle")));
   }
 
   @Test
@@ -530,8 +542,28 @@ public class AdminPodHelperTest extends PodHelperTestBase {
     assertThat(
         getCreatedPodSpecInitContainers(),
         allOf(
-            hasContainer("container1", "busybox", "sh", "-c", "echo admin server && sleep 120"),
-            hasContainer("container2", "oraclelinux", "ls /oracle")));
+            hasInitContainer("container1", "busybox", ADMIN_SERVER, "sh", "-c", "echo admin server && sleep 120"),
+            hasInitContainer("container2", "oraclelinux", ADMIN_SERVER, "ls /oracle")));
+  }
+
+  @Test
+  public void whenServerWithEnvVarHasInitContainers_verifyAdminPodInitContainersHaveEnvVar() {
+    getConfigurator().withEnvironmentVariable("item1", "value1")
+            .configureAdminServer()
+            .withInitContainer(
+                   createContainer("container1", "busybox", "sh", "-c",
+                           "echo admin server && sleep 120"))
+            .withInitContainer(createContainer("container2", "oraclelinux",
+                    "ls /oracle"));
+
+    assertThat(
+            getCreatedPodSpecInitContainers(),
+            allOf(
+                    hasInitContainerWithEnvVar("container1", "busybox", ADMIN_SERVER,
+                            new V1EnvVar().name("item1").value("value1"),
+                            "sh", "-c", "echo admin server && sleep 120"),
+                    hasInitContainerWithEnvVar("container2", "oraclelinux", ADMIN_SERVER,
+                            new V1EnvVar().name("item1").value("value1"), "ls /oracle")));
   }
 
   @Test
@@ -546,8 +578,8 @@ public class AdminPodHelperTest extends PodHelperTestBase {
     assertThat(
         getCreatedPodSpecInitContainers(),
         allOf(
-            hasContainer("container1", "busybox", "sh", "-c", "echo admin server && sleep 120"),
-            hasContainer("container2", "oraclelinux", "ls /oracle")));
+            hasInitContainer("container1", "busybox", ADMIN_SERVER, "sh", "-c", "echo admin server && sleep 120"),
+            hasInitContainer("container2", "oraclelinux", ADMIN_SERVER, "ls /oracle")));
   }
 
   @Test
@@ -693,8 +725,7 @@ public class AdminPodHelperTest extends PodHelperTestBase {
     assertThat(podLabels, hasKey(not(LabelConstants.CLUSTERRESTARTVERSION_LABEL)));
   }
 
-  @Override
-  V1Pod createTestPodModel() {
+  private V1Pod createTestPodModel() {
     return new V1Pod().metadata(createPodMetadata()).spec(createPodSpec());
   }
 

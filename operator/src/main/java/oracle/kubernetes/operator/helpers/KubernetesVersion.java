@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -7,7 +7,8 @@ import io.kubernetes.client.openapi.models.VersionInfo;
 
 /** Major and minor version of Kubernetes API Server. */
 public class KubernetesVersion extends SemanticVersion {
-  public static final KubernetesVersion TEST_VERSION = new KubernetesVersion(1, 10);
+  public static final VersionInfo TEST_VERSION_INFO = new VersionInfo().major("1").minor("18").gitVersion("0");
+  public static final KubernetesVersion TEST_VERSION = new KubernetesVersion(TEST_VERSION_INFO);
   private static final String[] MINIMUM_K8S_VERSIONS = {"1.14.8", "1.15.7", "1.16.0", "1.17.0", "1.18.0"};
   static final KubernetesVersion UNREADABLE = new KubernetesVersion(0, 0);
   private final String version;
@@ -69,7 +70,7 @@ public class KubernetesVersion extends SemanticVersion {
 
   @Override
   public boolean equals(Object o) {
-    return this == o || o instanceof KubernetesVersion && equals((KubernetesVersion) o);
+    return this == o || o instanceof KubernetesVersion && equals(o);
   }
 
   @Override

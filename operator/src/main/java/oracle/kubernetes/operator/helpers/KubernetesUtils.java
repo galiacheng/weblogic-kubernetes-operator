@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -10,14 +10,15 @@ import java.util.Objects;
 import java.util.Optional;
 import javax.json.JsonPatchBuilder;
 
+import io.kubernetes.client.common.KubernetesListObject;
+import io.kubernetes.client.openapi.models.V1ListMeta;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import oracle.kubernetes.operator.LabelConstants;
-import org.apache.commons.collections.MapUtils;
 import org.joda.time.DateTime;
 
-import static com.google.common.base.Strings.isNullOrEmpty;
 import static oracle.kubernetes.operator.LabelConstants.CREATEDBYOPERATOR_LABEL;
 import static oracle.kubernetes.operator.LabelConstants.DOMAINUID_LABEL;
+import static oracle.kubernetes.utils.OperatorUtils.isNullOrEmpty;
 
 public class KubernetesUtils {
 
@@ -29,7 +30,7 @@ public class KubernetesUtils {
    * @return true if the maps match.
    */
   static <K, V> boolean mapEquals(Map<K, V> first, Map<K, V> second) {
-    return Objects.equals(first, second) || (MapUtils.isEmpty(first) && MapUtils.isEmpty(second));
+    return Objects.equals(first, second) || (isNullOrEmpty(first) && isNullOrEmpty(second));
   }
 
   /**
@@ -72,11 +73,16 @@ public class KubernetesUtils {
         String basePath,
         Map<String, String> current,
         Map<String, String> required) {
+
     for (String name : required.keySet()) {
+      // We must encode each '/' and '~' in a JSON patch token using '~1' and '~0', otherwise
+      // the JSON patch will incorrectly treat '/' and '~' as special delimiters. (RFC 6901).
+      // The resulting patched JSON will have '/' and '~' within the token (not ~0 or ~1).
+      String encodedPath = basePath + name.replace("~","~0").replace("/","~1");
       if (!current.containsKey(name)) {
-        patchBuilder.add(basePath + name, required.get(name));
+        patchBuilder.add(encodedPath, required.get(name));
       } else {
-        patchBuilder.replace(basePath + name, required.get(name));
+        patchBuilder.replace(encodedPath, required.get(name));
       }
     }
   }
@@ -172,6 +178,18 @@ public class KubernetesUtils {
       }
     }
     return BigInteger.ZERO;
+  }
+
+  /**
+   * Returns the resource version associated with the specified list.
+   * @param list the result of a Kubernetes list operation.
+   * @return Resource version
+   */
+  public static String getResourceVersion(KubernetesListObject list) {
+    return Optional.ofNullable(list)
+          .map(KubernetesListObject::getMetadata)
+          .map(V1ListMeta::getResourceVersion)
+          .orElse("");
   }
 
   public static V1ObjectMeta withOperatorLabels(String uid, V1ObjectMeta meta) {

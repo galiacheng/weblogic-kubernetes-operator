@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator;
@@ -27,8 +27,8 @@ import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.operator.work.TerminalStep;
 import oracle.kubernetes.utils.TestUtils;
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static oracle.kubernetes.operator.LabelConstants.CREATEDBYOPERATOR_LABEL;
 import static oracle.kubernetes.operator.LabelConstants.DOMAINUID_LABEL;
@@ -60,7 +60,7 @@ public class PodWatcherTest extends WatcherTestBase implements WatchListener<V1P
   }
 
   @Override
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     super.setUp();
     addMemento(testSupport.install());

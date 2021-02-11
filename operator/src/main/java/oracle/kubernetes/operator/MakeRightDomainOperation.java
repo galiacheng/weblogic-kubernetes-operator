@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator;
@@ -6,6 +6,7 @@ package oracle.kubernetes.operator;
 import java.util.Optional;
 
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
+import oracle.kubernetes.operator.helpers.EventHelper.EventItem;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.weblogic.domain.model.Domain;
@@ -25,9 +26,7 @@ public interface MakeRightDomainOperation {
 
   MakeRightDomainOperation withExplicitRecheck();
 
-  MakeRightDomainOperation withDeleting(boolean deleting);
-
-  MakeRightDomainOperation interrupt();
+  MakeRightDomainOperation withEventData(EventItem eventItem, String message);
 
   void execute();
 
@@ -47,6 +46,12 @@ public interface MakeRightDomainOperation {
 
   static boolean isInspectionRequired(Packet packet) {
     return domainRequiresIntrospectionInCurrentMakeRight(packet) && !wasInspectionRun(packet);
+  }
+
+  boolean isExplicitRecheck();
+
+  static boolean isExplicitRecheck(Packet packet) {
+    return fromPacket(packet).map(MakeRightDomainOperation::isExplicitRecheck).orElse(false);
   }
 
   /**

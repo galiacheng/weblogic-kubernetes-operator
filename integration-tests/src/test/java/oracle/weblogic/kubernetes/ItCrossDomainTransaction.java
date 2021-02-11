@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -70,6 +70,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithU
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.dockerLoginAndPushImageToRegistry;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.getExternalServicePodName;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.DbUtils.startOracleDB;
 import static oracle.weblogic.kubernetes.utils.ExecCommand.exec;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
@@ -459,7 +460,7 @@ public class ItCrossDomainTransaction {
                 .model(new Model()
                     .domainType("WLS"))
                 .introspectorJobActiveDeadlineSeconds(300L)));
-
+    setPodAntiAffinity(domain);
     logger.info("Create domain custom resource for domainUid {0} in namespace {1}",
         domainUid, domNamespace);
     boolean domCreated = assertDoesNotThrow(() -> createDomainCustomResource(domain),

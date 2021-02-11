@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -16,9 +16,9 @@ import io.kubernetes.client.openapi.models.V1SubjectRulesReviewStatus;
 import oracle.kubernetes.operator.ClientFactoryStub;
 import oracle.kubernetes.operator.helpers.AuthorizationProxy.Operation;
 import oracle.kubernetes.utils.TestUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static java.util.Collections.singletonList;
 import static oracle.kubernetes.operator.helpers.AuthorizationProxy.Operation.create;
@@ -48,9 +48,9 @@ public class HealthCheckHelperTest {
       VERIFY_ACCESS_DENIED_WITH_NS
   };
 
-  private static final String OPERATOR_NAMESPACE = "operator";
   private static final String NS1 = "ns1";
   private static final String NS2 = "ns2";
+  private static final String OPERATOR_NAMESPACE = "op1";
   private static final List<String> TARGET_NAMESPACES = Arrays.asList(NS1, NS2);
   private static final List<String> CRUD_RESOURCES =
       Arrays.asList(
@@ -61,10 +61,10 @@ public class HealthCheckHelperTest {
           "services");
 
   private static final List<String> CLUSTER_CRUD_RESOURCES =
-      Arrays.asList("customresourcedefinitions//apiextensions.k8s.io");
+        singletonList("customresourcedefinitions//apiextensions.k8s.io");
 
   private static final List<String> CLUSTER_READ_WATCH_RESOURCES =
-      Arrays.asList("namespaces");
+        singletonList("namespaces");
 
   private static final List<String> CLUSTER_READ_UPDATE_RESOURCES =
       Arrays.asList("domains//weblogic.oracle", "domains/status/weblogic.oracle");
@@ -74,7 +74,7 @@ public class HealthCheckHelperTest {
           "selfsubjectrulesreviews//authorization.k8s.io");
 
   private static final List<String> READ_WATCH_RESOURCES =
-      Arrays.asList("secrets");
+        singletonList("secrets");
 
   private static final List<Operation> CRUD_OPERATIONS =
       Arrays.asList(get, list, watch, create, update, patch, delete, deletecollection);
@@ -93,32 +93,23 @@ public class HealthCheckHelperTest {
       Arrays.asList(create, get);
 
   private static final String POD_LOGS = "pods/log";
-  private static final KubernetesVersion RULES_REVIEW_VERSION = new KubernetesVersion(1, 8);
 
-  private List<Memento> mementos = new ArrayList<>();
-  private List<LogRecord> logRecords = new ArrayList<>();
-  private CallTestSupport testSupport = new CallTestSupport();
-  private AccessChecks accessChecks = new AccessChecks();
+  private final List<Memento> mementos = new ArrayList<>();
+  private final List<LogRecord> logRecords = new ArrayList<>();
+  private final CallTestSupport testSupport = new CallTestSupport();
+  private final AccessChecks accessChecks = new AccessChecks();
 
-  /**
-   * Setup test.
-   * @throws Exception if failure occurs
-   */
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
+    mementos.add(TuningParametersStub.install());
     mementos.add(TestUtils.silenceOperatorLogger().collectLogMessages(logRecords, LOG_KEYS));
     mementos.add(ClientFactoryStub.install());
     mementos.add(testSupport.installSynchronousCallDispatcher());
   }
 
-  /**
-   * Tear down test.
-   */
-  @After
+  @AfterEach
   public void tearDown() {
-    for (Memento memento : mementos) {
-      memento.revert();
-    }
+    mementos.forEach(Memento::revert);
   }
 
   @Test
@@ -126,18 +117,33 @@ public class HealthCheckHelperTest {
     expectSelfSubjectRulesReview();
 
     for (String ns : TARGET_NAMESPACES) {
-      HealthCheckHelper.performSecurityChecks(RULES_REVIEW_VERSION, OPERATOR_NAMESPACE, ns);
+      V1SubjectRulesReviewStatus status = HealthCheckHelper.getSelfSubjectRulesReviewStatus(ns);
+      HealthCheckHelper.verifyAccess(status, ns, true);
     }
   }
 
   @Test
-  public void whenRulesReviewSupportedAndNoNamespaceAccess_logWarning() {
+  public void whenRulesReviewSupportedAndNoDomainNamespaceAccess_logWarning() {
     accessChecks.setMayAccessNamespace(false);
     expectSelfSubjectRulesReview();
 
     for (String ns : TARGET_NAMESPACES) {
-      HealthCheckHelper.performSecurityChecks(RULES_REVIEW_VERSION, OPERATOR_NAMESPACE, ns);
+      V1SubjectRulesReviewStatus status = HealthCheckHelper.getSelfSubjectRulesReviewStatus(ns);
+      HealthCheckHelper.verifyAccess(status, ns, true);
     }
+
+    assertThat(logRecords, containsWarning(VERIFY_ACCESS_DENIED_WITH_NS));
+  }
+
+  // HERE
+
+  @Test
+  public void whenRulesReviewSupportedAndNoOperatorNamespaceAccess_logWarning() {
+    accessChecks.setMayAccessNamespace(false);
+    expectSelfSubjectRulesReview();
+
+    V1SubjectRulesReviewStatus status = HealthCheckHelper.getSelfSubjectRulesReviewStatus(OPERATOR_NAMESPACE);
+    HealthCheckHelper.verifyAccess(status, OPERATOR_NAMESPACE, false);
 
     assertThat(logRecords, containsWarning(VERIFY_ACCESS_DENIED_WITH_NS));
   }
@@ -151,9 +157,9 @@ public class HealthCheckHelperTest {
 
   @SuppressWarnings("SameParameterValue")
   static class AccessChecks {
+    private static final boolean MAY_ACCESS_CLUSTER = true;
 
     private boolean mayAccessNamespace = true;
-    private boolean mayAccessCluster = true;
 
     private static String getResource(String resourceString) {
       return resourceString.split("/")[0];
@@ -182,7 +188,7 @@ public class HealthCheckHelperTest {
       if (mayAccessNamespace) {
         addNamespaceRules(rules);
       }
-      if (mayAccessCluster) {
+      if (MAY_ACCESS_CLUSTER) {
         addClusterRules(rules);
       }
       return rules;

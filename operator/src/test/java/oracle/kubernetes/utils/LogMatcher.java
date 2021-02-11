@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.utils;
@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -18,7 +19,7 @@ public class LogMatcher
 
   private String expectedMessage;
   private Level expectedLevel;
-  private Object expectedParameter;
+  private Object[] expectedParameters;
   private LogMatcher[] logMatchers;
 
   private LogMatcher(LogMatcher[] logMatchers) {
@@ -29,26 +30,22 @@ public class LogMatcher
     this(expectedLevel, expectedMessage, null);
   }
 
-  private LogMatcher(Level expectedLevel, String expectedMessage, Object expectedParameter) {
+  private LogMatcher(Level expectedLevel, String expectedMessage, Object[] expectedParameters) {
     this.expectedMessage = expectedMessage;
     this.expectedLevel = expectedLevel;
-    this.expectedParameter = expectedParameter;
+    this.expectedParameters = expectedParameters;
   }
 
   public static LogMatcher containsInfo(String expectedMessage) {
     return new LogMatcher(Level.INFO, expectedMessage);
   }
 
-  public static LogMatcher containsInfo(String expectedMessage, Object expectedParameter) {
-    return new LogMatcher(Level.INFO, expectedMessage, expectedParameter);
+  public static LogMatcher containsInfo(String expectedMessage, Object... expectedParameters) {
+    return new LogMatcher(Level.INFO, expectedMessage, expectedParameters);
   }
 
   public static LogMatcher containsWarning(String expectedMessage) {
     return new LogMatcher(Level.WARNING, expectedMessage);
-  }
-
-  public static LogMatcher containsWarning(String expectedMessage, Object expectedParameter) {
-    return new LogMatcher(Level.WARNING, expectedMessage, expectedParameter);
   }
 
   public static LogMatcher containsSevere(String expectedMessage) {
@@ -57,10 +54,6 @@ public class LogMatcher
 
   public static LogMatcher containsFine(String expectedMessage) {
     return new LogMatcher(Level.FINE, expectedMessage);
-  }
-
-  public static LogMatcher containsFine(String expectedMessage, Object expectedParameter) {
-    return new LogMatcher(Level.FINE, expectedMessage, expectedParameter);
   }
 
   public static LogMatcher containsInOrder(LogMatcher... logMatchers) {
@@ -109,8 +102,11 @@ public class LogMatcher
   private boolean matches(LogRecord item) {
     return item.getLevel() == expectedLevel
         && item.getMessage().equals(expectedMessage)
-        && (expectedParameter == null
-            || Arrays.stream(item.getParameters()).anyMatch(expectedParameter::equals));
+        && (expectedParameters == null || containsAll(Arrays.asList(item.getParameters()), expectedParameters));
+  }
+
+  private boolean containsAll(List<Object> actualParameters, Object[] expectedParameters) {
+    return Arrays.stream(expectedParameters).allMatch(actualParameters::contains);
   }
 
   private boolean noLogMessageFound(Description mismatchDescription) {
@@ -133,8 +129,8 @@ public class LogMatcher
         .appendValue(expectedLevel)
         .appendText(" log message with value ")
         .appendValue(expectedMessage);
-    if (expectedParameter != null) {
-      description.appendText(" with parameter(s) ").appendValue(expectedParameter);
+    if (expectedParameters != null) {
+      description.appendText(" with parameter(s) ").appendValue(expectedParameters);
     }
     description.appendText(" ");
   }

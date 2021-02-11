@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -43,6 +43,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createDomainAndVe
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createOcirRepoSecret;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithUsernamePassword;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -314,13 +315,22 @@ class ItPodTemplates {
                 .clusterName(clusterName)
                 .replicas(replicaCount)
                 .serverStartState("RUNNING")
-                .serverPod(new ServerPod().labels(clusterLabelKeyValues)))
+                )
             .configuration(new Configuration()
                 .model(new Model()
                     .domainType("WLS")
                     .runtimeEncryptionSecret(encryptionSecretName))
                 .introspectorJobActiveDeadlineSeconds(300L)));
-
+    setPodAntiAffinity(domain);
+    domain.getSpec().getClusters()
+        .stream()
+        .forEach(
+            cluster -> {
+                if (cluster.getClusterName().equals(clusterName)) {
+                  cluster.getServerPod().labels(clusterLabelKeyValues);
+                }
+            }
+    );
     // create domain using model in image
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, namespace, imageName);

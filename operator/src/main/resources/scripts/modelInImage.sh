@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 #
 # This script contains the all the function of model in image
@@ -8,6 +8,7 @@
 source ${SCRIPTPATH}/utils.sh
 
 WDT_MINIMUM_VERSION="1.7.3"
+OPERATOR_ROOT=${TEST_OPERATOR_ROOT:-/weblogic-operator}
 INTROSPECTCM_IMAGE_MD5="/weblogic-operator/introspectormii/inventory_image.md5"
 INTROSPECTCM_CM_MD5="/weblogic-operator/introspectormii/inventory_cm.md5"
 INTROSPECTCM_PASSPHRASE_MD5="/weblogic-operator/introspectormii/inventory_passphrase.md5"
@@ -15,7 +16,6 @@ INTROSPECTCM_MERGED_MODEL="/weblogic-operator/introspectormii/merged_model.json"
 INTROSPECTCM_WLS_VERSION="/weblogic-operator/introspectormii/wls.version"
 INTROSPECTCM_JDK_PATH="/weblogic-operator/introspectormii/jdk.path"
 INTROSPECTCM_SECRETS_AND_ENV_MD5="/weblogic-operator/introspectormii/secrets_and_env.md5"
-DOMAIN_ZIPPED="/weblogic-operator/introspectormii/domainzip.secure"
 PRIMORDIAL_DOMAIN_ZIPPED="/weblogic-operator/introspectormii/primordial_domainzip.secure"
 INTROSPECTJOB_IMAGE_MD5="/tmp/inventory_image.md5"
 INTROSPECTJOB_CM_MD5="/tmp/inventory_cm.md5"
@@ -25,6 +25,7 @@ LOCAL_PRIM_DOMAIN_TAR="/tmp/prim_domain.tar"
 NEW_MERGED_MODEL="/tmp/new_merged_model.json"
 WDT_CONFIGMAP_ROOT="/weblogic-operator/wdt-config-map"
 RUNTIME_ENCRYPTION_SECRET_PASSWORD="/weblogic-operator/model-runtime-secret/password"
+
 # we export the opss password file location because it's also used by introspectDomain.py
 export OPSS_KEY_PASSPHRASE="/weblogic-operator/opss-walletkey-secret/walletPassword"
 OPSS_KEY_B64EWALLET="/weblogic-operator/opss-walletfile-secret/walletFile"
@@ -502,7 +503,8 @@ function createModelDomain() {
   elif [ -f ${PRIMORDIAL_DOMAIN_ZIPPED} ] ; then
     trace "Using existing primordial domain"
     cd / && base64 -d ${PRIMORDIAL_DOMAIN_ZIPPED} > ${LOCAL_PRIM_DOMAIN_ZIP} && tar -xzf ${LOCAL_PRIM_DOMAIN_ZIP}
-
+    # create empty lib since we don't archive it in primordial zip and WDT will fail without it
+    mkdir ${DOMAIN_HOME}/lib
     # Since the SerializedSystem ini is encrypted, restore it first
     local MII_PASSPHRASE=$(cat ${RUNTIME_ENCRYPTION_SECRET_PASSWORD})
     encrypt_decrypt_domain_secret "decrypt" ${DOMAIN_HOME} ${MII_PASSPHRASE}
@@ -512,6 +514,31 @@ function createModelDomain() {
 
   trace "Exiting createModelDomain"
 }
+
+
+# Expands into the root directory the MII domain configuration, stored in one or more config maps
+function restoreDomainConfig() {
+  restoreEncodedTar "domainzip.secure" || return 1
+
+  chmod +x ${DOMAIN_HOME}/bin/*.sh ${DOMAIN_HOME}/*.sh  || return 1
+}
+
+# Expands into the root directory the MII primordial domain, stored in one or more config maps
+function restorePrimordialDomain() {
+  restoreEncodedTar "primordial_domainzip.secure" || return 1
+}
+
+# Restores the specified directory, targz'ed and stored in one or more config maps after base 64 encoding
+# args:
+# $1 the name of the encoded file in the config map
+function restoreEncodedTar() {
+  cd / || return 1
+  cat $(ls ${OPERATOR_ROOT}/introspector*/${1} | sort -V) > /tmp/domain.secure || return 1
+  base64 -d "/tmp/domain.secure" > /tmp/domain.tar.gz || return 1
+
+  tar -xzf /tmp/domain.tar.gz || return 1
+}
+
 
 function diff_model() {
   trace "Entering diff_model"
@@ -650,7 +677,7 @@ function generateMergedModel() {
   export __WLSDEPLOY_STORE_MODEL__="${NEW_MERGED_MODEL}"
 
   ${WDT_BINDIR}/validateModel.sh -oracle_home ${ORACLE_HOME} ${model_list} \
-    ${archive_list} ${variable_list}  -domain_type ${WDT_DOMAIN_TYPE}  > ${WDT_OUTPUT}
+    ${archive_list} ${variable_list}  -domain_type ${WDT_DOMAIN_TYPE}  > ${WDT_OUTPUT} 2>&1
   ret=$?
   if [ $ret -ne 0 ]; then
     trace SEVERE "WDT Failed: Validate Model Failed:"
@@ -686,10 +713,10 @@ function wdtCreatePrimordialDomain() {
       trace "Creating JRF Primordial Domain"
     fi
   fi
-  
+
   local wdtArgs=""
   wdtArgs+=" -oracle_home ${ORACLE_HOME}"
-  wdtArgs+=" -domain_home ${DOMAIN_HOME}" 
+  wdtArgs+=" -domain_home ${DOMAIN_HOME}"
   wdtArgs+=" ${model_list} ${archive_list} ${variable_list}"
   wdtArgs+=" -domain_type ${WDT_DOMAIN_TYPE}"
   wdtArgs+=" ${OPSS_FLAGS}"
@@ -704,8 +731,8 @@ function wdtCreatePrimordialDomain() {
     # JRF wallet generation note:
     #  If this is JRF, the unset OPSS_FLAGS indicates no wallet file was specified
     #  via spec.configuration.opss.walletFileSecret and so we assume that this is
-    #  the first time this domain started for this RCU database. We also assume 
-    #  that 'createDomain.sh' will perform the one time initialization of the 
+    #  the first time this domain started for this RCU database. We also assume
+    #  that 'createDomain.sh' will perform the one time initialization of the
     #  empty RCU schema for the domain in the database (where the empty schema
     #  itself must be setup external to the Operator by calling 'create_rcu_schema.sh'
     #  or similar prior to deploying the domain for the first time).
@@ -778,7 +805,7 @@ function wdtUpdateModelDomain() {
   export __WLSDEPLOY_STORE_MODEL__=1
 
   ${WDT_BINDIR}/updateDomain.sh -oracle_home ${ORACLE_HOME} -domain_home ${DOMAIN_HOME} $model_list \
-  ${archive_list} ${variable_list}  -domain_type ${WDT_DOMAIN_TYPE}  ${UPDATE_RCUPWD_FLAG}  >  ${WDT_OUTPUT}
+  ${archive_list} ${variable_list}  -domain_type ${WDT_DOMAIN_TYPE}  ${UPDATE_RCUPWD_FLAG}  >  ${WDT_OUTPUT} 2>&1
   ret=$?
 
   if [ $ret -ne 0 ]; then

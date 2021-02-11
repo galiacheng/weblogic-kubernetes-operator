@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -8,16 +8,14 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.StringTokenizer;
 
-import com.google.common.base.Strings;
-import oracle.kubernetes.operator.Main;
 import oracle.kubernetes.operator.TuningParameters;
+
+import static oracle.kubernetes.utils.OperatorUtils.isNullOrEmpty;
 
 /** A class to create DNS-1123 legal names for Kubernetes objects. */
 public class LegalNames {
 
   public static final String DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX = "-ext";
-  public static final String DEFAULT_CLUSTER_SIZE_PADDING_VALIDATION_ENABLED = "true";
-  public static final String CLUSTER_SIZE_PADDING_VALIDATION_ENABLED_PARAM = "clusterSizePaddingValidationEnabled";
   private static final String SERVER_PATTERN = "%s-%s";
   private static final String CLUSTER_SERVICE_PATTERN = "%s-cluster-%s";
   public static final String DEFAULT_INTROSPECTOR_JOB_NAME_SUFFIX = "-introspector";
@@ -87,7 +85,17 @@ public class LegalNames {
     return toDns1123LegalName(String.format(
         DOMAIN_INTROSPECTOR_JOB_PATTERN,
         domainUid,
-        Main.Namespaces.getIntrospectorJobNameSuffix()));
+        getIntrospectorJobNameSuffix()));
+  }
+
+  /**
+   * Gets the configured domain introspector job name suffix.
+   * @return String suffix
+   */
+  public static String getIntrospectorJobNameSuffix() {
+    return Optional.ofNullable(TuningParameters.getInstance())
+          .map(t -> t.get(INTROSPECTOR_JOB_NAME_SUFFIX_PARAM))
+          .orElse(LegalNames.DEFAULT_INTROSPECTOR_JOB_NAME_SUFFIX);
   }
 
   /**
@@ -102,7 +110,17 @@ public class LegalNames {
         EXTERNAL_SERVICE_PATTERN,
         domainUid,
         serverName,
-        Main.Namespaces.getExternalServiceNameSuffix()));
+        getExternalServiceNameSuffix()));
+  }
+
+  /**
+   * Gets the configured external service name suffix.
+   * @return String suffix
+   */
+  private static String getExternalServiceNameSuffix() {
+    return Optional.ofNullable(TuningParameters.getInstance())
+        .map(t -> t.get(LegalNames.EXTERNAL_SERVICE_NAME_SUFFIX_PARAM))
+        .orElse(LegalNames.DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX);
   }
 
   /**
@@ -131,7 +149,7 @@ public class LegalNames {
     }
 
     configuredValue = configuredValue.trim();
-    if (Strings.isNullOrEmpty(configuredValue)) {
+    if (isNullOrEmpty(configuredValue)) {
       return null;
     }
 

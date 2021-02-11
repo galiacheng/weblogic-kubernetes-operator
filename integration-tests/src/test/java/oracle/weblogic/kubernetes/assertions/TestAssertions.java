@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.assertions;
@@ -431,8 +431,7 @@ public class TestAssertions {
   }
 
   /**
-   * Check if an application is accessible inside a WebLogic server pod using
-   * Kubernetes Java client API.
+   * Check if an application is accessible inside a WebLogic server pod.
    *
    * @param namespace Kubernetes namespace where the WebLogic server pod is running
    * @param podName name of the WebLogic server pod
@@ -442,27 +441,6 @@ public class TestAssertions {
    * @return true if the command succeeds
    */
   public static boolean appAccessibleInPod(
-      String namespace,
-      String podName,
-      String port,
-      String appPath,
-      String expectedResponse
-  ) {
-    return Application.appAccessibleInPod(namespace, podName, port, appPath, expectedResponse);
-  }
-
-  /**
-   * Check if an application is accessible inside a WebLogic server pod using
-   * "kubectl exec" command.
-   *
-   * @param namespace Kubernetes namespace where the WebLogic server pod is running
-   * @param podName name of the WebLogic server pod
-   * @param port internal port of the managed server running in the pod
-   * @param appPath path to access the application
-   * @param expectedResponse the expected response from the application
-   * @return true if the command succeeds
-   */
-  public static boolean appAccessibleInPodKubectl(
       String namespace,
       String podName,
       String port,
@@ -489,7 +467,7 @@ public class TestAssertions {
       String appPath,
       String expectedResponse
   ) {
-    return !Application.appAccessibleInPod(namespace, podName, port, appPath, expectedResponse);
+    return !Application.appAccessibleInPodKubectl(namespace, podName, port, appPath, expectedResponse);
   }
 
   /**
@@ -530,6 +508,17 @@ public class TestAssertions {
    */
   public static boolean isHelmReleaseFailed(String releaseName, String namespace) {
     return Helm.isReleaseFailed(releaseName, namespace);
+  }
+
+  /**
+   * Check Helm release revision against expected.
+   * @param releaseName release name which is unique in a namespace
+   * @param namespace namespace name
+   * @param revision expected revision for the helm release
+   * @return true on success
+   */
+  public static boolean checkHelmReleaseRevision(String releaseName, String namespace, String revision) {
+    return Helm.checkHelmReleaseRevision(releaseName, namespace, revision);
   }
 
   /**

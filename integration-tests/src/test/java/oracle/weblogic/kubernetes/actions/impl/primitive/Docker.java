@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.actions.impl.primitive;
@@ -7,6 +7,10 @@ package oracle.weblogic.kubernetes.actions.impl.primitive;
 import java.util.Base64;
 
 import com.google.gson.JsonObject;
+import oracle.weblogic.kubernetes.logging.LoggingFacade;
+import oracle.weblogic.kubernetes.utils.ExecResult;
+
+import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 
 /**
  * Class with calls to Docker CLI.
@@ -120,5 +124,30 @@ public class Docker {
     JsonObject configJsonObject = new JsonObject();
     configJsonObject.add("auths", registryObject);
     return configJsonObject;
+  }
+
+  /**
+   * Get environment variable from docker image.
+   * @param imageName image name
+   * @param envVarName environment variable name
+   * @return environment variable in the image
+   */
+  public static String getImageEnvVar(String imageName, String envVarName) {
+    LoggingFacade logger = getLogger();
+    String cmdToExecute = String.format("docker run %s /bin/bash -c 'echo \"$%s\"'", imageName, envVarName);
+    logger.info("getImageEnvVar with imageName: {0}, envVarName: {1}", imageName, envVarName);
+    ExecResult result = Command.withParams(
+                              new CommandParams()
+                                .command(cmdToExecute)
+                                .saveResults(true)
+                                .redirect(true)
+                            ).executeAndReturnResult();
+    String envVar  = null;
+    if (result != null && result.exitValue() == 0) {
+      envVar = result.stdout();
+    }
+    logger.info("getImageEnvVar returns result: {0}, envVar: {1} ", result, envVar);
+    return envVar;
+
   }
 }

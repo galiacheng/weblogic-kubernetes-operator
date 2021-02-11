@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.weblogic.domain.model;
@@ -138,17 +138,34 @@ public class DomainSpec extends BaseConfiguration {
   private Boolean httpAccessLogInLogHome;
 
   /**
-   * The WebLogic Docker image.
+   * Full path of an optional liveness probe custom script for WebLogic Server instance pods.
+   * The existing liveness probe script `livenessProbe.sh` will invoke this custom script after the
+   * existing script performs its own checks. This element is optional and is for advanced usage only.
+   * Its value is not set by default. If the custom script fails with non-zero exit status,
+   * then pod will fail the liveness probe and Kubernetes will restart the container.
+   * If the script specified by this element value is not found, then it is ignored.
+   */
+  @Description("Full path of an optional liveness probe custom script for WebLogic Server instance pods. "
+          + "The existing liveness probe script `livenessProbe.sh` will invoke this custom script after the "
+          + "existing script performs its own checks. This element is optional and is for advanced usage only. "
+          + "Its value is not set by default. If the custom script fails with non-zero exit status, "
+          + "then pod will fail the liveness probe and Kubernetes will restart the container. "
+          + "If the script specified by this element value is not found, then it is ignored."
+  )
+  private String livenessProbeCustomScript;
+
+  /**
+   * The WebLogic Server image.
    *
    * <p>Defaults to container-registry.oracle.com/middleware/weblogic:12.2.1.4
    */
   @Description(
-      "The WebLogic container image; required when `domainHomeSourceType` is Image or FromModel; "
+      "The WebLogic Server image; required when `domainHomeSourceType` is Image or FromModel; "
           + "otherwise, defaults to container-registry.oracle.com/middleware/weblogic:12.2.1.4.")
   private String image;
 
   /**
-   * The image pull policy for the WebLogic Docker image. Legal values are Always, Never and,
+   * The image pull policy for the WebLogic Server image. Legal values are Always, Never and,
    * IfNotPresent.
    *
    * <p>Defaults to Always if image ends in :latest; IfNotPresent, otherwise.
@@ -156,21 +173,21 @@ public class DomainSpec extends BaseConfiguration {
    * <p>More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
    */
   @Description(
-      "The image pull policy for the WebLogic container image. "
+      "The image pull policy for the WebLogic Server image. "
           + "Legal values are Always, Never, and IfNotPresent. "
           + "Defaults to Always if image ends in :latest; IfNotPresent, otherwise.")
   @EnumClass(ImagePullPolicy.class)
   private String imagePullPolicy;
 
   /**
-   * The image pull secrets for the WebLogic Docker image.
+   * The image pull secrets for the WebLogic Server image.
    *
    * <p>More info:
    * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#localobjectreference-v1-core
    *
    * @since 2.0
    */
-  @Description("A list of image pull Secrets for the WebLogic container image.")
+  @Description("A list of image pull Secrets for the WebLogic Server image.")
   private List<V1LocalObjectReference> imagePullSecrets;
 
   /**
@@ -256,7 +273,7 @@ public class DomainSpec extends BaseConfiguration {
       + "server must be restarted because of changes to any of the fields listed here: "
       + "https://oracle.github.io/weblogic-kubernetes-operator/userguide/managing-domains/"
       + "domain-lifecycle/startup/#properties-that-cause-servers-to-be-restarted. "
-      + "See also `domains.spec.configuration.overridesConfigurationStrategy`.")
+      + "See also `domains.spec.configuration.overrideDistributionStrategy`.")
   private String introspectVersion;
 
   @Description("Models and overrides affecting the WebLogic domain configuration.")
@@ -388,6 +405,10 @@ public class DomainSpec extends BaseConfiguration {
     return Optional.ofNullable(domainHome).orElse(getDomainHomeSourceType().getDefaultDomainHome(getDomainUid()));
   }
 
+  public String getLivenessProbeCustomScript() {
+    return Optional.ofNullable(livenessProbeCustomScript).orElse("");
+  }
+
   /**
    * Domain home.
    *
@@ -396,6 +417,10 @@ public class DomainSpec extends BaseConfiguration {
    */
   public void setDomainHome(String domainHome) {
     this.domainHome = domainHome;
+  }
+
+  public void setLivenessProbeCustomScript(String livenessProbeCustomScript) {
+    this.livenessProbeCustomScript = livenessProbeCustomScript;
   }
 
   @Nullable
@@ -439,18 +464,6 @@ public class DomainSpec extends BaseConfiguration {
    */
   public DomainSpec withWebLogicCredentialsSecret(V1SecretReference webLogicCredentialsSecret) {
     this.webLogicCredentialsSecret = webLogicCredentialsSecret;
-    return this;
-  }
-
-  /**
-   * Reference to secret containing WebLogic startup credentials user name and password. Secret must
-   * contain keys names 'username' and 'password'. Required.
-   *
-   * @param opssKeyPassPhrase WebLogic startup credentials secret
-   * @return this
-   */
-  public DomainSpec withOpssKeyPassPhrase(V1SecretReference opssKeyPassPhrase) {
-    this.webLogicCredentialsSecret = opssKeyPassPhrase;
     return this;
   }
 

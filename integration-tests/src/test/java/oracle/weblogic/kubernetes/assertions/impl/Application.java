@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.assertions.impl;
@@ -83,7 +83,7 @@ public class Application {
   }
 
   /**
-   * Check if an application is accessible inside a WebLogic server pod.
+   * Check if an application is accessible inside a WebLogic server pod using "kubectl exec" command.
    *
    * @param namespace Kubernetes namespace where the WebLogic server pod is running
    * @param podName name of the WebLogic server pod

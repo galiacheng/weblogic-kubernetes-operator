@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -28,7 +28,6 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1PodTemplateSpec;
 import io.kubernetes.client.openapi.models.V1SecretReference;
-import io.kubernetes.client.openapi.models.V1SecurityContext;
 import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import oracle.weblogic.domain.AdminServer;
@@ -44,7 +43,6 @@ import oracle.weblogic.kubernetes.annotations.IntegrationTest;
 import oracle.weblogic.kubernetes.annotations.Namespaces;
 import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import oracle.weblogic.kubernetes.utils.CommonTestUtils;
-import oracle.weblogic.kubernetes.utils.DeployUtil;
 import oracle.weblogic.kubernetes.utils.ExecResult;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeAll;
@@ -59,6 +57,7 @@ import static oracle.weblogic.kubernetes.TestConstants.BASE_IMAGES_REPO_SECRET;
 import static oracle.weblogic.kubernetes.TestConstants.DOMAIN_API_VERSION;
 import static oracle.weblogic.kubernetes.TestConstants.K8S_NODEPORT_HOST;
 import static oracle.weblogic.kubernetes.TestConstants.WEBLOGIC_IMAGE_TO_USE_IN_SPEC;
+import static oracle.weblogic.kubernetes.TestConstants.WEBLOGIC_SLIM;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.ITTESTS_DIR;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.RESOURCE_DIR;
 import static oracle.weblogic.kubernetes.actions.TestActions.addLabelsToNamespace;
@@ -66,15 +65,21 @@ import static oracle.weblogic.kubernetes.actions.TestActions.createNamespacedJob
 import static oracle.weblogic.kubernetes.actions.TestActions.getJob;
 import static oracle.weblogic.kubernetes.actions.TestActions.getPodLog;
 import static oracle.weblogic.kubernetes.actions.TestActions.listPods;
+import static oracle.weblogic.kubernetes.actions.TestActions.scaleCluster;
 import static oracle.weblogic.kubernetes.assertions.TestAssertions.jobCompleted;
+import static oracle.weblogic.kubernetes.utils.CommonPatchTestUtils.patchServerStartPolicy;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkAppUsingHostHeader;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodDeleted;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReady;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createDomainAndVerify;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretForBaseImages;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithUsernamePassword;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createfixPVCOwnerContainer;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.generateFileFromTemplate;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
+import static oracle.weblogic.kubernetes.utils.DeployUtil.deployToClusterUsingRest;
 import static oracle.weblogic.kubernetes.utils.IstioUtils.deployHttpIstioGatewayAndVirtualservice;
 import static oracle.weblogic.kubernetes.utils.IstioUtils.getIstioHttpIngressPort;
 import static oracle.weblogic.kubernetes.utils.TestUtils.getNextFreePort;
@@ -98,7 +103,7 @@ public class ItIstioDomainInPV  {
 
   private final String wlSecretName = "weblogic-credentials";
   private final String domainUid = "istio-div";
-  private final String clusterName = "mycluster";
+  private final String clusterName = "cluster-1";
   private final String adminServerName = "admin-server";
   private final String adminServerPodName = domainUid + "-" + adminServerName;
   private static LoggingFacade logger = null;
@@ -138,7 +143,6 @@ public class ItIstioDomainInPV  {
 
     // install operator and verify its running in ready state
     installAndVerifyOperator(opNamespace, domainNamespace);
-
   }
 
   /**
@@ -147,6 +151,8 @@ public class ItIstioDomainInPV  {
    * Deploy istio gateways and virtual service.
    * Verify domain pods runs in ready state and services are created.
    * Verify login to WebLogic console is successful thru istio ingress Port.
+   * Additionally, the test verifies that WebLogic cluster can be scaled down
+   * and scaled up in the absence of Administration server.
    */
   @Test
   @DisplayName("Create WebLogic domain in PV with Istio")
@@ -258,7 +264,7 @@ public class ItIstioDomainInPV  {
                 .istio(new Istio()
                     .enabled(Boolean.TRUE)
                     .readinessPort(8888))));
-
+    setPodAntiAffinity(domain);
     // verify the domain custom resource is created
     createDomainAndVerify(domain, domainNamespace);
 
@@ -302,27 +308,62 @@ public class ItIstioDomainInPV  {
     int istioIngressPort = getIstioHttpIngressPort();
     logger.info("Istio http ingress Port is {0}", istioIngressPort);
 
-    String consoleUrl = "http://" + K8S_NODEPORT_HOST + ":" + istioIngressPort + "/console/login/LoginForm.jsp";
-    boolean checkConsole =
-         checkAppUsingHostHeader(consoleUrl, domainNamespace + ".org");
-    assertTrue(checkConsole, "Failed to access WebLogic console");
-    logger.info("WebLogic console is accessible");
-
-    Path archivePath = Paths.get(ITTESTS_DIR, "../src/integration-tests/apps/testwebapp.war");
+    // We can not verify Rest Management console thru Adminstration NodePort 
+    // in istio, as we can not enable Adminstration NodePort
+    if (!WEBLOGIC_SLIM) {
+      String consoleUrl = "http://" + K8S_NODEPORT_HOST + ":" + istioIngressPort + "/console/login/LoginForm.jsp";
+      boolean checkConsole = 
+          checkAppUsingHostHeader(consoleUrl, domainNamespace + ".org");
+      assertTrue(checkConsole, "Failed to access WebLogic console");
+      logger.info("WebLogic console is accessible");
+    } else {
+      logger.info("Skipping WebLogic console in WebLogic slim image");
+    }
+  
+    Path archivePath = Paths.get(ITTESTS_DIR, "../operator/integration-tests/apps/testwebapp.war");
     ExecResult result = null;
-    result = DeployUtil.deployUsingRest(K8S_NODEPORT_HOST, 
+    result = deployToClusterUsingRest(K8S_NODEPORT_HOST, 
         String.valueOf(istioIngressPort),
         ADMIN_USERNAME_DEFAULT, ADMIN_PASSWORD_DEFAULT, 
         clusterName, archivePath, domainNamespace + ".org", "testwebapp");
     assertNotNull(result, "Application deployment failed");
     logger.info("Application deployment returned {0}", result.toString());
-    assertEquals("202", result.stdout(), "Application deployed successfully");
+    assertEquals("202", result.stdout(), "Application deployment failed with wrong HTTP code");
 
     String url = "http://" + K8S_NODEPORT_HOST + ":" + istioIngressPort + "/testwebapp/index.jsp";
     logger.info("Application Access URL {0}", url);
     boolean checkApp = checkAppUsingHostHeader(url, domainNamespace + ".org");
     assertTrue(checkApp, "Failed to access WebLogic application");
 
+    // Refer JIRA https://jira.oraclecorp.com/jira/browse/OWLS-86407
+    // Stop and Start the managed server in absense of administration server
+    assertTrue(patchServerStartPolicy(domainUid, domainNamespace,
+         "/spec/adminServer/serverStartPolicy", "NEVER"),
+         "Failed to patch administrationi server serverStartPolicy to NEVER");
+    logger.info("Domain is patched to shutdown administration server");
+    checkPodDeleted(adminServerPodName, domainUid, domainNamespace);
+    logger.info("Administration server shutdown success");
+
+    boolean scalingSuccess = assertDoesNotThrow(() ->
+        scaleCluster(domainUid, domainNamespace, "cluster-1", 1),
+        String.format("Scaling down cluster cluster-1 of domain %s in namespace %s failed",
+        domainUid, domainNamespace));
+    assertTrue(scalingSuccess,
+        String.format("Cluster scaling failed for domain %s in namespace %s", domainUid, domainNamespace));
+    logger.info("Cluster is scaled down in absense of administration server");
+    checkPodDeleted(managedServerPodNamePrefix + "2", domainUid, domainNamespace);
+    logger.info("Managed Server stopped in absense of administration server");
+
+    scalingSuccess = assertDoesNotThrow(() ->
+        scaleCluster(domainUid, domainNamespace, "cluster-1", 2),
+        String.format("Scaling up cluster cluster-1 of domain %s in namespace %s failed",
+        domainUid, domainNamespace));
+    assertTrue(scalingSuccess,
+        String.format("Cluster scaling failed for domain %s in namespace %s", domainUid, domainNamespace));
+    logger.info("Cluster is scaled up in absense of administration server");
+    checkServiceExists(managedServerPodNamePrefix + "2", domainNamespace);
+    checkPodReady(managedServerPodNamePrefix + "2", domainUid, domainNamespace);
+    logger.info("Managed Server started in absense of administration server");
   }
 
   /**
@@ -392,19 +433,7 @@ public class ItIstioDomainInPV  {
                     .annotations(annotMap))
                 .spec(new V1PodSpec()
                     .restartPolicy("Never")
-                    .initContainers(Arrays.asList(new V1Container()
-                        .name("fix-pvc-owner") // change the ownership of the pv to opc:opc
-                        .image(WEBLOGIC_IMAGE_TO_USE_IN_SPEC)
-                        .addCommandItem("/bin/sh")
-                        .addArgsItem("-c")
-                        .addArgsItem("chown -R 1000:1000 /shared")
-                        .volumeMounts(Arrays.asList(
-                            new V1VolumeMount()
-                                .name(pvName)
-                                .mountPath("/shared")))
-                        .securityContext(new V1SecurityContext()
-                            .runAsGroup(0L)
-                            .runAsUser(0L))))
+                    .initContainers(Arrays.asList(createfixPVCOwnerContainer(pvName, "/shared")))
                     .containers(Arrays.asList(jobContainer  // container containing WLST or WDT details
                         .name("create-weblogic-domain-onpv-container")
                         .image(WEBLOGIC_IMAGE_TO_USE_IN_SPEC)
@@ -432,6 +461,7 @@ public class ItIstioDomainInPV  {
                     .imagePullSecrets(Arrays.asList(
                         new V1LocalObjectReference()
                             .name(BASE_IMAGES_REPO_SECRET))))));    // this secret is used only on non-kind cluster
+
     String jobName = assertDoesNotThrow(()
         -> createNamespacedJob(jobBody), "Failed to create Job");
 

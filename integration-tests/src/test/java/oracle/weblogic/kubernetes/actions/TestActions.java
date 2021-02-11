@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.actions;
@@ -169,13 +169,14 @@ public class TestActions {
    * Create Domain Custom Resource.
    *
    * @param domain Domain custom resource model object
+   * @param domainVersion custom resource's version
    * @return true on success, false otherwise
    * @throws ApiException if Kubernetes client API call fails
    */
-  public static boolean createDomainCustomResource(oracle.weblogic.domain.Domain domain)
-      throws ApiException {
-    return Domain.createDomainCustomResource(domain);
-  }
+  public static boolean createDomainCustomResource(oracle.weblogic.domain.Domain domain,
+                                                   String... domainVersion) throws ApiException {
+    return Domain.createDomainCustomResource(domain, domainVersion);
+  } 
 
   /**
    * List Domain Custom Resources.
@@ -261,6 +262,18 @@ public class TestActions {
   public static boolean patchDomainResourceWithNewIntrospectVersion(
       String domainUid, String namespace) throws ApiException {
     return Domain.patchDomainResourceWithNewIntrospectVersion(domainUid, namespace);
+  }
+
+  /**
+   * Get current introspectVersion for a given domain.
+   *
+   * @param domainUid domain id
+   * @param namespace namespace in which the domain resource exists
+   * @return String containing current introspectVersion
+   * @throws ApiException when getting domain resource fails
+   */
+  public static String getCurrentIntrospectVersion(String domainUid, String namespace) throws ApiException {
+    return Domain.getCurrentIntrospectVersion(domainUid, namespace);
   }
 
   /**
@@ -1221,6 +1234,22 @@ public class TestActions {
   }
 
   /**
+   * Get a pod's log.
+   *
+   * @param podName name of the pod
+   * @param namespace name of the namespace
+   * @param container name of the container
+   * @param sinceSeconds a relative time in seconds before the current time from which to show logs.
+   * @param previous whether return previous terminated container logs
+   * @return log as a String
+   * @throws ApiException if Kubernetes client API call fails
+   **/
+  public static String getPodLog(String podName, String namespace, String container, Boolean previous,
+                                 Integer sinceSeconds) throws ApiException {
+    return Pod.getPodLog(podName, namespace, container, previous, sinceSeconds);
+  }
+
+  /**
    * List Kubernetes pods in a namespace.
    *
    * @param namespace name of namespace
@@ -1449,14 +1478,12 @@ public class TestActions {
    *
    * @param filter the value of weblogicLoggingExporterFilters to be added to WebLogic Logging Exporter YAML file
    * @param wlsLoggingExporterYamlFileLoc the directory where WebLogic Logging Exporter YAML file stores
-   * @param wlsLoggingExporterArchiveLoc the directory where WebLogic Logging Exporter jar files store
    * @return true if WebLogic Logging Exporter is successfully installed, false otherwise.
    */
   public static boolean installWlsLoggingExporter(String filter,
-                                                  String wlsLoggingExporterYamlFileLoc,
-                                                  String wlsLoggingExporterArchiveLoc) {
+                                                  String wlsLoggingExporterYamlFileLoc) {
     return LoggingExporter.installWlsLoggingExporter(filter,
-        wlsLoggingExporterYamlFileLoc, wlsLoggingExporterArchiveLoc);
+        wlsLoggingExporterYamlFileLoc);
   }
 
   /**

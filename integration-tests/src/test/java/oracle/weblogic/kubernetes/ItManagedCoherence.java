@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -26,8 +26,6 @@ import oracle.weblogic.domain.ServerPod;
 import oracle.weblogic.kubernetes.actions.impl.primitive.HelmParams;
 import oracle.weblogic.kubernetes.annotations.IntegrationTest;
 import oracle.weblogic.kubernetes.annotations.Namespaces;
-import oracle.weblogic.kubernetes.annotations.tags.MustNotRunInParallel;
-import oracle.weblogic.kubernetes.annotations.tags.Slow;
 import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import oracle.weblogic.kubernetes.utils.BuildApplication;
 import oracle.weblogic.kubernetes.utils.ExecCommand;
@@ -59,6 +57,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.dockerLoginAndPus
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyVoyager;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installVoyagerIngressAndVerify;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.with;
@@ -177,8 +176,6 @@ class ItManagedCoherence {
    */
   @Test
   @DisplayName("Create a two-cluster domain with a Coherence cluster using WDT and test interaction with cache data")
-  @Slow
-  @MustNotRunInParallel
   public void testCreateCoherenceDomainInImageUsingWdt() {
     String ingressName = domainUid + "-ingress-host-routing";
     String ingressServiceName = VOYAGER_CHART_NAME + "-" + ingressName;
@@ -334,7 +331,7 @@ class ItManagedCoherence {
                 .model(new Model()
                     .domainType("WLS"))
                 .introspectorJobActiveDeadlineSeconds(300L)));
-
+    setPodAntiAffinity(domain);
     logger.info("Create domain custom resource for domainUid {0} in namespace {1}",
         domainUid, domainNamespace);
     boolean domCreated = assertDoesNotThrow(() -> createDomainCustomResource(domain),

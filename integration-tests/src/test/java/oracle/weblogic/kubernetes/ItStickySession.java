@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -14,7 +14,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.primitives.Ints;
 import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -62,6 +61,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyO
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyTraefik;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyVoyager;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installVoyagerIngressAndVerify;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.with;
@@ -345,7 +345,7 @@ class ItStickySession {
                     .domainType("WLS")
                     .runtimeEncryptionSecret(encryptionSecretName))
                 .introspectorJobActiveDeadlineSeconds(300L)));
-
+    setPodAntiAffinity(domain);
     // create domain using model in image
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, domainNamespace, miiImage);
@@ -542,7 +542,7 @@ class ItStickySession {
     String serverName2 = httpDataInfo.get(serverNameAttr);
     String sessionId2 = httpDataInfo.get(sessionIdAttr);
     String countStr = httpDataInfo.get(countAttr);
-    int count = Optional.ofNullable(countStr).map(Ints::tryParse).orElse(0);
+    int count = Optional.ofNullable(countStr).map(Integer::valueOf).orElse(0);
     logger.info("Got the server {0}, session ID {1} and session state {2} "
         + "from the second HTTP connection", serverName2, sessionId2, count);
 

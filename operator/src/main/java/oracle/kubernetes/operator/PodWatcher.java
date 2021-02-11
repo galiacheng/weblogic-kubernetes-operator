@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator;
@@ -30,6 +30,7 @@ import oracle.kubernetes.operator.TuningParameters.WatchTuning;
 import oracle.kubernetes.operator.builders.WatchBuilder;
 import oracle.kubernetes.operator.helpers.CallBuilder;
 import oracle.kubernetes.operator.helpers.KubernetesUtils;
+import oracle.kubernetes.operator.helpers.LegalNames;
 import oracle.kubernetes.operator.helpers.PodHelper;
 import oracle.kubernetes.operator.helpers.ResponseStep;
 import oracle.kubernetes.operator.logging.LoggingFacade;
@@ -161,7 +162,7 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod>, 
     switch (item.type) {
       case "ADDED":
       case "MODIFIED":
-        if (getPodName(pod).contains(Main.Namespaces.getIntrospectorJobNameSuffix()) && isFailed(pod)) {
+        if (getPodName(pod).contains(LegalNames.getIntrospectorJobNameSuffix()) && isFailed(pod)) {
           LOGGER.info(MessageKeys.INTROSPECTOR_POD_FAILED, getPodName(pod), getPodNamespace(pod), pod.getStatus());
         }
         copyOf(getOnModifiedCallbacks(getPodName(pod))).forEach(c -> c.accept(pod));

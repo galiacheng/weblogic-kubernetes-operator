@@ -1,4 +1,4 @@
-# Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 #
 # HOW TO BUILD THIS IMAGE
@@ -7,24 +7,25 @@
 #      $ ./buildDockerImage.sh [-t <image-name>]
 #
 # -------------------------
-FROM oraclelinux:7-slim
+FROM oraclelinux:8-slim
 
-# Maintainer
-# ----------
-MAINTAINER Ryan Eberhard <ryan.eberhard@oracle.com>
+LABEL "org.opencontainers.image.authors"="Ryan Eberhard <ryan.eberhard@oracle.com>" \
+      "org.opencontainers.image.url"="https://github.com/oracle/weblogic-kubernetes-operator" \
+      "org.opencontainers.image.source"="https://github.com/oracle/weblogic-kubernetes-operator" \
+      "org.opencontainers.image.vendor"="Oracle Corporation" \
+      "org.opencontainers.image.title"="Oracle WebLogic Server Kubernetes Operator" \
+      "org.opencontainers.image.description"="Oracle WebLogic Server Kubernetes Operator" \
+      "org.opencontainers.image.documentation"="https://oracle.github.io/weblogic-kubernetes-operator/"
 
 RUN set -eux; \
-    yum -y install gzip tar openssl; \
-    rm -rf /var/cache/yum
+    microdnf -y install gzip tar openssl jq; \
+    microdnf clean all
 
-# Default to UTF-8 file.encoding
-ENV LANG en_US.UTF-8
-
-ENV JAVA_HOME /usr/local/java
-ENV PATH /operator:$JAVA_HOME/bin:$PATH
-
-ENV JAVA_VERSION 14.0.2
-ENV JAVA_URL https://download.java.net/java/GA/jdk14.0.2/205943a0976c4ed48cb16f1043c5c647/12/GPL/openjdk-14.0.2_linux-x64_bin.tar.gz
+ENV LANG="en_US.UTF-8" \
+    JAVA_HOME="/usr/local/java" \
+    PATH="/operator:$JAVA_HOME/bin:$PATH" \
+    JAVA_VERSION="15" \
+    JAVA_URL="https://download.java.net/java/GA/jdk15.0.2/0d1cfde4252546c6931946de8db48ee2/7/GPL/openjdk-15.0.2_linux-x64_bin.tar.gz"
 
 # Install Java and make the operator run with a non-root user id (1000 is the `oracle` user)
 RUN set -eux; \
@@ -43,17 +44,17 @@ RUN set -eux; \
         alternatives --install "/usr/bin/$base" "$base" "$bin" 20000; \
     done; \
     java -Xshare:dump; \
-    groupadd -g 1000 oracle; \
-    useradd -d /operator -M -s /bin/bash -g 1000 -u 1000 oracle; \
-    mkdir -p /operator/lib; \
-    mkdir /logs; \
-    chown -R 1000:1000 /operator /logs
+    useradd -d /operator -M -s /bin/bash -g root -u 1000 oracle; \
+    mkdir -m 775 /operator; \
+    mkdir -m 775 /logs; \
+    mkdir /operator/lib; \
+    chown -R oracle:root /operator /logs
 
-USER 1000
+USER oracle
 
-COPY src/scripts/* /operator/
-COPY operator/target/weblogic-kubernetes-operator.jar /operator/weblogic-kubernetes-operator.jar
-COPY operator/target/lib/*.jar /operator/lib/
+COPY --chown=oracle:root operator/scripts/* /operator/
+COPY --chown=oracle:root operator/target/weblogic-kubernetes-operator.jar /operator/weblogic-kubernetes-operator.jar
+COPY --chown=oracle:root operator/target/lib/*.jar /operator/lib/
 
 HEALTHCHECK --interval=1m --timeout=10s \
   CMD /operator/livenessProbe.sh

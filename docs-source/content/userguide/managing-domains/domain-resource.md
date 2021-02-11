@@ -32,6 +32,7 @@ The following prerequisites must be fulfilled before proceeding with the creatio
 * Create a Kubernetes Namespace for the Domain unless the intention is to use the default namespace.
 * Make sure the WebLogic Server Kubernetes Operator is running and is configured to monitor the namespace.
 * Make sure any resources that the domain resource references are deployed to the same namespace. For example, all domain resources have a `spec.webLogicCredentialsSecret` field that references a Kubernetes Secret containing the `username` and `password` of the WebLogic server administrative account.
+* Make sure a domain resource configuration and its corresponding WebLogic configuration [meet Kubernetes resource name restrictions]({{< relref "/userguide/managing-domains/_index.md#meet-kubernetes-resource-name-restrictions" >}}).
 
 For example, see the [Quick Start]({{< relref "/quickstart/_index.md" >}}).
 
@@ -132,7 +133,7 @@ The Domain `spec` section contains elements for configuring the domain operation
 
 Elements related to domain identification, container image, and domain home:
 
-* `domainUID`: Domain unique identifier. It is recommended that this value be unique to assist in future work to identify related domains in active-passive scenarios across data centers; however, it is only required that this value be unique within the namespace, similarly to the names of Kubernetes resources. This value is distinct and need not match the domain name from the WebLogic domain configuration. Defaults to the value of `metadata.name`.
+* `domainUID`: Domain unique identifier. This identifier is required to be no more than 45 characters, and practically, should be shorter in order to help ensure Kubernetes restrictions are met (for more details, see [Meet Kubernetes resource name restrictions]({{< relref "/userguide/managing-domains/_index.md#meet-kubernetes-resource-name-restrictions" >}})). It is recommended that this value be unique to assist in future work to identify related domains in active-passive scenarios across data centers; however, it is only required that this value be unique within the namespace, similarly to the names of Kubernetes resources. This value is distinct and need not match the domain name from the WebLogic domain configuration. Defaults to the value of `metadata.name`. 
 * `image`: The WebLogic container image; required when `domainHomeSourceType` is Image or FromModel; otherwise, defaults to container-registry.oracle.com/middleware/weblogic:12.2.1.4.
 * `imagePullPolicy`: The image pull policy for the WebLogic container image. Legal values are Always, Never, and IfNotPresent. Defaults to Always if image ends in :latest; IfNotPresent, otherwise.
 * `imagePullSecrets`: A list of image pull Secrets for the WebLogic container image.
@@ -154,28 +155,29 @@ Elements related to security:
 
 Elements related to domain [startup and shutdown]({{< relref "/userguide/managing-domains/domain-lifecycle/startup.md" >}}):
 
-* `serverStartPolicy`: The strategy for [deciding whether to start]({{< relref "/userguide/managing-domains/domain-lifecycle/startup.md#starting-and-stopping-servers" >}}) a WebLogic Server instance. Legal values are ADMIN_ONLY, NEVER, or IF_NEEDED. Defaults to IF_NEEDED.
+* `serverStartPolicy`: The strategy for [deciding whether to start]({{< relref "/userguide/managing-domains/domain-lifecycle/startup#starting-and-stopping-servers" >}}) a WebLogic Server instance. Legal values are ADMIN_ONLY, NEVER, or IF_NEEDED. Defaults to IF_NEEDED.
 * `serverStartState`: The WebLogic runtime state in which the server is to be started. Use ADMIN if the server should start in the admin state. Defaults to RUNNING.
-* `restartVersion`: Changes to this field cause the [operator to restart]({{< relref "/userguide/managing-domains/domain-lifecycle/startup.md#restarting-servers" >}}) WebLogic Server instances.
+* `restartVersion`: Changes to this field cause the [operator to restart]({{< relref "/userguide/managing-domains/domain-lifecycle/startup#restarting-servers" >}}) WebLogic Server instances.
 * `replicas`: The default number of cluster member Managed Server instances to start for each WebLogic cluster in the domain configuration, unless `replicas` is specified for that cluster under the `clusters` field. For each cluster, the operator will sort cluster member Managed Server names from the WebLogic domain configuration by normalizing any numbers in the Managed Server name and then sorting alphabetically. This is done so that server names such as "managed-server10" come after "managed-server9". The operator will then start Managed Servers from the sorted list, up to the `replicas` count, unless specific Managed Servers are specified as starting in their entry under the `managedServers` field. In that case, the specified Managed Servers will be started and then additional cluster members will be started, up to the `replicas` count, by finding further cluster members in the sorted list that are not already started. If cluster members are started because of their entries under `managedServers`, then a cluster may have more cluster members running than its `replicas` count. Defaults to 0.
 * `maxClusterConcurrentStartup`: The maximum number of cluster member Managed Server instances that the operator will start in parallel for a given cluster, if `maxConcurrentStartup` is not specified for a specific cluster under the `clusters` field. A value of 0 means there is no configured limit. Defaults to 0.
 * `allowReplicasBelowMinDynClusterSize`: Whether to allow the number of running cluster member Managed Server instances to drop below the minimum dynamic cluster size configured in the WebLogic domain configuration, if this is not specified for a specific cluster under the `clusters` field. Defaults to true.
-* `introspectVersion`: Changes to this field cause the operator to repeat its introspection of the WebLogic domain configuration. Repeating introspection is required for the operator to recognize changes to the domain configuration, such as adding a new WebLogic cluster or Managed Server instance, to regenerate configuration overrides, or to regenerate the WebLogic domain home when the `domainHomeSourceType` is FromModel. Introspection occurs automatically, without requiring change to this field, when servers are first started or restarted after a full domain shut down. For the FromModel `domainHomeSourceType`, introspection also occurs when a running server must be restarted because of changes to any of the fields [listed here]({{< relref "/userguide/managing-domains/domain-lifecycle/startup.md#properties-that-cause-servers-to-be-restarted" >}}). See also `overridesConfigurationStrategy`.
+* `introspectVersion`: Changes to this field cause the operator to repeat its introspection of the WebLogic domain configuration (see [Initiating introspection]({{< relref "/userguide/managing-domains/domain-lifecycle/introspection/_index.md#initiating-introspection" >}})). Repeating introspection is required for the operator to recognize changes to the domain configuration, such as adding a new WebLogic cluster or Managed Server instance, to regenerate configuration overrides, or to regenerate the WebLogic domain home when the `domainHomeSourceType` is FromModel. Introspection occurs automatically, without requiring change to this field, when servers are first started or restarted after a full domain shut down. For the FromModel `domainHomeSourceType`, introspection also occurs when a running server must be restarted because of changes to any of the fields [listed here]({{< relref "/userguide/managing-domains/domain-lifecycle/startup#fields-that-cause-servers-to-be-restarted" >}}). See also `overrideDistributionStrategy`.
 
 Elements related to specifying and overriding WebLogic domain configuration:
 
 * These elements are under `configuration`.
 
   * `overridesConfigMap`: The name of the ConfigMap for WebLogic [configuration overrides]({{< relref "/userguide/managing-domains/configoverrides/_index.md" >}}). If this field is specified, then the value of `spec.configOverrides` is ignored.
-  * `overrideDistributionStrategy`: Determines how updated configuration overrides are distributed to already running WebLogic Server instances following introspection when the `domainHomeSourceType` is PersistentVolume or Image. Configuration overrides are generated during introspection from Secrets, the `overrideConfigMap` field, and WebLogic domain topology. Legal values are DYNAMIC, which means that the operator will distribute updated configuration overrides dynamically to running servers, and ON_RESTART, which means that servers will use updated configuration overrides only after the server's next restart. The selection of ON_RESTART will not cause servers to restart when there are updated configuration overrides available. See also `introspectVersion`. Defaults to DYNAMIC.
+  * `overrideDistributionStrategy`: Determines how updated configuration overrides are distributed to already running WebLogic Server instances following introspection when the `domainHomeSourceType` is PersistentVolume or Image. Configuration overrides are generated during introspection from Secrets, the `overridesConfigMap` field, and WebLogic domain topology. Legal values are DYNAMIC, which means that the operator will distribute updated configuration overrides dynamically to running servers, and ON_RESTART, which means that servers will use updated configuration overrides only after the server's next restart. The selection of ON_RESTART will not cause servers to restart when there are updated configuration overrides available. See also `introspectVersion`. Defaults to DYNAMIC.
   * `secrets`: A list of names of the Secrets for WebLogic [configuration overrides]({{< relref "/userguide/managing-domains/configoverrides/_index.md" >}}) or model. If this field is specified, then the value of `spec.configOverrideSecrets` is ignored.
   * `introspectorJobActiveDeadlineSeconds`: The introspector job timeout value in seconds. If this field is specified, then the operator's ConfigMap `data.introspectorJobActiveDeadlineSeconds` value is ignored. Defaults to 120 seconds.
 
 * These elements are under `configuration.model`, only apply if the `domainHomeSourceType` is `FromModel`, and are discussed in [Model in Image]({{< relref "/userguide/managing-domains/model-in-image/_index.md" >}}).
 
-  * `configMap`: Name of a ConfigMap containing the WebLogic Deploy Tooling model.
+  * `configMap`: (Optional) Name of a ConfigMap containing WebLogic Deploy Tooling model YAML files or `.properties` files.
   * `domainType`: WebLogic Deploy Tooling domain type. Legal values: WLS, RestrictedJRF, JRF. Defaults to WLS.
-  * `runtimeEncryptionSecret`: Runtime encryption secret. Required when `domainHomeSourceType` is set to FromModel.
+  * `runtimeEncryptionSecret`: The name of the Secret containing the runtime encryption password, which must be in a field named `password`. Required when `domainHomeSourceType` is set to `FromModel`.
+  * `modelHome`: Location of the WebLogic Deploy Tooling model home directory, which can include model YAML files, `.properties` variable files, and application `.zip` archives. Defaults to `/u01/wdt/models`.
 
 * These elements are under `configuration.opss`, and only apply if the `domainHomeSourceType` is `FromModel` and the `domainType` is `JRF`.
 
@@ -199,6 +201,9 @@ Sub-sections related to the Administration Server, specific clusters, or specifi
 * `managedServers`: Lifecycle options for individual Managed Servers, including Java options, environment variables, additional Pod content, and the ability to explicitly start, stop, or restart a named server instance. The `serverName` field of each entry must match a Managed Server that already exists in the WebLogic domain configuration or that matches a dynamic cluster member based on the server template.
 
 The elements `serverStartPolicy`, `serverStartState`, `serverPod` and `serverService` are repeated under `adminServer` and under each entry of `clusters` or `managedServers`.  The values directly under `spec`, set the defaults for the entire domain.  The values under a specific entry under `clusters`, set the defaults for cluster members of that cluster.  The values under `adminServer` or an entry under `managedServers`, set the values for that specific server.  Values from the domain scope and values from the cluster (for cluster members) are merged with or overridden by the setting for the specific server depending on the element.  See [Startup and shutdown]({{< relref "/userguide/managing-domains/domain-lifecycle/startup.md" >}}) for details about `serverStartPolicy` combinations.
+
+Elements related to the customization of liveness and readiness probes:
+* See [Liveness probe customization]({{< relref "/userguide/managing-domains/domain-lifecycle/liveness-readiness-probe-customization#liveness-probe-customization" >}}) for details about the elements related to liveness probe customization and [Readiness probe customization]({{< relref "/userguide/managing-domains/domain-lifecycle/liveness-readiness-probe-customization#readiness-probe-customization" >}}) for details about the elements related to readiness probe customization.
 
 {{% notice note %}}
 For additional domain resource attribute reference material, see [Domain resource attribute references](#domain-resource-attribute-references).
@@ -229,7 +234,7 @@ You can use the following environment variables to specify JVM memory and JVM op
 
 This example snippet illustrates how to add some of the above environment variables using the `env` attribute under the `serverPod` configuration in your Domain YAML file.
 ```yaml
-# Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 #
 apiVersion: "weblogic.oracle/v8"
@@ -281,7 +286,7 @@ Prior to creating a Pod, the operator replaces variable references allowing the 
 This example domain YAML file specifies that Pods for WebLogic Server instances in the `cluster-1` cluster will have a per-Managed Server volume and volume mount (similar to a Kubernetes StatefulSet), an init container to initialize some files in that volume, and anti-affinity scheduling so that the server instances are scheduled, as much as possible, on different Nodes:
 
 ```yaml
-# Copyright (c) 2019, 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 #
 apiVersion: "weblogic.oracle/v8"

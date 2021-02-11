@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -55,6 +55,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithU
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.dockerLoginAndPushImageToRegistry;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.getPodCreationTime;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 import static org.awaitility.Awaitility.with;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -362,7 +363,7 @@ class ItCoherenceTests {
                 .model(new Model()
                     .domainType("WLS"))
                 .introspectorJobActiveDeadlineSeconds(300L)));
-
+    setPodAntiAffinity(domain);
     logger.info("Create domain custom resource for domainUid {0} in namespace {1}",
         domainUid, domainNamespace);
     boolean domCreated = assertDoesNotThrow(() -> createDomainCustomResource(domain),

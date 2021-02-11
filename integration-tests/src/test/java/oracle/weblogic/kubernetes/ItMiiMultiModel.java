@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -24,7 +24,6 @@ import oracle.weblogic.kubernetes.actions.impl.primitive.Command;
 import oracle.weblogic.kubernetes.actions.impl.primitive.CommandParams;
 import oracle.weblogic.kubernetes.annotations.IntegrationTest;
 import oracle.weblogic.kubernetes.annotations.Namespaces;
-import oracle.weblogic.kubernetes.annotations.tags.Slow;
 import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -57,6 +56,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithU
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.dockerLoginAndPushImageToRegistry;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.getExternalServicePodName;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -191,7 +191,6 @@ class ItMiiMultiModel {
    */
   @Test
   @DisplayName("Create model-in-image domain with a ConfigMap that contains multiple model files")
-  @Slow
   public void testMiiWithMultiModelCM() {
     final String adminServerPodName = String.format("%s-%s", domainUid1, ADMIN_SERVER_NAME_BASE);
     final String managedServerPrefix = String.format("%s-%s", domainUid1, MANAGED_SERVER_NAME_BASE);
@@ -253,7 +252,6 @@ class ItMiiMultiModel {
    */
   @Test
   @DisplayName("Create a model-in-image domain with two WDT model files in the image")
-  @Slow
   public void testMiiWithMultiModelImage() {
     final String adminServerPodName = String.format("%s-%s", domainUid2, ADMIN_SERVER_NAME_BASE);
     final String managedServerPrefix = String.format("%s-%s", domainUid2, MANAGED_SERVER_NAME_BASE);
@@ -314,7 +312,6 @@ class ItMiiMultiModel {
    */
   @Test
   @DisplayName("Create a model-in-image domain with two model files in both the image and the ConfigMap")
-  @Slow
   public void testMiiWithMultiModelImageAndCM() {
     final String adminServerPodName = String.format("%s-%s", domainUid3, ADMIN_SERVER_NAME_BASE);
     final String managedServerPrefix = String.format("%s-%s", domainUid3, MANAGED_SERVER_NAME_BASE);
@@ -486,6 +483,8 @@ class ItMiiMultiModel {
     if (configMapName != null) {
       domain.spec().configuration().model().configMap(configMapName);
     }
+    setPodAntiAffinity(domain);
+
     return domain;
   }
 

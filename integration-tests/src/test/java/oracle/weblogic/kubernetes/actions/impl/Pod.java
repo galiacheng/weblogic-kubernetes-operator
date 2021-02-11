@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.actions.impl;
@@ -61,6 +61,22 @@ public class Pod {
    */
   public static String getPodLog(String podName, String namespace, String container) throws ApiException {
     return Kubernetes.getPodLog(podName, namespace, container);
+  }
+
+  /**
+   * Get a pod's log for specific container.
+   *
+   * @param podName   name of the pod
+   * @param namespace name of the namespace
+   * @param container name of the container
+   * @param sinceSeconds a relative time in seconds before the current time from which to show logs.
+   * @param previous whether return previous terminated container logs
+   * @return log as a String
+   * @throws ApiException if Kubernetes client API call fails
+   */
+  public static String getPodLog(String podName, String namespace, String container, Boolean previous,
+                                 Integer sinceSeconds) throws ApiException {
+    return Kubernetes.getPodLog(podName, namespace, container, previous, sinceSeconds);
   }
 
   /**

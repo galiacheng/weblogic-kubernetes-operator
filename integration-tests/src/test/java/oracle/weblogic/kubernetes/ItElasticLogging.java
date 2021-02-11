@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -45,12 +45,12 @@ import static oracle.weblogic.kubernetes.TestConstants.LOGSTASH_INDEX_KEY;
 import static oracle.weblogic.kubernetes.TestConstants.MII_BASIC_APP_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.OCIR_SECRET_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.OPERATOR_RELEASE_NAME;
-import static oracle.weblogic.kubernetes.TestConstants.SNAKE_YAML_JAR_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.WEBLOGIC_INDEX_KEY;
-import static oracle.weblogic.kubernetes.TestConstants.WLS_LOGGING_EXPORTER_JAR_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.WLS_LOGGING_EXPORTER_YAML_FILE_NAME;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.DOWNLOAD_DIR;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.RESOURCE_DIR;
+import static oracle.weblogic.kubernetes.actions.ActionConstants.SNAKE_DOWNLOADED_FILENAME;
+import static oracle.weblogic.kubernetes.actions.ActionConstants.WLE_DOWNLOAD_FILENAME_DEFAULT;
 import static oracle.weblogic.kubernetes.actions.ActionConstants.WORK_DIR;
 import static oracle.weblogic.kubernetes.actions.TestActions.deleteDomainCustomResource;
 import static oracle.weblogic.kubernetes.actions.TestActions.execCommand;
@@ -66,6 +66,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyE
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyKibana;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyWlsLoggingExporter;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.uninstallAndVerifyElasticsearch;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.uninstallAndVerifyKibana;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.verifyLoggingExporterReady;
@@ -103,7 +104,6 @@ class ItElasticLogging {
 
   // constants for testing WebLogic Logging Exporter
   private static final String wlsLoggingExporterYamlFileLoc = RESOURCE_DIR + "/loggingexporter";
-  private static final String wlsLoggingExporterArchiveLoc = DOWNLOAD_DIR + "/loggingExporterArchiveDir";
 
   // constants for Domain
   private static String domainUid = "elk-domain1";
@@ -170,7 +170,7 @@ class ItElasticLogging {
 
     // install WebLogic Logging Exporter
     installAndVerifyWlsLoggingExporter(managedServerFilter,
-        wlsLoggingExporterYamlFileLoc, wlsLoggingExporterArchiveLoc);
+        wlsLoggingExporterYamlFileLoc);
 
     // create and verify WebLogic domain image using model in image with model files
     String imageName = createAndVerifyDomainImage();
@@ -320,13 +320,13 @@ class ItElasticLogging {
         .append("/")
         .append(WLS_LOGGING_EXPORTER_YAML_FILE_NAME)
         .append(",")
-        .append(wlsLoggingExporterArchiveLoc)
+        .append(DOWNLOAD_DIR)
         .append("/")
-        .append(WLS_LOGGING_EXPORTER_JAR_NAME)
+        .append(WLE_DOWNLOAD_FILENAME_DEFAULT)
         .append(",")
-        .append(wlsLoggingExporterArchiveLoc)
+        .append(DOWNLOAD_DIR)
         .append("/")
-        .append(SNAKE_YAML_JAR_NAME);
+        .append(SNAKE_DOWNLOADED_FILENAME);
 
     logger.info("Create image with model file and verify");
     String miiImage =
@@ -434,7 +434,7 @@ class ItElasticLogging {
                     .domainType("WLS")
                     .runtimeEncryptionSecret(encryptionSecretName))
                 .introspectorJobActiveDeadlineSeconds(300L)));
-
+    setPodAntiAffinity(domain);
     // create domain using model in image
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, domainNamespace, miiImage);

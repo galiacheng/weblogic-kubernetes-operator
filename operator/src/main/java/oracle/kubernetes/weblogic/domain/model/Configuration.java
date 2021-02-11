@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.weblogic.domain.model;
@@ -36,12 +36,12 @@ public class Configuration {
   @Description(
       "Determines how updated configuration overrides are distributed to already running WebLogic Server instances "
       + "following introspection when the `domainHomeSourceType` is PersistentVolume or Image. Configuration overrides "
-      + "are generated during introspection from Secrets, the `overrideConfigMap` field, and WebLogic domain topology. "
-      + "Legal values are DYNAMIC, which means that the operator will distribute updated configuration overrides "
-      + "dynamically to running servers, and ON_RESTART, which means that servers will use updated configuration "
-      + "overrides only after the server's next restart. The selection of ON_RESTART will not cause servers to "
-      + "restart when there are updated configuration overrides available. See also `domains.spec.introspectVersion`. "
-      + "Defaults to DYNAMIC.")
+      + "are generated during introspection from Secrets, the `overridesConfigMap` field, and WebLogic domain "
+      + "topology. Legal values are DYNAMIC, which means that the operator will distribute updated configuration "
+      + "overrides dynamically to running servers, and ON_RESTART, which means that servers will use updated "
+      + "configuration overrides only after the server's next restart. The selection of ON_RESTART will not cause "
+      + "servers to restart when there are updated configuration overrides available. See also "
+      + "`domains.spec.introspectVersion`. Defaults to DYNAMIC.")
   private OverrideDistributionStrategy overrideDistributionStrategy;
 
   @Description("The Istio service mesh integration settings.")

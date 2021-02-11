@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.weblogic.domain.model;
@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.validation.Valid;
 
-import com.google.common.base.Strings;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import io.kubernetes.client.common.KubernetesObject;
@@ -29,10 +28,10 @@ import io.kubernetes.client.openapi.models.V1SecretReference;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import oracle.kubernetes.json.Description;
 import oracle.kubernetes.operator.DomainSourceType;
-import oracle.kubernetes.operator.Main;
 import oracle.kubernetes.operator.ModelInImageDomainType;
 import oracle.kubernetes.operator.OverrideDistributionStrategy;
 import oracle.kubernetes.operator.ProcessingConstants;
+import oracle.kubernetes.operator.TuningParameters;
 import oracle.kubernetes.operator.helpers.LegalNames;
 import oracle.kubernetes.operator.helpers.SecretType;
 import oracle.kubernetes.operator.wlsconfig.WlsDomainConfig;
@@ -44,6 +43,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import static java.util.stream.Collectors.toSet;
+import static oracle.kubernetes.utils.OperatorUtils.emptyToNull;
 
 /**
  * Domain represents a WebLogic domain and how it will be realized in the Kubernetes cluster.
@@ -58,6 +58,8 @@ public class Domain implements KubernetesObject {
    * The ending marker of a token that needs to be substituted with a matching env var.
    */
   public static final String TOKEN_END_MARKER = ")";
+
+  public static final String CLUSTER_SIZE_PADDING_VALIDATION_ENABLED_PARAM = "clusterSizePaddingValidationEnabled";
 
   /**
    * The pattern for computing the default shared logs directory.
@@ -133,17 +135,14 @@ public class Domain implements KubernetesObject {
   /**
    * check if the external service is configured for the admin server.
    *
+   * @param domainSpec Domain spec
    * @return true if the external service is configured
    */
-
   public static boolean isExternalServiceConfigured(DomainSpec domainSpec) {
     AdminServer adminServer = domainSpec.getAdminServer();
     AdminService adminService = adminServer != null ? adminServer.getAdminService() : null;
     List<Channel> channels = adminService != null ? adminService.getChannels() : null;
-    if (channels != null && !channels.isEmpty()) {
-      return true;
-    }
-    return false;
+    return channels != null && !channels.isEmpty();
   }
 
   /**
@@ -491,10 +490,6 @@ public class Domain implements KubernetesObject {
     return getDomainHomeSourceType() == DomainSourceType.FromModel;
   }
 
-  public Model getModel() {
-    return spec.getModel();
-  }
-
   public boolean isHttpAccessLogInLogHome() {
     return spec.getHttpAccessLogInLogHome();
   }
@@ -513,7 +508,16 @@ public class Domain implements KubernetesObject {
    * @return domain home
    */
   public String getDomainHome() {
-    return Strings.emptyToNull(spec.getDomainHome());
+    return emptyToNull(spec.getDomainHome());
+  }
+
+  /**
+   * Returns full path of the liveness probe custom script for the domain. May be null, but will not be an empty string.
+   *
+   * @return Full path of the liveness probe custom script
+   */
+  public String getLivenessProbeCustomScript() {
+    return emptyToNull(spec.getLivenessProbeCustomScript());
   }
 
   public boolean isShuttingDown() {
@@ -709,10 +713,10 @@ public class Domain implements KubernetesObject {
 
     private void checkGeneratedServerServiceName(String serverName, int clusterSize) {
       int limit = LegalNames.LEGAL_DNS_LABEL_NAME_MAX_LENGTH;
-      if (Main.Namespaces.isClusterSizePaddingValidationEnabled()
-          && clusterSize > 0 && clusterSize < 100) {
+      if (isClusterSizePaddingValidationEnabled() && clusterSize > 0 && clusterSize < 100) {
         limit = clusterSize >= 10 ? limit - 1 : limit - 2;
       }
+
       if (LegalNames.toServerServiceName(getDomainUid(), serverName).length() > limit) {
         failures.add(DomainValidationMessages.exceedMaxServerServiceName(
             getDomainUid(),
@@ -720,6 +724,20 @@ public class Domain implements KubernetesObject {
             LegalNames.toServerServiceName(getDomainUid(), serverName),
             limit));
       }
+    }
+
+    /**
+     * Gets the configured boolean for enabling cluster size padding validation.
+     * @return boolean enabled
+     */
+    public boolean isClusterSizePaddingValidationEnabled() {
+      return "true".equalsIgnoreCase(getClusterSizePaddingValidationEnabledParameter());
+    }
+
+    private String getClusterSizePaddingValidationEnabledParameter() {
+      return Optional.ofNullable(TuningParameters.getInstance())
+            .map(t -> t.get(CLUSTER_SIZE_PADDING_VALIDATION_ENABLED_PARAM))
+            .orElse("true");
     }
 
     private void checkGeneratedClusterServiceName(String clusterName) {
@@ -816,9 +834,7 @@ public class Domain implements KubernetesObject {
       if (index != -1) {
         String str = token.substring(0, index);
         // IntrospectorJobEnvVars.isReserved() checks env vars in ServerEnvVars too
-        if (varNames.contains(str) || IntrospectorJobEnvVars.isReserved(str)) {
-          return false;
-        }
+        return !varNames.contains(str) && !IntrospectorJobEnvVars.isReserved(str);
       }
       return true;
     }

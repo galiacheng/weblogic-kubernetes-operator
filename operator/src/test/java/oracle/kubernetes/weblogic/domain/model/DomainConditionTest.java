@@ -1,4 +1,4 @@
-// Copyright (c) 2019, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.weblogic.domain.model;
@@ -8,9 +8,9 @@ import java.util.List;
 
 import com.meterware.simplestub.Memento;
 import oracle.kubernetes.utils.SystemClockTestSupport;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Available;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Failed;
@@ -20,21 +20,16 @@ import static org.hamcrest.junit.MatcherAssert.assertThat;
 
 public class DomainConditionTest {
 
-  private List<Memento> mementos = new ArrayList<>();
+  private final List<Memento> mementos = new ArrayList<>();
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     mementos.add(SystemClockTestSupport.installClock());
   }
 
-  /**
-   * Tear down test.
-   */
-  @After
+  @AfterEach
   public void tearDown() {
-    for (Memento memento : mementos) {
-      memento.revert();
-    }
+    mementos.forEach(Memento::revert);
   }
 
   @Test

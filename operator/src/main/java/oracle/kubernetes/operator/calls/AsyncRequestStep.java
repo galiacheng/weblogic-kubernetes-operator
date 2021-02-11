@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.calls;
@@ -83,7 +83,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
       String labelSelector,
       String resourceVersion) {
     this(next, requestParams, factory, null, helper, timeoutSeconds, maxRetryCount,
-            fieldSelector, labelSelector, resourceVersion);
+            null, fieldSelector, labelSelector, resourceVersion);
   }
 
   /**
@@ -96,6 +96,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
    * @param helper Client pool
    * @param timeoutSeconds Timeout
    * @param maxRetryCount Max retry count
+   * @param gracePeriodSeconds Grace period
    * @param fieldSelector Field selector
    * @param labelSelector Label selector
    * @param resourceVersion Resource version
@@ -108,6 +109,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
           ClientPool helper,
           int timeoutSeconds,
           int maxRetryCount,
+          Integer gracePeriodSeconds,
           String fieldSelector,
           String labelSelector,
           String resourceVersion) {
@@ -145,10 +147,6 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
   @Override
   protected String getDetail() {
     return requestParams.call;
-  }
-
-  public RequestParams getRequestParams() {
-    return requestParams;
   }
 
   @Override
@@ -332,7 +330,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
 
   private void logTimeout() {
     // called from a code path where we don't have the necessary information for logging context
-    // so we need to use th ethread context to pass in the logging context
+    // so we need to use the thread context to pass in the logging context
     try (LoggingContext stack =
              LoggingContext.setThreadContext()
                  .namespace(requestParams.namespace)
@@ -354,7 +352,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
 
   private void logSuccess(T result, int statusCode, Map<String, List<String>> responseHeaders) {
     // called from a code path where we don't have the necessary information for logging context
-    // so we need to use th ethread context to pass in the logging context
+    // so we need to use the thread context to pass in the logging context
     try (LoggingContext stack =
              LoggingContext.setThreadContext()
                  .namespace(requestParams.namespace)
@@ -371,7 +369,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
 
   private void logFailure(ApiException ae, int statusCode, Map<String, List<String>> responseHeaders) {
     // called from a code path where we don't have the necessary information for logging context
-    // so we need to use th ethread context to pass in the logging context
+    // so we need to use the thread context to pass in the logging context
     try (LoggingContext stack =
              LoggingContext.setThreadContext()
                  .namespace(requestParams.namespace)

@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -150,6 +150,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyN
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyPrometheus;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.scaleAndVerifyCluster;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.FileUtils.replaceStringInFile;
 import static oracle.weblogic.kubernetes.utils.TestUtils.callWebAppAndCheckForServerNameInResponse;
 import static oracle.weblogic.kubernetes.utils.TestUtils.getNextFreePort;
@@ -1255,7 +1256,7 @@ class ItMonitoringExporter {
 
   private static void buildMonitoringExporterApp(String configFile, String appDir) {
 
-    String command = String.format("cd %s && mvn install -Dmaven.test.skip=true -Dconfiguration=%s/exporter/%s",
+    String command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true -Dconfiguration=%s/exporter/%s",
         monitoringExporterSrcDir,
         RESOURCE_DIR,
         configFile);
@@ -1316,7 +1317,7 @@ class ItMonitoringExporter {
     // create image with model files
     logger.info("Create image with model file with monitoring exporter app and verify");
     String app1Path = String.format("%s/wls-exporter.war", monitoringExporterAppDir);
-    String app2Path = String.format("%s/../src/integration-tests/apps/testwebapp.war", ITTESTS_DIR);
+    String app2Path = String.format("%s/../operator/integration-tests/apps/testwebapp.war", ITTESTS_DIR);
 
     List<String> appList = new ArrayList();
     appList.add(app1Path);
@@ -1488,7 +1489,7 @@ class ItMonitoringExporter {
                     .domainType("WLS")
                     .runtimeEncryptionSecret(encryptionSecretName))
                 .introspectorJobActiveDeadlineSeconds(300L)));
-
+    setPodAntiAffinity(domain);
     // create domain using model in image
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, namespace, miiImage);

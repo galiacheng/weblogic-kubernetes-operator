@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
@@ -7,10 +7,13 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 import javax.json.Json;
 import javax.json.JsonPatchBuilder;
 
@@ -34,7 +37,7 @@ import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import oracle.kubernetes.operator.DomainSourceType;
 import oracle.kubernetes.operator.DomainStatusUpdater;
-import oracle.kubernetes.operator.IntrospectorConfigMapKeys;
+import oracle.kubernetes.operator.IntrospectorConfigMapConstants;
 import oracle.kubernetes.operator.KubernetesConstants;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.PodAwaiterStepFactory;
@@ -53,10 +56,14 @@ import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.weblogic.domain.model.Domain;
+import oracle.kubernetes.weblogic.domain.model.DomainStatus;
 import oracle.kubernetes.weblogic.domain.model.ServerEnvVars;
 import oracle.kubernetes.weblogic.domain.model.ServerSpec;
 import oracle.kubernetes.weblogic.domain.model.Shutdown;
 import org.apache.commons.lang3.builder.EqualsBuilder;
+
+import static oracle.kubernetes.operator.IntrospectorConfigMapConstants.NUM_CONFIG_MAPS;
+import static oracle.kubernetes.operator.LabelConstants.INTROSPECTION_STATE_LABEL;
 
 public abstract class PodStepContext extends BasePodStepContext {
 
@@ -69,6 +76,8 @@ public abstract class PodStepContext extends BasePodStepContext {
   private static final String READINESS_PATH = "/weblogic/ready";
 
   final WlsServerConfig scan;
+  @Nonnull
+  private final Packet packet;
   private final WlsDomainConfig domainTopology;
   private final Step conflictStep;
   private V1Pod podModel;
@@ -80,10 +89,15 @@ public abstract class PodStepContext extends BasePodStepContext {
     super(packet.getSpi(DomainPresenceInfo.class));
     this.conflictStep = conflictStep;
     domainTopology = (WlsDomainConfig) packet.get(ProcessingConstants.DOMAIN_TOPOLOGY);
-    miiModelSecretsHash = (String)packet.get(IntrospectorConfigMapKeys.SECRETS_MD_5);
-    miiDomainZipHash = (String)packet.get(IntrospectorConfigMapKeys.DOMAINZIP_HASH);
-    domainRestartVersion = (String)packet.get(IntrospectorConfigMapKeys.DOMAIN_RESTART_VERSION);
+    miiModelSecretsHash = (String)packet.get(IntrospectorConfigMapConstants.SECRETS_MD_5);
+    miiDomainZipHash = (String)packet.get(IntrospectorConfigMapConstants.DOMAINZIP_HASH);
+    domainRestartVersion = (String)packet.get(IntrospectorConfigMapConstants.DOMAIN_RESTART_VERSION);
     scan = (WlsServerConfig) packet.get(ProcessingConstants.SERVER_SCAN);
+    this.packet = packet;
+  }
+
+  private static boolean isPatchableItem(Map.Entry<String, String> entry) {
+    return isCustomerItem(entry) || entry.getKey().equals(INTROSPECTION_STATE_LABEL);
   }
 
   private static boolean isCustomerItem(Map.Entry<String, String> entry) {
@@ -108,6 +122,22 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   String getNamespace() {
     return info.getNamespace();
+  }
+
+  private int getNumIntrospectorConfigMaps() {
+    return Optional.ofNullable(getSpecifiedNumConfigMaps()).orElse(1);
+  }
+
+  private Integer getSpecifiedNumConfigMaps() {
+    return Optional.ofNullable(packet.<String>getValue(NUM_CONFIG_MAPS)).map(this::parseOrNull).orElse(null);
+  }
+
+  private Integer parseOrNull(String count) {
+    try {
+      return Integer.parseInt(count);
+    } catch (NumberFormatException e) {
+      return null;
+    }
   }
 
   // ------------------------ data methods ----------------------------
@@ -143,7 +173,7 @@ public abstract class PodStepContext extends BasePodStepContext {
   }
 
   /**
-   * Check if the server is listening on a secure port. NOTE: If the targetted server is a managed
+   * Check if the server is listening on a secure port. NOTE: If the targeted server is a managed
    * server, this method is overridden to check if the managed server has a secure listen port rather
    * than the admin server. See PodHelper.ManagedPodStepContext
    *
@@ -296,12 +326,13 @@ public abstract class PodStepContext extends BasePodStepContext {
   /**
    * Deletes the specified pod.
    *
+   * @param pod the existing pod
    * @param next the next step to perform after the pod deletion is complete.
    * @return a step to be scheduled.
    */
-  private Step deletePod(Step next) {
+  private Step deletePod(V1Pod pod, Step next) {
     return new CallBuilder()
-          .deletePodAsync(getPodName(), getNamespace(), getDomainUid(), new V1DeleteOptions(), deleteResponse(next));
+        .deletePodAsync(getPodName(), getNamespace(), getDomainUid(), new V1DeleteOptions(), deleteResponse(pod, next));
   }
 
   /**
@@ -330,10 +361,11 @@ public abstract class PodStepContext extends BasePodStepContext {
   /**
    * Creates the specified replacement pod and performs any additional needed processing.
    *
+   * @param pod the existing pod
    * @param next the next step to perform after the pod creation is complete.
    * @return a step to be scheduled.
    */
-  abstract Step replaceCurrentPod(Step next);
+  abstract Step replaceCurrentPod(V1Pod pod, Step next);
 
   /**
    * Creates the specified replacement pod and records it.
@@ -361,13 +393,22 @@ public abstract class PodStepContext extends BasePodStepContext {
     JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
 
     KubernetesUtils.addPatches(
-        patchBuilder, "/metadata/labels/", getLabels(currentPod), getPodLabels());
+        patchBuilder, "/metadata/labels/", getLabels(currentPod), getNonHashedPodLabels());
     KubernetesUtils.addPatches(
         patchBuilder, "/metadata/annotations/", getAnnotations(currentPod), getPodAnnotations());
 
     return new CallBuilder()
-            .patchPodAsync(getPodName(), getNamespace(), getDomainUid(),
+        .patchPodAsync(getPodName(), getNamespace(), getDomainUid(),
             new V1Patch(patchBuilder.build().toString()), patchResponse(next));
+  }
+
+  private Map<String, String> getNonHashedPodLabels() {
+    Map<String,String> result = new HashMap<>(getPodLabels());
+
+    Optional.ofNullable(getDomain().getSpec().getIntrospectVersion())
+        .ifPresent(version -> result.put(INTROSPECTION_STATE_LABEL, version));
+
+    return result;
   }
 
   private Map<String, String> getLabels(V1Pod pod) {
@@ -402,12 +443,12 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   abstract String getPodReplacedMessageKey();
 
-  Step createCyclePodStep(Step next) {
-    return new CyclePodStep(next);
+  Step createCyclePodStep(V1Pod pod, Step next) {
+    return new CyclePodStep(pod, next);
   }
 
   private boolean mustPatchPod(V1Pod currentPod) {
-    return KubernetesUtils.isMissingValues(getLabels(currentPod), getPodLabels())
+    return KubernetesUtils.isMissingValues(getLabels(currentPod), getNonHashedPodLabels())
         || KubernetesUtils.isMissingValues(getAnnotations(currentPod), getPodAnnotations());
   }
 
@@ -433,8 +474,8 @@ public abstract class PodStepContext extends BasePodStepContext {
     return new CreateResponseStep(next);
   }
 
-  private ResponseStep<V1Pod> deleteResponse(Step next) {
-    return new DeleteResponseStep(next);
+  private ResponseStep<Object> deleteResponse(V1Pod pod, Step next) {
+    return new DeleteResponseStep(pod, next);
   }
 
   private ResponseStep<V1Pod> replaceResponse(Step next) {
@@ -461,11 +502,11 @@ public abstract class PodStepContext extends BasePodStepContext {
   V1Pod withNonHashedElements(V1Pod pod) {
     V1ObjectMeta metadata = Objects.requireNonNull(pod.getMetadata());
     // Adds labels and annotations to a pod, skipping any whose names begin with "weblogic."
-    getPodLabels().entrySet().stream()
-        .filter(PodStepContext::isCustomerItem)
+    getNonHashedPodLabels().entrySet().stream()
+        .filter(PodStepContext::isPatchableItem)
         .forEach(e -> metadata.putLabelsItem(e.getKey(), e.getValue()));
     getPodAnnotations().entrySet().stream()
-        .filter(PodStepContext::isCustomerItem)
+        .filter(PodStepContext::isPatchableItem)
         .forEach(e -> metadata.putAnnotationsItem(e.getKey(), e.getValue()));
 
     setTerminationGracePeriod(pod);
@@ -511,6 +552,8 @@ public abstract class PodStepContext extends BasePodStepContext {
           .map(ServerSpec::getDesiredState)
           .filter(this::isNotRunning)
           .ifPresent(s -> addDefaultEnvVarIfMissing(env, "STARTUP_MODE", s));
+    Optional.ofNullable(getDomain().getLivenessProbeCustomScript())
+          .ifPresent(s -> addDefaultEnvVarIfMissing(env, "LIVENESS_PROBE_CUSTOM_SCRIPT", s));
   }
 
   private boolean isNotRunning(String desiredState) {
@@ -537,7 +580,7 @@ public abstract class PodStepContext extends BasePodStepContext {
         + getServerSpec().getDomainRestartVersion());
     LOGGER.finest("PodStepContext.createMetaData domainIntrospectVersion from spec "
         + getDomain().getIntrospectVersion());
-    
+
     metadata
         .putLabelsItem(LabelConstants.DOMAINUID_LABEL, getDomainUid())
         .putLabelsItem(LabelConstants.DOMAINNAME_LABEL, getDomainName())
@@ -574,12 +617,21 @@ public abstract class PodStepContext extends BasePodStepContext {
   protected V1PodSpec createSpec(TuningParameters tuningParameters) {
     V1PodSpec podSpec = createPodSpec(tuningParameters)
         .readinessGates(getReadinessGates())
-        .initContainers(getServerSpec().getInitContainers());
+        .initContainers(getServerSpec().getInitContainers().stream()
+                .map(c -> c.env(createEnv(c, tuningParameters))).collect(Collectors.toList()));
 
     for (V1Volume additionalVolume : getVolumes(getDomainUid())) {
       podSpec.addVolumesItem(additionalVolume);
     }
     return podSpec;
+  }
+
+  private List<V1EnvVar> createEnv(V1Container c, TuningParameters tuningParameters) {
+    List<V1EnvVar> initContainerEnvVars = new ArrayList<>();
+    Optional.ofNullable(c.getEnv()).ifPresent(initContainerEnvVars::addAll);
+    getEnvironmentVariables(tuningParameters).forEach(envVar ->
+            addIfMissing(initContainerEnvVars, envVar.getName(), envVar.getValue(), envVar.getValueFrom()));
+    return initContainerEnvVars;
   }
 
   // ---------------------- model methods ------------------------------
@@ -590,7 +642,7 @@ public abstract class PodStepContext extends BasePodStepContext {
   }
 
   private List<V1Volume> getVolumes(String domainUid) {
-    List<V1Volume> volumes = PodDefaults.getStandardVolumes(domainUid);
+    List<V1Volume> volumes = PodDefaults.getStandardVolumes(domainUid, getNumIntrospectorConfigMaps());
     volumes.addAll(getServerSpec().getAdditionalVolumes());
     if (getDomainHomeSourceType() == DomainSourceType.FromModel) {
       volumes.add(createRuntimeEncryptionSecretVolume());
@@ -633,7 +685,7 @@ public abstract class PodStepContext extends BasePodStepContext {
   }
 
   private List<V1VolumeMount> getVolumeMounts() {
-    List<V1VolumeMount> mounts = PodDefaults.getStandardVolumeMounts(getDomainUid());
+    List<V1VolumeMount> mounts = PodDefaults.getStandardVolumeMounts(getDomainUid(), getNumIntrospectorConfigMaps());
     mounts.addAll(getServerSpec().getAdditionalVolumeMounts());
     if (getDomainHomeSourceType() == DomainSourceType.FromModel) {
       mounts.add(createRuntimeEncryptionSecretVolumeMount());
@@ -832,15 +884,17 @@ public abstract class PodStepContext extends BasePodStepContext {
   }
 
   private class CyclePodStep extends BaseStep {
+    private final V1Pod pod;
 
-    CyclePodStep(Step next) {
+    CyclePodStep(V1Pod pod, Step next) {
       super(next);
+      this.pod = pod;
     }
 
     @Override
     public NextAction apply(Packet packet) {
       markBeingDeleted();
-      return doNext(deletePod(getNext()), packet);
+      return doNext(deletePod(pod, getNext()), packet);
     }
   }
 
@@ -855,11 +909,11 @@ public abstract class PodStepContext extends BasePodStepContext {
       V1Pod currentPod = info.getServerPod(getServerName());
 
       // reset introspect failure job count - if any
-      
+
       Optional.ofNullable(packet.getSpi(DomainPresenceInfo.class))
           .map(DomainPresenceInfo::getDomain)
           .map(Domain::getStatus)
-          .ifPresent(a -> a.resetIntrospectJobFailureCount());
+          .ifPresent(DomainStatus::resetIntrospectJobFailureCount);
 
       if (currentPod == null) {
         return doNext(createNewPod(getNext()), packet);
@@ -868,7 +922,7 @@ public abstract class PodStepContext extends BasePodStepContext {
             MessageKeys.CYCLING_POD,
             Objects.requireNonNull(currentPod.getMetadata()).getName(),
             getReasonToRecycle(currentPod));
-        return doNext(replaceCurrentPod(getNext()), packet);
+        return doNext(replaceCurrentPod(currentPod, getNext()), packet);
       } else if (mustPatchPod(currentPod)) {
         return doNext(patchCurrentPod(currentPod, getNext()), packet);
       } else {
@@ -897,7 +951,7 @@ public abstract class PodStepContext extends BasePodStepContext {
     }
 
     private NextAction updateDomainStatus(Packet packet, CallResponse<V1Pod> callResponse) {
-      return doNext(DomainStatusUpdater.createFailedStep(callResponse, null), packet);
+      return doNext(DomainStatusUpdater.createFailureRelatedSteps(callResponse, null), packet);
     }
   }
 
@@ -926,9 +980,12 @@ public abstract class PodStepContext extends BasePodStepContext {
     }
   }
 
-  private class DeleteResponseStep extends ResponseStep<V1Pod> {
-    DeleteResponseStep(Step next) {
+  private class DeleteResponseStep extends ResponseStep<Object> {
+    private final V1Pod pod;
+
+    DeleteResponseStep(V1Pod pod, Step next) {
       super(next);
+      this.pod = pod;
     }
 
     protected String getDetail() {
@@ -936,7 +993,7 @@ public abstract class PodStepContext extends BasePodStepContext {
     }
 
     @Override
-    public NextAction onFailure(Packet packet, CallResponse<V1Pod> callResponses) {
+    public NextAction onFailure(Packet packet, CallResponse<Object> callResponses) {
       if (callResponses.getStatusCode() == CallBuilder.NOT_FOUND) {
         return onSuccess(packet, callResponses);
       }
@@ -944,51 +1001,54 @@ public abstract class PodStepContext extends BasePodStepContext {
     }
 
     @Override
-    public NextAction onSuccess(Packet packet, CallResponse<V1Pod> callResponses) {
+    public NextAction onSuccess(Packet packet, CallResponse<Object> callResponses) {
       PodAwaiterStepFactory pw = packet.getSpi(PodAwaiterStepFactory.class);
-      return doNext(pw.waitForDelete(callResponses.getResult(), replacePod(getNext())), packet);
+      return doNext(pw.waitForDelete(pod, replacePod(getNext())), packet);
     }
   }
 
-  private class ReplacePodResponseStep extends BaseResponseStep {
+  private class ReplacePodResponseStep extends PatchPodResponseStep {
 
     ReplacePodResponseStep(Step next) {
       super(next);
     }
 
     @Override
-    public NextAction onSuccess(Packet packet, CallResponse<V1Pod> callResponse) {
-
-      V1Pod newPod = callResponse.getResult();
+    public void logPodChanged() {
       logPodReplaced();
-      if (newPod != null) {
-        setRecordedPod(newPod);
-      }
-
-      PodAwaiterStepFactory pw = packet.getSpi(PodAwaiterStepFactory.class);
-      return doNext(pw.waitForReady(newPod, getNext()), packet);
-    }
-  }
-
-  private class PatchPodResponseStep extends BaseResponseStep {
-    private final Step next;
-
-    PatchPodResponseStep(Step next) {
-      super(next);
-      this.next = next;
     }
 
     @Override
     public NextAction onSuccess(Packet packet, CallResponse<V1Pod> callResponse) {
-
-      V1Pod newPod = callResponse.getResult();
-      logPodPatched();
-      if (newPod != null) {
-        setRecordedPod(newPod);
-      }
-
-      return doNext(next, packet);
+      return doNext(
+          packet.getSpi(PodAwaiterStepFactory.class).waitForReady(processResponse(callResponse), getNext()),
+          packet);
     }
   }
 
+  private class PatchPodResponseStep extends BaseResponseStep {
+
+    PatchPodResponseStep(Step next) {
+      super(next);
+    }
+
+    public void logPodChanged() {
+      logPodPatched();
+    }
+
+    @Override
+    public NextAction onSuccess(Packet packet, CallResponse<V1Pod> callResponse) {
+      processResponse(callResponse);
+      return doNext(getNext(), packet);
+    }
+
+    protected V1Pod processResponse(CallResponse<V1Pod> callResponse) {
+      V1Pod newPod = callResponse.getResult();
+      logPodChanged();
+      if (newPod != null) {
+        setRecordedPod(newPod);
+      }
+      return newPod;
+    }
+  }
 }

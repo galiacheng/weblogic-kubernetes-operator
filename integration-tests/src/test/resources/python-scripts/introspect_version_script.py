@@ -1,4 +1,4 @@
-# Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 import sys, traceback
@@ -123,13 +123,12 @@ def get_admin_server_name():
   serverConfig()
   return admin_server_name
 
-if __name__== "main":
-  if(test_name == 'change_server_count'):
-    change_server_count()
-  if(test_name == 'change_admin_port'):
-    change_admin_port()
-  if(test_name == 'create_cluster'):
-    create_static_cluster()
-  if(test_name == 'replace_admin_user'):
-    replace_admin_user()
-  exit()
+if(test_name == 'change_server_count'):
+  change_server_count()
+if(test_name == 'change_admin_port'):
+  change_admin_port()
+if(test_name == 'create_cluster'):
+  create_static_cluster()
+if(test_name == 'replace_admin_user'):
+  replace_admin_user()
+exit()

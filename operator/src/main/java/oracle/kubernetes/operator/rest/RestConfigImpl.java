@@ -1,35 +1,29 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.rest;
 
 import java.util.Collection;
+import java.util.function.Supplier;
 
-import oracle.kubernetes.operator.logging.LoggingFacade;
-import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.rest.backend.RestBackend;
 import oracle.kubernetes.operator.utils.Certificates;
 
 /** RestConfigImpl provides the WebLogic Operator REST api configuration. */
 public class RestConfigImpl implements RestConfig {
 
-  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
-
   private final String principal;
-  private final Collection<String> domainNamespaces;
+  private final Supplier<Collection<String>> domainNamespaces;
 
   /**
    * Constructs a RestConfigImpl.
-   *
-   * @param principal is the name of the Kubernetes User or Service Account to use when calling the
+   *  @param principal is the name of the Kubernetes User or Service Account to use when calling the
    *     Kubernetes REST API.
-   * @param domainNamespaces is a list of the Kubernetes Namespaces covered by this Operator.
+   * @param domainNamespaces returns a list of the Kubernetes Namespaces covered by this Operator.
    */
-  public RestConfigImpl(String principal, Collection<String> domainNamespaces) {
-    LOGGER.entering(principal, domainNamespaces);
-    this.principal = principal;
+  public RestConfigImpl(String principal, Supplier<Collection<String>> domainNamespaces) {
     this.domainNamespaces = domainNamespaces;
-    LOGGER.exiting();
+    this.principal = principal;
   }
 
   @Override
@@ -89,9 +83,6 @@ public class RestConfigImpl implements RestConfig {
 
   @Override
   public RestBackend getBackend(String accessToken) {
-    LOGGER.entering();
-    RestBackend result = new RestBackendImpl(principal, accessToken, domainNamespaces);
-    LOGGER.exiting();
-    return result;
+    return new RestBackendImpl(principal, accessToken, domainNamespaces);
   }
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.work;
@@ -40,7 +40,7 @@ public class FiberTestSupport {
   private final CompletionCallbackStub completionCallback = new CompletionCallbackStub();
   private final ScheduledExecutorStub schedule = ScheduledExecutorStub.create();
   private final Engine engine = new Engine(schedule);
-  private final Packet packet = new Packet();
+  private Packet packet = new Packet();
 
   private Fiber fiber = engine.createFiber();
 
@@ -123,6 +123,11 @@ public class FiberTestSupport {
     return packet;
   }
 
+  public FiberTestSupport withClearPacket() {
+    packet.clear();
+    return this;
+  }
+
   public FiberTestSupport addToPacket(String key, Object value) {
     packet.put(key, value);
     return this;
@@ -162,6 +167,20 @@ public class FiberTestSupport {
    */
   public static void doOnExit(NextAction nextAction, AsyncFiber fiber) {
     Optional.ofNullable(nextAction.onExit).orElse(f -> {}).accept(fiber);
+  }
+
+  /**
+   * Specifies a predefined packet to use for the next run.
+   * @param packet the new packet
+   */
+  public FiberTestSupport withPacket(@Nonnull Packet packet) {
+    this.packet = packet;
+    return this;
+  }
+
+  public FiberTestSupport withCompletionAction(Runnable completionAction) {
+    completionCallback.setCompletionAction(completionAction);
+    return this;
   }
 
   /**
@@ -353,9 +372,15 @@ public class FiberTestSupport {
 
   static class CompletionCallbackStub implements Fiber.CompletionCallback {
     private Throwable throwable;
+    private Runnable completionAction;
+
+    void setCompletionAction(Runnable completionAction) {
+      this.completionAction = completionAction;
+    }
 
     @Override
     public void onCompletion(Packet packet) {
+      Optional.ofNullable(completionAction).ifPresent(Runnable::run);
     }
 
     @Override

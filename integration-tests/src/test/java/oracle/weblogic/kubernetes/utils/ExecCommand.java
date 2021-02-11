@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.utils;
@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.google.common.io.ByteStreams;
+import io.kubernetes.client.util.Streams;
 
 /** 
  * Class for executing shell commands from java. 
@@ -74,7 +74,7 @@ public class ExecCommand {
             new Thread(
                 () -> {
                   try {
-                    ByteStreams.copy(i, copyOut);
+                    Streams.copy(i, copyOut);
                   } catch (IOException ex) {
                     ex.printStackTrace();
                   }

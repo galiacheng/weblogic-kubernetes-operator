@@ -1,4 +1,4 @@
-# Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 #
 # ------------
@@ -380,6 +380,10 @@ class TopologyGenerator(Generator):
   def getDynamicServersOrNone(self,cluster):
     try:
       ret = cluster.getDynamicServers()
+      # Dynamic Servers must be configured with a ServerTemplate
+      if ret is not None:
+        if ret.getServerTemplate() is None:
+          ret = None
     except:
       trace("Ignoring getDynamicServers() exception, this is expected.")
       ret = None

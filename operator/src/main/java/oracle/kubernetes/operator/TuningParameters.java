@@ -1,9 +1,8 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -14,58 +13,66 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 public interface TuningParameters extends Map<String, String> {
 
   static TuningParameters initializeInstance(
-      ScheduledExecutorService executorService, String mountPoint) throws IOException {
+      ScheduledExecutorService executorService, String mountPoint) {
     return TuningParametersImpl.initializeInstance(executorService, mountPoint);
   }
 
-  public static TuningParameters getInstance() {
+  static TuningParameters getInstance() {
     return TuningParametersImpl.getInstance();
   }
 
-  public MainTuning getMainTuning();
+  MainTuning getMainTuning();
 
-  public CallBuilderTuning getCallBuilderTuning();
+  CallBuilderTuning getCallBuilderTuning();
 
-  public WatchTuning getWatchTuning();
+  WatchTuning getWatchTuning();
 
-  public PodTuning getPodTuning();
+  PodTuning getPodTuning();
 
-  public static class MainTuning {
+  class MainTuning {
+    public final int initializationRetryDelaySeconds;
     public final int domainPresenceFailureRetrySeconds;
     public final int domainPresenceFailureRetryMaxCount;
     public final int domainPresenceRecheckIntervalSeconds;
     public final int domainNamespaceRecheckIntervalSeconds;
     public final int statusUpdateTimeoutSeconds;
     public final int unchangedCountToDelayStatusRecheck;
+    public final int stuckPodRecheckSeconds;
     public final long initialShortDelay;
     public final long eventualLongDelay;
 
     /**
      * create main tuning.
+     * @param initializationRetryDelaySeconds initialization retry delay
      * @param domainPresenceFailureRetrySeconds domain presence failure retry
      * @param domainPresenceFailureRetryMaxCount domain presence failure retry max count
      * @param domainPresenceRecheckIntervalSeconds domain presence recheck interval
      * @param domainNamespaceRecheckIntervalSeconds domain namespace recheck interval
      * @param statusUpdateTimeoutSeconds status update timeout
      * @param unchangedCountToDelayStatusRecheck unchanged count to delay status recheck
+     * @param stuckPodRecheckSeconds time between checks for stuck pods
      * @param initialShortDelay initial short delay
      * @param eventualLongDelay eventual long delay
      */
     public MainTuning(
-        int domainPresenceFailureRetrySeconds,
-        int domainPresenceFailureRetryMaxCount,
-        int domainPresenceRecheckIntervalSeconds,
-        int domainNamespaceRecheckIntervalSeconds,
-        int statusUpdateTimeoutSeconds,
-        int unchangedCountToDelayStatusRecheck,
-        long initialShortDelay,
-        long eventualLongDelay) {
+          int initializationRetryDelaySeconds,
+          int domainPresenceFailureRetrySeconds,
+          int domainPresenceFailureRetryMaxCount,
+          int domainPresenceRecheckIntervalSeconds,
+          int domainNamespaceRecheckIntervalSeconds,
+          int statusUpdateTimeoutSeconds,
+          int unchangedCountToDelayStatusRecheck,
+          int stuckPodRecheckSeconds,
+          long initialShortDelay,
+          long eventualLongDelay) {
+      this.initializationRetryDelaySeconds = initializationRetryDelaySeconds;
       this.domainPresenceFailureRetrySeconds = domainPresenceFailureRetrySeconds;
       this.domainPresenceFailureRetryMaxCount = domainPresenceFailureRetryMaxCount;
       this.domainPresenceRecheckIntervalSeconds = domainPresenceRecheckIntervalSeconds;
       this.domainNamespaceRecheckIntervalSeconds = domainNamespaceRecheckIntervalSeconds;
       this.statusUpdateTimeoutSeconds = statusUpdateTimeoutSeconds;
       this.unchangedCountToDelayStatusRecheck = unchangedCountToDelayStatusRecheck;
+      this.stuckPodRecheckSeconds = stuckPodRecheckSeconds;
       this.initialShortDelay = initialShortDelay;
       this.eventualLongDelay = eventualLongDelay;
     }
@@ -120,7 +127,7 @@ public interface TuningParameters extends Map<String, String> {
     }
   }
 
-  public static class CallBuilderTuning {
+  class CallBuilderTuning {
     public final int callRequestLimit;
     public final int callMaxRetryCount;
     public final int callTimeoutSeconds;
@@ -172,7 +179,7 @@ public interface TuningParameters extends Map<String, String> {
     }
   }
 
-  public static class WatchTuning {
+  class WatchTuning {
     public final int watchLifetime;
     public final int watchMinimumDelay;
     public final int watchBackstopRecheckDelay;
@@ -221,7 +228,7 @@ public interface TuningParameters extends Map<String, String> {
     }
   }
 
-  public static class PodTuning {
+  class PodTuning {
     public final int readinessProbeInitialDelaySeconds;
     public final int readinessProbeTimeoutSeconds;
     public final int readinessProbePeriodSeconds;

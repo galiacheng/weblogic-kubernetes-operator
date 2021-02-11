@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -10,7 +10,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.primitives.Ints;
 import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -26,8 +25,6 @@ import oracle.weblogic.domain.Model;
 import oracle.weblogic.domain.ServerPod;
 import oracle.weblogic.kubernetes.annotations.IntegrationTest;
 import oracle.weblogic.kubernetes.annotations.Namespaces;
-import oracle.weblogic.kubernetes.annotations.tags.MustNotRunInParallel;
-import oracle.weblogic.kubernetes.annotations.tags.Slow;
 import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import oracle.weblogic.kubernetes.utils.ExecResult;
 import org.awaitility.core.ConditionFactory;
@@ -52,6 +49,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createOcirRepoSec
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithUsernamePassword;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.dockerLoginAndPushImageToRegistry;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 import static org.awaitility.Awaitility.with;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -150,8 +148,6 @@ class ItSessionMigration {
    */
   @Test
   @DisplayName("Stop the primary server, verify that a new primary server is picked and HTTP session state is migrated")
-  @Slow
-  @MustNotRunInParallel
   public void testSessionMigration() {
     final String primaryServerAttr = "primary";
     final String secondaryServerAttr = "secondary";
@@ -164,7 +160,7 @@ class ItSessionMigration {
     // send a HTTP request to set http session state(count number) and save HTTP session info
     // before shutting down the primary server
     Map<String, String> httpDataInfo =
-        getServerAndSessionInfoAndVerify(serverName, webServiceSetUrl, " -D ");
+        getServerAndSessionInfoAndVerify(serverName, webServiceSetUrl, " -c ");
     // get server and session info from web service deployed on the cluster
     String origPrimaryServerName = httpDataInfo.get(primaryServerAttr);
     String origSecondaryServerName = httpDataInfo.get(secondaryServerAttr);
@@ -185,7 +181,7 @@ class ItSessionMigration {
     String primaryServerName = httpDataInfo.get(primaryServerAttr);
     String sessionCreateTime = httpDataInfo.get(sessionCreateTimeAttr);
     String countStr = httpDataInfo.get(countAttr);
-    int count = Optional.ofNullable(countStr).map(Ints::tryParse).orElse(0);
+    int count = Optional.ofNullable(countStr).map(Integer::valueOf).orElse(0);
     logger.info("After patching the domain, the primary server changes to {0} "
         + ", session create time {1} and session state {2}",
             primaryServerName, sessionCreateTime, countStr);
@@ -371,7 +367,7 @@ class ItSessionMigration {
                     .domainType("WLS")
                     .runtimeEncryptionSecret(encryptionSecretName))
                 .introspectorJobActiveDeadlineSeconds(300L)));
-
+    setPodAntiAffinity(domain);
     // create domain using model in image
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, domainNamespace, miiImage);
@@ -394,15 +390,15 @@ class ItSessionMigration {
     checkPodDoesNotExist(podName, domainUid, domainNamespace);
   }
 
-  private static String buildCurlCommand(String podName,
-                                         String curlUrlPath,
+  private static String buildCurlCommand(String curlUrlPath,
                                          String headerOption) {
-    logger.info("Build a curl command with pod name {0}, curl URL path {1} and HTTP header option {2}",
-        podName, curlUrlPath, headerOption);
     final String httpHeaderFile = "/u01/oracle/header";
+    final String clusterAddress = domainUid + "-cluster-" + clusterName;
+    logger.info("Build a curl command with pod name {0}, curl URL path {1} and HTTP header option {2}",
+        clusterAddress, curlUrlPath, headerOption);
 
     StringBuffer curlCmd = new StringBuffer("curl --silent --show-error http://");
-    curlCmd.append(podName)
+    curlCmd.append(clusterAddress)
         .append(":")
         .append(managedServerPort)
         .append("/")
@@ -421,7 +417,7 @@ class ItSessionMigration {
     Map<String, String> httpAttrInfo = new HashMap<String, String>();
 
     // build curl command
-    String curlCmd = buildCurlCommand(serverName, curlUrlPath, headerOption);
+    String curlCmd = buildCurlCommand(curlUrlPath, headerOption);
     logger.info("Command to set HTTP request and get HTTP response {0} ", curlCmd);
 
     // set HTTP request and get HTTP response

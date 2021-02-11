@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.weblogic.domain.model;
@@ -563,11 +563,6 @@ public class DomainCommonConfigurator extends DomainConfigurator {
       return this;
     }
 
-    @Override
-    public ServerConfigurator withToleration(V1Toleration toleration) {
-      getDomainSpec().addToleration(toleration);
-      return this;
-    }
   }
 
   class ClusterConfiguratorImpl implements ClusterConfigurator {
@@ -762,12 +757,6 @@ public class DomainCommonConfigurator extends DomainConfigurator {
     @Override
     public ClusterConfigurator withPriorityClassName(String priorityClassName) {
       getDomainSpec().setPriorityClassName(priorityClassName);
-      return this;
-    }
-
-    @Override
-    public ClusterConfigurator withToleration(V1Toleration toleration) {
-      getDomainSpec().addToleration(toleration);
       return this;
     }
 

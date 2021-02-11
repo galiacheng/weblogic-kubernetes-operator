@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.logging;
@@ -14,7 +14,6 @@ public class MessageKeys {
   public static final String OPERATOR_SHUTTING_DOWN = "WLSKO-0005";
   public static final String EXCEPTION = "WLSKO-0006";
   public static final String CREATING_CRD = "WLSKO-0012";
-  public static final String LISTING_DOMAINS = "WLSKO-0014";
   public static final String SECRET_NOT_FOUND = "WLSKO-0018";
   public static final String RETRIEVING_SECRET = "WLSKO-0019";
   public static final String SECRET_DATA_NOT_FOUND = "WLSKO-0020";
@@ -92,10 +91,6 @@ public class MessageKeys {
   public static final String POD_DELETED = "WLSKO-0122";
   public static final String TUNING_PARAMETERS = "WLSKO-0126";
   public static final String WLS_HEALTH_READ_FAILED = "WLSKO-0127";
-  public static final String WLS_UPDATE_CLUSTER_SIZE_STARTING = "WLSKO-0128";
-  public static final String WLS_UPDATE_CLUSTER_SIZE_FAILED = "WLSKO-0129";
-  public static final String WLS_UPDATE_CLUSTER_SIZE_INVALID_CLUSTER = "WLSKO-0131";
-  public static final String WLS_CLUSTER_SIZE_UPDATED = "WLSKO-0132";
   public static final String WLS_SERVER_TEMPLATE_NOT_FOUND = "WLSKO-0133";
   public static final String SCRIPT_LOADED = "WLSKO-0134";
   public static final String JOB_IS_FAILED = "WLSKO-0136";
@@ -133,6 +128,16 @@ public class MessageKeys {
   public static final String INTROSPECTOR_JOB_FAILED = "WLSKO-0175";
   public static final String INTROSPECTOR_JOB_FAILED_DETAIL = "WLSKO-0176";
   public static final String INTROSPECTOR_POD_FAILED = "WLSKO-0177";
+  public static final String CRD_NOT_INSTALLED = "WLSKO-0178";
+  public static final String POD_FORCE_DELETED = "WLSKO-0179";
+  public static final String CREATING_EVENT = "WLSKO-0180";
+  public static final String REPLACING_EVENT = "WLSKO-0181";
+  public static final String CREATING_EVENT_FORBIDDEN = "WLSKO-0182";
+  public static final String CLUSTER_PDB_CREATED = "WLSKO-0183";
+  public static final String CLUSTER_PDB_EXISTS = "WLSKO-0184";
+  public static final String CLUSTER_PDB_PATCHED = "WLSKO-0185";
+  public static final String BEGIN_MANAGING_NAMESPACE = "WLSKO-0186";
+  public static final String END_MANAGING_NAMESPACE = "WLSKO-0187";
 
   // domain status messages
   public static final String DUPLICATE_SERVER_NAME_FOUND = "WLSDO-0001";

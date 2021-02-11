@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.rest.resource;
@@ -44,7 +44,7 @@ public class ClustersResource extends BaseResource {
   public CollectionModel<ClusterModel> get() {
     LOGGER.entering(href());
     String domainUid = getDomainUid();
-    CollectionModel<ClusterModel> collection = new CollectionModel<ClusterModel>();
+    CollectionModel<ClusterModel> collection = new CollectionModel<>();
     for (String cluster : getBackend().getClusters(domainUid)) {
       ClusterModel item = new ClusterModel(cluster);
       item.addSelfLinks(href(item.getCluster()));
@@ -63,14 +63,12 @@ public class ClustersResource extends BaseResource {
    */
   @Path("{clusters}")
   public ClusterResource getClusterResource(@PathParam("clusters") String cluster) {
-    LOGGER.entering(href(), cluster);
     if (!getBackend().isCluster(getDomainUid(), cluster)) {
       WebApplicationException e = notFound(cluster);
       LOGGER.throwing(e);
       throw e;
     }
     ClusterResource result = new ClusterResource(this, cluster);
-    LOGGER.exiting(result);
     return result;
   }
 

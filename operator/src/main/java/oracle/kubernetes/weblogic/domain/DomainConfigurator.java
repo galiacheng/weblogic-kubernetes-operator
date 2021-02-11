@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.weblogic.domain;
@@ -46,6 +46,17 @@ public abstract class DomainConfigurator {
    */
   public DomainConfigurator withDomainHome(String domainHome) {
     getDomainSpec().setDomainHome(domainHome);
+    return this;
+  }
+
+  /**
+   * Sets the full path of liveness probe custom script for domain.
+   *
+   * @param livenessProbeCustomScript full path of the liveness probe custom script
+   * @return this object
+   */
+  public DomainConfigurator withLivenessProbeCustomScript(String livenessProbeCustomScript) {
+    getDomainSpec().setLivenessProbeCustomScript(livenessProbeCustomScript);
     return this;
   }
 

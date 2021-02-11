@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.rest.resource;
@@ -40,7 +40,7 @@ public class VersionsResource extends BaseResource {
   @Produces(MediaType.APPLICATION_JSON)
   public CollectionModel<VersionModel> get() {
     LOGGER.entering(href());
-    CollectionModel<VersionModel> collection = new CollectionModel<VersionModel>();
+    CollectionModel<VersionModel> collection = new CollectionModel<>();
     for (String version : VersionUtils.getVersions()) {
       VersionModel item =
           new VersionModel(
@@ -61,14 +61,12 @@ public class VersionsResource extends BaseResource {
    */
   @Path("{version}")
   public VersionResource getVersionResource(@PathParam("version") String version) {
-    LOGGER.entering(href(), version);
     if (!VersionUtils.isVersion(version)) {
       WebApplicationException e = notFound(version);
       LOGGER.throwing(e);
       throw e;
     }
     VersionResource result = new VersionResource(this, version);
-    LOGGER.exiting(result);
     return result;
   }
 }

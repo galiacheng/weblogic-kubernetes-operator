@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.utils;
@@ -278,11 +278,11 @@ public class FileUtils {
       throws IOException {
     LoggingFacade logger = getLogger();
     Path src = Paths.get(filePath);
-    logger.info("Copying {0}", src.toString());
+    logger.info("Replacing {0}", src.toString());
     Charset charset = StandardCharsets.UTF_8;
     String content = new String(Files.readAllBytes(src), charset);
     content = content.replaceAll(regex, replacement);
-    logger.info("to {0}", src.toString());
+    logger.info("with {0}", replacement);
     Files.write(src, content.getBytes(charset));
   }
 
@@ -303,7 +303,7 @@ public class FileUtils {
     ExecResult result = execCommand(namespace, podName, null, true,
         "/bin/sh", "-c", "find " + filename);
 
-    if (result.exitValue() == 0 && result.stdout().contains(filename)) {
+    if (result.stdout().contains(filename)) {
       return true;
     } else {
       return false;

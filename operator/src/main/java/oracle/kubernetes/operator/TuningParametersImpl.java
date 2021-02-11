@@ -1,9 +1,8 @@
-// Copyright (c) 2017, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2017, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator;
 
-import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -25,16 +24,15 @@ public class TuningParametersImpl extends ConfigMapConsumer implements TuningPar
   private WatchTuning watch = null;
   private PodTuning pod = null;
 
-  private TuningParametersImpl(ScheduledExecutorService executorService, String mountPoint)
-      throws IOException {
-    super(executorService, mountPoint, TuningParametersImpl::updateTuningParameters);
-    update();
+  private TuningParametersImpl(ScheduledExecutorService executorService) {
+    super(executorService);
   }
 
-  static synchronized TuningParameters initializeInstance(
-      ScheduledExecutorService executorService, String mountPoint) throws IOException {
+  static synchronized TuningParameters initializeInstance(ScheduledExecutorService executorService, String mountPoint) {
     if (INSTANCE == null) {
-      INSTANCE = new TuningParametersImpl(executorService, mountPoint);
+      final TuningParametersImpl impl = new TuningParametersImpl(executorService);
+      INSTANCE = impl;
+      impl.scheduleUpdates(mountPoint, TuningParametersImpl::updateTuningParameters);
     }
     return INSTANCE;
   }
@@ -50,12 +48,14 @@ public class TuningParametersImpl extends ConfigMapConsumer implements TuningPar
   private void update() {
     MainTuning main =
         new MainTuning(
+            (int) readTuningParameter("initializationRetryDelaySeconds", 5),
             (int) readTuningParameter("domainPresenceFailureRetrySeconds", 10),
             (int) readTuningParameter("domainPresenceFailureRetryMaxCount", 5),
             (int) readTuningParameter("domainPresenceRecheckIntervalSeconds", 120),
             (int) readTuningParameter("domainNamespaceRecheckIntervalSeconds", 3),
             (int) readTuningParameter("statusUpdateTimeoutSeconds", 10),
             (int) readTuningParameter("statusUpdateUnchangedCountToDelayStatusRecheck", 10),
+            (int) readTuningParameter("stuckPodRecheckSeconds", 30),
             readTuningParameter("statusUpdateInitialShortDelay", 5),
             readTuningParameter("statusUpdateEventualLongDelay", 30));
 

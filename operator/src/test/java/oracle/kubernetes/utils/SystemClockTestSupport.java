@@ -1,4 +1,4 @@
-// Copyright (c) 2019, 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.utils;
@@ -21,12 +21,23 @@ public class SystemClockTestSupport {
     return new DuringTestTimeMatcher();
   }
 
+  /**
+   * Increments the system clock by the specified number of seconds.
+   * @param numSeconds the number of seconds by which to advance the system clock
+   */
+  public static void increment(long numSeconds) {
+    clock.increment(numSeconds);
+  }
+
+  /**
+   * Increments the system clock by one second.
+   */
   public static void increment() {
-    clock.increment();
+    clock.increment(1L);
   }
 
   static class TestSystemClock extends SystemClock {
-    private long testStartTime = 0;
+    private final long testStartTime = 0;
     private long currentTime = testStartTime;
 
     @Override
@@ -34,8 +45,8 @@ public class SystemClockTestSupport {
       return new DateTime(currentTime);
     }
 
-    void increment() {
-      currentTime = currentTime + 1000;
+    void increment(long numSeconds) {
+      currentTime = currentTime + 1000 * numSeconds;
     }
   }
 

@@ -6,7 +6,7 @@ pre = "<b> </b>"
 description = "Introduction to Model in Image, description of its runtime behavior, and references."
 +++
 
-#### Content
+#### Contents
 
  - [Introduction](#introduction)
  - [WebLogic Deploy Tool models](#weblogic-deploy-tool-models)
@@ -24,7 +24,7 @@ Unlike Domain in PV and Domain in Image, Model in Image eliminates the need to p
 It enables:
 
  - Defining a WebLogic domain home configuration using WebLogic Deploy Tool (WDT) model files and application archives.
- - Embedding model files and archives in a custom Docker image, and using the WebLogic Image Tool (WIT) to generate this image.
+ - Embedding model files and archives in a custom container image, and using the WebLogic Image Tool (WIT) to generate this image.
  - Supplying additional model files using a Kubernetes ConfigMap.
  - Supplying Kubernetes Secrets that resolve macro references within the models. For example, a secret can be used to supply a database credential.
  - Updating WDT model files at runtime. For example, you can add a data source to a running domain. Note that all such updates currently cause the domain to 'roll' in order to take effect.
@@ -47,7 +47,7 @@ When you deploy a Model in Image Domain YAML file:
     - Packages the domain home and passes it to the operator.
 
   - After the introspector job completes:
-    - The operator creates a ConfigMap named `DOMAIN_UID-weblogic-domain-introspect-cm` and puts the packaged domain home in it.
+    - The operator creates a ConfigMap named `DOMAIN_UID-weblogic-domain-introspect-cm` (possibly with some additional maps distinguished serial names) and puts the packaged domain home in it.
     - The operator subsequently boots your domain's WebLogic Server pods.
     - The pods will obtain their domain home from the ConfigMap.
 

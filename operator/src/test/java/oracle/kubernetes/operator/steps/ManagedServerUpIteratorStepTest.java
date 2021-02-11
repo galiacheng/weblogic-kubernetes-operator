@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.steps;
@@ -42,9 +42,9 @@ import oracle.kubernetes.weblogic.domain.DomainConfigurator;
 import oracle.kubernetes.weblogic.domain.DomainConfiguratorFactory;
 import oracle.kubernetes.weblogic.domain.model.Domain;
 import oracle.kubernetes.weblogic.domain.model.DomainSpec;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static oracle.kubernetes.operator.LabelConstants.CLUSTERNAME_LABEL;
 import static oracle.kubernetes.operator.LabelConstants.SERVERNAME_LABEL;
@@ -94,7 +94,7 @@ public class ManagedServerUpIteratorStepTest {
   private final Step nextStep = new TerminalStep();
   private final KubernetesTestSupport testSupport = new KubernetesTestSupport();
   private final List<Memento> mementos = new ArrayList<>();
-  private final DomainPresenceInfo domainPresenceInfo = createDomainPresenceInfoWithServers();
+  private DomainPresenceInfo domainPresenceInfo = createDomainPresenceInfoWithAdminServer();
   private final WlsDomainConfig domainConfig = createDomainConfig();
   private final Collection<ServerStartupInfo> startupInfos = new ArrayList<>();
 
@@ -108,10 +108,9 @@ public class ManagedServerUpIteratorStepTest {
             .withCluster(clusterConfig);
   }
 
-  private DomainPresenceInfo createDomainPresenceInfoWithServers(String... serverNames) {
+  private DomainPresenceInfo createDomainPresenceInfoWithAdminServer() {
     DomainPresenceInfo dpi = new DomainPresenceInfo(domain);
     addServer(dpi, ADMIN);
-    Arrays.asList(serverNames).forEach(serverName -> addServer(dpi, serverName));
     return dpi;
   }
 
@@ -131,6 +130,7 @@ public class ManagedServerUpIteratorStepTest {
             .withImage(LATEST_IMAGE);
   }
 
+  @SuppressWarnings("SameParameterValue")
   private static void addServer(DomainPresenceInfo domainPresenceInfo, String serverName) {
     if (serverName.equals(ADMIN)) {
       domainPresenceInfo.setServerPod(serverName, createReadyPod(serverName));
@@ -156,7 +156,7 @@ public class ManagedServerUpIteratorStepTest {
             .putLabelsItem(SERVERNAME_LABEL, serverName);
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws NoSuchFieldException {
     mementos.add(TestUtils.silenceOperatorLogger().ignoringLoggedExceptions(ApiException.class));
     mementos.add(TuningParametersStub.install());
@@ -192,7 +192,7 @@ public class ManagedServerUpIteratorStepTest {
           .addConditionsItem(new V1PodCondition().status("True").type("Ready"));
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     mementos.forEach(Memento::revert);
 
@@ -247,6 +247,23 @@ public class ManagedServerUpIteratorStepTest {
     testSupport.setTime(SCHEDULING_DETECTION_DELAY, TimeUnit.MILLISECONDS);
 
     assertThat(getStartedManagedServers(), hasSize(1));
+  }
+
+  @Test
+  public void whileAdminServerStopped_canStartManagedServer() {
+    createDomainPresenceInfoWithNoAdminServer();
+    addWlsCluster(CLUSTER1, MS1);
+
+    invokeStepWithServerStartupInfos();
+
+    assertThat(getStartedManagedServers(), hasSize(1));
+  }
+
+  private void createDomainPresenceInfoWithNoAdminServer() {
+    domainPresenceInfo = new DomainPresenceInfo(domain);
+    testSupport
+            .addToPacket(ProcessingConstants.DOMAIN_TOPOLOGY, domainConfig)
+            .addDomainPresenceInfo(domainPresenceInfo);
   }
 
   @Test

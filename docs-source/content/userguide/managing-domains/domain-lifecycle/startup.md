@@ -11,6 +11,7 @@ started, or restarted. To start, stop, or restart servers, modify these fields o
 
 * [Starting and stopping servers](#starting-and-stopping-servers)
     * [Common starting and stopping scenarios](#common-starting-and-stopping-scenarios)
+    * [Domain lifecycle sample scripts](#domain-lifecycle-sample-scripts)
 * [Shutdown options](#shutdown-options)
 * [Restarting servers](#restarting-servers)
     * [Rolling restarts](#rolling-restarts)
@@ -82,6 +83,13 @@ updates before advancing the server to the running state.
 
 Changes to the `serverStartState` property do not affect already started servers.
 
+### Domain lifecycle sample scripts
+Beginning in version 3.1.0, the operator provides sample scripts to start up or shut down a specific Managed Server or cluster in a deployed domain, or the entire deployed domain.
+
+**Note**: Prior to running these scripts, you must have previously created and deployed the domain.
+
+The scripts are located in the `kubernetes/samples/scripts/domain-lifecycle` directory. They are helpful when scripting the life cycle of a WebLogic Server domain. For more information, see the [README](https://github.com/oracle/weblogic-kubernetes-operator/tree/master/kubernetes/samples/scripts/domain-lifecycle/README.md).
+
 ### Common starting and stopping scenarios
 
 #### Normal running state
@@ -145,6 +153,16 @@ To shut down a specific standalone server, add it to the Domain and set its `ser
       serverStartPolicy: "NEVER"
     ...
 ```
+{{% notice note %}}
+The Administration Server can be shut down by setting the `serverStartPolicy` of the `adminServer` to `NEVER`.
+Care should be taken when shutting down the Administration Server. If a Managed Server cannot connect 
+to the Administration Server during startup, it will try to start up in
+[*Managed Server Independence (MSI)* mode](https://docs.oracle.com/en/middleware/fusion-middleware/weblogic-server/12.2.1.4/start/failures.html#GUID-CA4696B6-B462-4FD8-92A9-F27DEA8A2E87)
+but this could fail due to reasons such as no accessible
+[*Authentication Provider*](https://docs.oracle.com/en/middleware/fusion-middleware/weblogic-server/12.2.1.4/secmg/atn_intro.html#GUID-E56E30B4-5C18-4A21-A683-AC166792A9DE)
+from the Managed Server pod.
+{{% /notice %}}
+
 
 #### Force a specific clustered Managed Server to start
 Normally, all of the Managed Servers members in a cluster are identical and it doesn't matter which ones are running as long as the operator starts enough of them to get to the cluster's `replicas` count.

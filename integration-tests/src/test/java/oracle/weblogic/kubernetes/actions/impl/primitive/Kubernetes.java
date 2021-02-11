@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes.actions.impl.primitive;
@@ -10,16 +10,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 
-import com.google.common.base.Charsets;
-import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import io.kubernetes.client.Copy;
@@ -33,6 +33,8 @@ import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import io.kubernetes.client.openapi.apis.NetworkingV1beta1Api;
 import io.kubernetes.client.openapi.apis.RbacAuthorizationV1Api;
+import io.kubernetes.client.openapi.models.CoreV1Event;
+import io.kubernetes.client.openapi.models.CoreV1EventList;
 import io.kubernetes.client.openapi.models.NetworkingV1beta1Ingress;
 import io.kubernetes.client.openapi.models.NetworkingV1beta1IngressList;
 import io.kubernetes.client.openapi.models.V1ClusterRole;
@@ -45,8 +47,6 @@ import io.kubernetes.client.openapi.models.V1Container;
 import io.kubernetes.client.openapi.models.V1ContainerStatus;
 import io.kubernetes.client.openapi.models.V1Deployment;
 import io.kubernetes.client.openapi.models.V1DeploymentList;
-import io.kubernetes.client.openapi.models.V1Event;
-import io.kubernetes.client.openapi.models.V1EventList;
 import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1Namespace;
@@ -75,6 +75,7 @@ import io.kubernetes.client.openapi.models.V1ServiceList;
 import io.kubernetes.client.openapi.models.V1ServicePort;
 import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.PatchUtils;
+import io.kubernetes.client.util.Streams;
 import io.kubernetes.client.util.exception.CopyNotSupportedException;
 import io.kubernetes.client.util.generic.GenericKubernetesApi;
 import io.kubernetes.client.util.generic.KubernetesApiResponse;
@@ -92,22 +93,21 @@ import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 import static org.awaitility.Awaitility.with;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// TODO ryan - in here we want to implement all of the kubernetes
-// primitives that we need, using the API, not spawning a process
-// to run kubectl.
 public class Kubernetes {
 
-  private static String PRETTY = "true";
-  private static Boolean ALLOW_WATCH_BOOKMARKS = false;
-  private static String RESOURCE_VERSION = "";
-  private static Integer TIMEOUT_SECONDS = 5;
-  private static String DOMAIN_GROUP = "weblogic.oracle";
-  private static String DOMAIN_VERSION = "v8";
-  private static String DOMAIN_PLURAL = "domains";
-  private static String FOREGROUND = "Foreground";
-  private static String BACKGROUND = "Background";
-  private static int GRACE_PERIOD = 0;
+  private static final String PRETTY = "true";
+  private static final Boolean ALLOW_WATCH_BOOKMARKS = false;
+  private static final String RESOURCE_VERSION = "";
+  private static final String RESOURCE_VERSION_MATCH_UNSET = null;
+  private static final Integer TIMEOUT_SECONDS = 5;
+  private static final String DOMAIN_GROUP = "weblogic.oracle";
+  private static final String DOMAIN_VERSION = "v8";
+  private static final String DOMAIN_PLURAL = "domains";
+  private static final String FOREGROUND = "Foreground";
+  private static final String BACKGROUND = "Background";
+  private static final int GRACE_PERIOD = 0;
 
   // Core Kubernetes API clients
   private static ApiClient apiClient = null;
@@ -344,6 +344,7 @@ public class Kubernetes {
           null, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources.
       );
@@ -407,6 +408,25 @@ public class Kubernetes {
    * @throws ApiException if Kubernetes client API call fails
    */
   public static String getPodLog(String name, String namespace, String container) throws ApiException {
+    return getPodLog(name, namespace, container, null, null);
+  }
+
+  /**
+   * Get a pod's log.
+   *
+   * @param name name of the Pod
+   * @param namespace name of the Namespace
+   * @param container name of container for which to stream logs
+   * @param previous whether return previous terminated container logs
+   * @return log as a String or NULL when there is an error
+   * @throws ApiException if Kubernetes client API call fails
+   */
+  public static String getPodLog(String name,
+                                 String namespace,
+                                 String container,
+                                 Boolean previous,
+                                 Integer sinceSeconds)
+      throws ApiException {
     String log = null;
     try {
       log = coreV1Api.readNamespacedPodLog(
@@ -417,8 +437,8 @@ public class Kubernetes {
           null, // skip TLS verification of backend
           null, // number of bytes to read from the server before terminating the log output
           PRETTY, // pretty print output
-          null, // Boolean, Return previous terminated container logs
-          null, // relative time (seconds) before the current time from which to show logs
+          previous, // Boolean, Return previous terminated container logs
+          sinceSeconds, // relative time (seconds) before the current time from which to show logs
           null, // number of lines from the end of the logs to show
           null // Boolean, add timestamp at the beginning of every line of log output
       );
@@ -636,6 +656,7 @@ public class Kubernetes {
               labelSelectors, // selector to restrict the list of returned objects by their labels.
               null, // maximum number of responses to return for a list call.
               null, // shows changes that occur after that particular version of a resource.
+              RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
               null, // Timeout for the list/watch call.
               Boolean.FALSE // Watch for changes to the described resources.
           );
@@ -644,6 +665,35 @@ public class Kubernetes {
       throw apex;
     }
     return v1PodList;
+  }
+
+  // TEST
+
+  private static void listFilesInPod(String namespace, String podName, String container, String path) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("kubectl exec -t ").append(podName);
+    if (namespace != null) {
+      sb.append(" -n ").append(namespace);
+    }
+    if (container != null) {
+      sb.append(" -c ").append(container);
+    }
+    sb.append(" -- ls -lR ").append(path);
+    String listCommand = sb.toString();
+    assertTrue(Command
+        .withParams(new CommandParams()
+            .command(listCommand))
+        .execute(), listCommand + " failed");
+  }
+
+  private static void listFiles(String path) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("ls -lR ").append(path);
+    String listCommand = sb.toString();
+    assertTrue(Command
+        .withParams(new CommandParams()
+            .command(listCommand))
+        .execute(), listCommand + " failed");
   }
 
   /**
@@ -656,8 +706,19 @@ public class Kubernetes {
    */
   public static void copyDirectoryFromPod(V1Pod pod, String srcPath, Path destination)
       throws IOException, ApiException, CopyNotSupportedException {
+
+    // TEST
+    getLogger().info(
+        "BEFORE copyDirectoryFromPod({0}, {1}, {2})", pod.getMetadata().getName(), srcPath, destination);
+    listFilesInPod(pod.getMetadata().getNamespace(), pod.getMetadata().getName(), null, srcPath);
+    listFiles(destination.toString());
+
     Copy copy = new Copy();
     copy.copyDirectoryFromPod(pod, srcPath, destination);
+
+    getLogger().info(
+        "AFTER copyDirectoryFromPod({0}, {1}, {2})", pod.getMetadata().getName(), srcPath, destination);
+    listFiles(destination.toString());
   }
 
   /**
@@ -825,6 +886,7 @@ public class Kubernetes {
           labelSelector, // selector to restrict the list of returned objects by their labels
           null, // maximum number of responses to return for a list call
           RESOURCE_VERSION, // shows changes that occur after that particular version of a resource
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Timeout for the list/watch call
           false // Watch for changes to the described resources
       );
@@ -856,6 +918,7 @@ public class Kubernetes {
           null, // selector to restrict the list of returned objects by their labels
           null, // maximum number of responses to return for a list call
           RESOURCE_VERSION, // shows changes that occur after that particular version of a resource
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Timeout for the list/watch call
           false // Watch for changes to the described resources
       );
@@ -883,6 +946,7 @@ public class Kubernetes {
           null, // selector to restrict the list of returned objects by their labels
           null, // maximum number of responses to return for a list call
           RESOURCE_VERSION, // shows changes that occur after that particular version of a resource
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Timeout for the list/watch call
           false // Watch for changes to the described resources
       );
@@ -957,13 +1021,13 @@ public class Kubernetes {
    * List events in a namespace.
    *
    * @param namespace name of the namespace in which to list events
-   * @return List of {@link V1Event} objects
+   * @return List of {@link CoreV1Event} objects
    * @throws ApiException when listing events fails
    */
-  public static List<V1Event> listNamespacedEvents(String namespace) throws ApiException {
-    List<V1Event> events = null;
+  public static List<CoreV1Event> listNamespacedEvents(String namespace) throws ApiException {
+    List<CoreV1Event> events = null;
     try {
-      V1EventList list = coreV1Api.listNamespacedEvent(
+      CoreV1EventList list = coreV1Api.listNamespacedEvent(
           namespace, // String | namespace.
           PRETTY, // String | If 'true', then the output is pretty printed.
           ALLOW_WATCH_BOOKMARKS, // Boolean | allowWatchBookmarks requests watch events with type "BOOKMARK".
@@ -972,10 +1036,11 @@ public class Kubernetes {
           null, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources.
       );
-      events = list.getItems();
+      events = Optional.ofNullable(list).map(CoreV1EventList::getItems).orElse(Collections.EMPTY_LIST);
       events.sort(Comparator.comparing(e -> e.getMetadata().getCreationTimestamp()));
       Collections.reverse(events);
     } catch (ApiException apex) {
@@ -990,10 +1055,13 @@ public class Kubernetes {
    * Create a Domain Custom Resource.
    *
    * @param domain Domain custom resource model object
+   * @param domVersion custom resource's version
    * @return true on success, false otherwise
    * @throws ApiException if Kubernetes client API call fails
    */
-  public static boolean createDomainCustomResource(Domain domain) throws ApiException {
+  public static boolean createDomainCustomResource(Domain domain, String... domVersion) throws ApiException {
+    String domainVersion = (domVersion.length == 0) ? DOMAIN_VERSION : domVersion[0];
+
     if (domain == null) {
       throw new IllegalArgumentException(
           "Parameter 'domain' cannot be null when calling createDomainCustomResource()");
@@ -1017,7 +1085,7 @@ public class Kubernetes {
     try {
       response = customObjectsApi.createNamespacedCustomObject(
           DOMAIN_GROUP, // custom resource's group name
-          DOMAIN_VERSION, // //custom resource's version
+          domainVersion, //custom resource's version
           namespace, // custom resource's namespace
           DOMAIN_PLURAL, // custom resource's plural name
           json, // JSON schema of the Resource to create
@@ -1358,6 +1426,7 @@ public class Kubernetes {
           null, // selector to restrict the list of returned objects by their labels
           null, // maximum number of responses to return for a list call
           RESOURCE_VERSION, // shows changes that occur after that particular version of a resource
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Timeout for the list/watch call
           false // Watch for changes to the described resources
       );
@@ -1635,6 +1704,7 @@ public class Kubernetes {
           labels, // selector to restrict the list of returned objects by their labels
           null, // maximum number of responses to return for a list call
           RESOURCE_VERSION, // shows changes that occur after that particular version of a resource
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Timeout for the list/watch call
           false // Watch for changes to the described resources
       );
@@ -2023,6 +2093,7 @@ public class Kubernetes {
           null, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list/watch call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources
       );
@@ -2103,6 +2174,7 @@ public class Kubernetes {
           null, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources.
       );
@@ -2229,6 +2301,7 @@ public class Kubernetes {
           null, // Integer | limit is a maximum number of responses to return for a list call.
           PRETTY, // String | If true, then the output is pretty printed.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list/watch call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources
       );
@@ -2243,7 +2316,7 @@ public class Kubernetes {
    * List cluster role bindings.
    *
    * @param labelSelector labels to narrow the list
-   * @return V1ClusterRoleBindingList list of {@link V1CLusterRoleBinding} objects
+   * @return V1ClusterRoleBindingList list of {@link V1ClusterRoleBinding} objects
    * @throws ApiException if Kubernetes client API call fails
    */
   public static V1ClusterRoleBindingList listClusterRoleBindings(String labelSelector) throws ApiException {
@@ -2257,6 +2330,7 @@ public class Kubernetes {
           labelSelector, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list/watch call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources
       );
@@ -2315,6 +2389,7 @@ public class Kubernetes {
           null, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources.
       );
@@ -2370,6 +2445,7 @@ public class Kubernetes {
           labelSelector, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources.
       );
@@ -2426,6 +2502,7 @@ public class Kubernetes {
           null, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list call.
           Boolean.FALSE // Boolean | Watch for changes to the described resources.
       );
@@ -2456,6 +2533,7 @@ public class Kubernetes {
           null, // String | A selector to restrict the list of returned objects by their labels.
           null, // Integer | limit is a maximum number of responses to return for a list call.
           RESOURCE_VERSION, // String | Shows changes that occur after that particular version of a resource.
+          RESOURCE_VERSION_MATCH_UNSET, // String | how to match resource version, leave unset
           TIMEOUT_SECONDS, // Integer | Timeout for the list/watch call.
           ALLOW_WATCH_BOOKMARKS // Boolean | Watch for changes to the described resources.
       );
@@ -2597,7 +2675,7 @@ public class Kubernetes {
         new Thread(
             () -> {
               try {
-                ByteStreams.copy(inputStream, copyOut);
+                Streams.copy(inputStream, copyOut);
               } catch (IOException ex) {
                 // "Pipe broken" is expected when process is finished so don't log
                 if (ex.getMessage() != null && !ex.getMessage().contains("Pipe broken")) {
@@ -2656,7 +2734,7 @@ public class Kubernetes {
   private static String readExecCmdData(InputStream is) {
     StringBuilder sb = new StringBuilder();
     try (BufferedReader reader = new BufferedReader(
-        new InputStreamReader(is, Charsets.UTF_8))) {
+        new InputStreamReader(is, StandardCharsets.UTF_8))) {
       int c = 0;
       while ((c = reader.read()) != -1) {
         sb.append((char) c);

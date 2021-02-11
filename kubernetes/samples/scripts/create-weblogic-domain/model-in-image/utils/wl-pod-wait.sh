@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 #
@@ -198,7 +198,7 @@ jpath+='{range .items[*]}'
   jpath+='{" domainRestartVersion="}'
   jpath+='{";"}{.metadata.labels.weblogic\.domainRestartVersion}{";"}'
   jpath+='{" image="}'
-  jpath+='{";"}{.status.containerStatuses[?(@.name=="weblogic-server")].image}{";"}'
+  jpath+='{";"}{.spec.containers[?(@.name=="weblogic-server")].image}{";"}'
   jpath+='{" ready="}'
   jpath+='{";"}{.status.containerStatuses[?(@.name=="weblogic-server")].ready}{";"}'
   jpath+='{" phase="}'

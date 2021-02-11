@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -100,6 +100,7 @@ public interface TestConstants {
   public static final String WEBLOGIC_IMAGE_TAG = Optional.ofNullable(System.getenv("WEBLOGIC_IMAGE_TAG"))
       .orElse(BASE_IMAGES_REPO.equals(OCR_REGISTRY) ? OCR_WEBLOGIC_IMAGE_TAG : OCIR_WEBLOGIC_IMAGE_TAG);
   public static final String WLS_UPDATE_IMAGE_TAG = "14.1.1.0-11";
+  public static final String WLS_LATEST_IMAGE_TAG = "14.1.1.0-11";
 
   // Get FMWINFRA_IMAGE_NAME/FMWINFRA_IMAGE_TAG from env var, if its not provided and
   // if base images repo is OCR use OCR default image values
@@ -142,12 +143,13 @@ public interface TestConstants {
 
   public static final String K8S_NODEPORT_HOST = Optional.ofNullable(System.getenv("K8S_NODEPORT_HOST"))
         .orElse(assertDoesNotThrow(() -> InetAddress.getLocalHost().getHostAddress()));
-  public static final String RESULTS_ROOT = System.getenv().getOrDefault("RESULT_ROOT",
-      System.getProperty("java.io.tmpdir")) + "/ittestsresults";
-  public static final String LOGS_DIR = System.getenv().getOrDefault("RESULT_ROOT",
-      System.getProperty("java.io.tmpdir")) + "/diagnosticlogs";
-  public static final String PV_ROOT = System.getenv().getOrDefault("PV_ROOT",
-      System.getProperty("java.io.tmpdir") + "/ittestspvroot");
+  public static final String RESULTS_BASE = System.getenv().getOrDefault("RESULT_ROOT",
+      System.getProperty("java.io.tmpdir") + "/it-testsresults");
+
+  public static final String LOGS_DIR = RESULTS_BASE + "/diagnostics";
+  public static final String PV_ROOT = System.getenv().getOrDefault("PV_ROOT", 
+      RESULTS_BASE + "/pvroot");
+  public static final String RESULTS_ROOT = RESULTS_BASE + "/workdir";
 
   // NGINX constants
   public static final String NGINX_REPO_URL = "https://kubernetes.github.io/ingress-nginx";
@@ -179,12 +181,15 @@ public interface TestConstants {
   // ELK Stack and WebLogic logging exporter constants
   public static final String ELASTICSEARCH_NAME = "elasticsearch";
   public static final String ELK_STACK_VERSION = "7.8.1";
+  public static final String FLUENTD_IMAGE_VERSION = Optional.ofNullable(System.getenv("FLUENTD_IMAGE_VERSION"))
+      .orElse("v1.3.3-debian-elasticsearch-1.3");
   public static final String ELASTICSEARCH_IMAGE = ELASTICSEARCH_NAME + ":" + ELK_STACK_VERSION;
   public static final String ELASTICSEARCH_HOST = "elasticsearch.default.svc.cluster.local";
   public static final int ELASTICSEARCH_HTTP_PORT = 9200;
   public static final int ELASTICSEARCH_HTTPS_PORT = 9300;
   public static final String ELKSTACK_NAMESPACE = "default";
   public static final String LOGSTASH_INDEX_KEY = "logstash";
+  public static final String FLUENTD_INDEX_KEY = "fluentd";
   public static final String WEBLOGIC_INDEX_KEY = "wls";
   public static final String KIBANA_INDEX_KEY = "kibana";
   public static final String KIBANA_NAME = "kibana";
@@ -193,17 +198,9 @@ public interface TestConstants {
   public static final int KIBANA_PORT = 5601;
   public static final String LOGSTASH_NAME = "logstash";
   public static final String LOGSTASH_IMAGE = LOGSTASH_NAME + ":" + ELK_STACK_VERSION;
+  public static final String FLUENTD_IMAGE = "fluent/fluentd-kubernetes-daemonset:" + FLUENTD_IMAGE_VERSION;
   public static final String JAVA_LOGGING_LEVEL_VALUE = "INFO";
 
-  public static final String WLS_LOGGING_EXPORTER_JAR_VERSION = "1.0.0";
-  public static final String WLS_LOGGING_EXPORTER_JAR_REPOS =
-      "https://github.com/oracle/weblogic-logging-exporter/releases/download/v" + WLS_LOGGING_EXPORTER_JAR_VERSION;
-  public static final String WLS_LOGGING_EXPORTER_JAR_NAME =
-      "weblogic-logging-exporter-" + WLS_LOGGING_EXPORTER_JAR_VERSION + ".jar";
-  public static final String SNAKE_YAML_JAR_VERSION = "1.23";
-  public static final String SNAKE_YAML_JAR_REPOS =
-      "https://repo1.maven.org/maven2/org/yaml/snakeyaml/" + SNAKE_YAML_JAR_VERSION;
-  public static final String SNAKE_YAML_JAR_NAME = "snakeyaml-" + SNAKE_YAML_JAR_VERSION + ".jar";
   public static final String WLS_LOGGING_EXPORTER_YAML_FILE_NAME = "WebLogicLoggingExporter.yaml";
   public static final String COPY_WLS_LOGGING_EXPORTER_FILE_NAME = "copy-logging-files-cmds.txt";
 
@@ -234,7 +231,7 @@ public interface TestConstants {
   //monitoring constants
   public static final String MONITORING_EXPORTER_VERSION = Optional.ofNullable(System.getenv(
       "MONITORING_EXPORTER_VERSION"))
-      .orElse("1.2.0");
+      .orElse("1.3.0");
   public static final String MONITORING_EXPORTER_BRANCH = Optional.ofNullable(System.getenv(
       "MONITORING_EXPORTER_BRANCH"))
       .orElse("master");
@@ -243,7 +240,9 @@ public interface TestConstants {
   public static final String GRAFANA_CHART_VERSION = Optional.ofNullable(System.getenv("GRAFANA_CHART_VERSION"))
       .orElse("5.0.20");
   public static final String PROMETHEUS_REPO_NAME = "stable";
-  public static final String PROMETHEUS_REPO_URL = "https://kubernetes-charts.storage.googleapis.com/";
+  public static final String PROMETHEUS_REPO_URL = "https://charts.helm.sh/stable/";
+  public static final String GRAFANA_REPO_NAME = "stable";
+  public static final String GRAFANA_REPO_URL = "https://kubernetes-charts.storage.googleapis.com/";
 
   // credentials
   public static final String ADMIN_USERNAME_DEFAULT = "weblogic";
@@ -257,14 +256,25 @@ public interface TestConstants {
       PROJECT_ROOT + "/../kubernetes/samples/scripts/rest/generate-external-rest-identity.sh";
   public static final String DEFAULT_EXTERNAL_REST_IDENTITY_SECRET_NAME = "weblogic-operator-external-rest-identity";
 
-  // istio constants
-  public static final String ISTIO_VERSION = "1.5.4";
+  // Default ISTIO version is 1.7.3
+  public static final String ISTIO_VERSION = 
+        Optional.ofNullable(System.getenv("ISTIO_VERSION")).orElse("1.7.3");
 
   //MySQL database constants
   public static final String MYSQL_VERSION = "5.6";
+
+  //OKE constants
+  public static final boolean OKE_CLUSTER = Boolean.parseBoolean(Optional.ofNullable(System.getenv("OKE_CLUSTER"))
+      .orElse("false"));
+  public static final String NFS_SERVER = Optional.ofNullable(System.getenv("NFS_SERVER"))
+      .orElse("");
+  public static final String FSS_DIR = Optional.ofNullable(System.getenv("FSS_DIR"))
+      .orElse("");
 
   // default name suffixes
   public String DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX = "-ext";
   public String DEFAULT_INTROSPECTOR_JOB_NAME_SUFFIX = "-introspector";
   public String OLD_DEFAULT_EXTERNAL_SERVICE_NAME_SUFFIX = "-external";
+  public static final boolean WEBLOGIC_SLIM =
+      WEBLOGIC_IMAGE_TAG.contains("slim") ? true : false;
 }

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
   
 def createDataSource(dsName, dsURL, dsDriver, dsUser, dsPassword, dsTarget):
@@ -34,18 +34,18 @@ def createDataSource(dsName, dsURL, dsDriver, dsUser, dsPassword, dsTarget):
     cd('/JDBCSystemResources/'+dsName)
     set('Targets',jarray.array([ObjectName('com.bea:Name=' + dsTarget + ',Type=Cluster')], ObjectName))
 
-if __name__== "main":
-  admin_t3_url = 't3://'+admin_host+':'+admin_port
-  try:
-    connect(admin_username, admin_password, admin_t3_url)
-    edit()
-    startEdit()
-    createDataSource(dsName, dsUrl, dsDriver, dsUser, dsPassword, dsTarget)
-    activate()
-    disconnect()
-    exit()
-  except:
-    print 'Creating JDBC datasource failed'
-    print dumpStack()
-    apply(traceback.print_exception, sys.exc_info())
-    exit(exitcode=1)
+
+admin_t3_url = 't3://'+admin_host+':'+admin_port
+try:
+  connect(admin_username, admin_password, admin_t3_url)
+  edit()
+  startEdit()
+  createDataSource(dsName, dsUrl, dsDriver, dsUser, dsPassword, dsTarget)
+  activate()
+  disconnect()
+  exit()
+except:
+  print 'Creating JDBC datasource failed'
+  print dumpStack()
+  apply(traceback.print_exception, sys.exc_info())
+  exit(exitcode=1)

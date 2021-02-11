@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Oracle Corporation and/or its affiliates.
+// Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 // Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 package oracle.weblogic.kubernetes;
@@ -44,6 +44,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createDomainAndVe
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createOcirRepoSecret;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithUsernamePassword;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.setPodAntiAffinity;
 import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -298,8 +299,7 @@ class ItPodsShutdownOption {
                 .clusterName(clusterName)
                 .replicas(replicaCount)
                 .serverStartState("RUNNING")
-                .serverPod(new ServerPod()
-                    .shutdown(shutDownObject[2])))
+                )
             .configuration(new Configuration()
                 .model(new Model()
                     .configMap(cmName)
@@ -317,6 +317,11 @@ class ItPodsShutdownOption {
                 .serverName(indManagedServerName2)
                 .serverPod(new ServerPod()
                     .shutdown(shutDownObject[4]))));
+    setPodAntiAffinity(domain);
+    domain.getSpec().getClusters().stream().forEach(cluster ->
+        cluster
+            .getServerPod()
+            .shutdown(shutDownObject[2]));
     return domain;
   }
 
