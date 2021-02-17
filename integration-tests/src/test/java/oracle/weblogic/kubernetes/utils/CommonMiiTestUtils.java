@@ -245,6 +245,7 @@ public class CommonMiiTestUtils {
    * @param clusterName name of the cluster to add in domain
    * @param configMapName name of the configMap containing Weblogic Deploy Tooling model
    * @param dbSecretName name of the Secret for WebLogic configuration overrides
+   * @param allowReplicasBelowMinDynClusterSize whether to allow scaling below min dynamic cluster size
    * @param onlineUpdateEnabled whether to enable onlineUpdate feature for mii dynamic update
    * @return domain object of the domain resource
    */
@@ -261,6 +262,7 @@ public class CommonMiiTestUtils {
       String clusterName,
       String configMapName,
       String dbSecretName,
+      boolean allowReplicasBelowMinDynClusterSize,
       boolean onlineUpdateEnabled) {
     LoggingFacade logger = getLogger();
 
@@ -276,6 +278,7 @@ public class CommonMiiTestUtils {
             .namespace(domNamespace))
         .spec(new DomainSpec()
             .domainUid(domainResourceName)
+            .allowReplicasBelowMinDynClusterSize(allowReplicasBelowMinDynClusterSize)
             .domainHomeSourceType("FromModel")
             .image(imageName)
             .addImagePullSecretsItem(new V1LocalObjectReference()
