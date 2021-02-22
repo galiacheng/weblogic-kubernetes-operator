@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Callable;
 
 import oracle.weblogic.kubernetes.logging.LoggingFacade;
@@ -168,14 +169,17 @@ public class TestUtils {
   public static synchronized int getNextFreePort(int from, int to) {
     LoggingFacade logger = getLogger();
     int port;
+    int nport = -1;
     for (port = from; port < to; port++) {
-      if (isLocalPortFree(port)) {
-        logger.info("next free port is: {0}", port);
-        return port;
+      Random random = new Random(System.currentTimeMillis());
+      nport = random.nextInt(to - from) + from;
+      if (isLocalPortFree(nport)) {
+        logger.info("next free port is: {0}", nport);
+        return nport;
       }
     }
     logger.info("Can not find free port between {0} and {1}", from, to);
-    return port;
+    return nport;
   }
 
   /**
