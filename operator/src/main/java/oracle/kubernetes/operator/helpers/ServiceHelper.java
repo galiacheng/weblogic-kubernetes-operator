@@ -37,6 +37,7 @@ import oracle.kubernetes.weblogic.domain.model.AdminService;
 import oracle.kubernetes.weblogic.domain.model.Channel;
 import oracle.kubernetes.weblogic.domain.model.ClusterSpec;
 import oracle.kubernetes.weblogic.domain.model.Domain;
+import oracle.kubernetes.weblogic.domain.model.MonitoringExporterSpecification;
 import oracle.kubernetes.weblogic.domain.model.ServerSpec;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 
@@ -53,6 +54,7 @@ import static oracle.kubernetes.operator.logging.MessageKeys.EXTERNAL_CHANNEL_SE
 import static oracle.kubernetes.operator.logging.MessageKeys.MANAGED_SERVICE_CREATED;
 import static oracle.kubernetes.operator.logging.MessageKeys.MANAGED_SERVICE_EXISTS;
 import static oracle.kubernetes.operator.logging.MessageKeys.MANAGED_SERVICE_REPLACED;
+import static oracle.kubernetes.weblogic.domain.model.MonitoringExporterSpecification.EXPORTER_PORT_NAME;
 
 public class ServiceHelper {
   public static final String CLUSTER_IP_TYPE = "ClusterIP";
@@ -108,16 +110,11 @@ public class ServiceHelper {
   }
 
   static String getLabelValue(V1Service service, String labelName) {
-    if (service == null) {
-      return null;
-    }
-
-    V1ObjectMeta meta = service.getMetadata();
-    Map<String, String> labels = meta.getLabels();
-    if (labels != null) {
-      return labels.get(labelName);
-    }
-    return null;
+    return Optional.ofNullable(service)
+          .map(V1Service::getMetadata)
+          .map(V1ObjectMeta::getLabels)
+          .map(l -> l.get(labelName))
+          .orElse(null);
   }
 
   public static String getServerName(V1Service service) {
@@ -377,6 +374,7 @@ public class ServiceHelper {
   }
 
   private abstract static class ServiceStepContext extends StepContextBase {
+
     private final Step conflictStep;
     protected List<V1ServicePort> ports;
     final WlsDomainConfig domainTopology;
@@ -418,11 +416,14 @@ public class ServiceHelper {
 
     void addServicePorts(WlsServerConfig serverConfig) {
       getNetworkAccessPoints(serverConfig).forEach(this::addNapServicePort);
-      boolean istioEnabled = this.getDomain().isIstioEnabled();
-      if (!istioEnabled) {
+      if (!getDomain().isIstioEnabled()) {
         addServicePortIfNeeded("default", serverConfig.getListenPort());
         addServicePortIfNeeded("default-secure", serverConfig.getSslListenPort());
         addServicePortIfNeeded("default-admin", serverConfig.getAdminPort());
+      }
+
+      if (getDomain().getMonitoringExporterConfiguration() != null) {
+        addServicePortIfNeeded(EXPORTER_PORT_NAME, MonitoringExporterSpecification.getRestPort(serverConfig));
       }
 
     }
@@ -654,13 +655,14 @@ public class ServiceHelper {
     @Override
     public NextAction apply(Packet packet) {
       DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
-      V1Service oldService = info.removeServerService(serverName);
+      return doNext(createActionStep(info), packet);
+    }
 
-      if (oldService != null) {
-        return doNext(
-            deleteService(oldService.getMetadata()), packet);
-      }
-      return doNext(packet);
+    private Step createActionStep(DomainPresenceInfo info) {
+      return Optional.ofNullable(info.removeServerService(serverName))
+            .map(V1Service::getMetadata)
+            .map(this::deleteService)
+            .orElse(getNext());
     }
 
     Step deleteService(V1ObjectMeta metadata) {
