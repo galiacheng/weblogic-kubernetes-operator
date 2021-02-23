@@ -3,11 +3,17 @@
 
 package oracle.kubernetes.operator.wlsconfig;
 
+
 import java.util.ArrayList;
 import java.util.List;
 
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
+
+
 /** Contains configuration of a WLS server that belongs to a dynamic cluster. */
 public class WlsDynamicServerConfig extends WlsServerConfig {
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
 
   // default listen ports per WebLogic DynamicServersMBean
   static final int DEFAULT_LISTEN_PORT_RANGE_BASE = 7100;
@@ -64,6 +70,8 @@ public class WlsDynamicServerConfig extends WlsServerConfig {
       String domainName,
       boolean calculatedListenPorts,
       WlsServerConfig serverTemplate) {
+    LOGGER.info("XXXX WlsDynamicServerConfig.create: sslListenPort = " + serverTemplate.getSslListenPort()
+        + " calculatedListenPorts = " + calculatedListenPorts);
     Integer listenPort = serverTemplate.getListenPort();
     Integer sslListenPort = serverTemplate.getSslListenPort();
     List<NetworkAccessPoint> networkAccessPoints = new ArrayList<>();

@@ -255,6 +255,7 @@ public abstract class PodStepContext extends BasePodStepContext {
                   .protocol("TCP"));
         }
         if (scan.getSslListenPort() != null) {
+          LOGGER.info("XXXX getContainerPorts: sslListenPort = " + scan.getSslListenPort());
           String napName = "default-secure";
           ports.add(
               new V1ContainerPort()

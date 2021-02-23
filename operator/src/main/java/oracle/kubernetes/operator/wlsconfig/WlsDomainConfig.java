@@ -522,6 +522,7 @@ public class WlsDomainConfig implements WlsDomain {
         WlsServerConfig serverTemplate = getServerTemplate(serverTemplateName);
         String clusterName = wlsClusterConfig.getClusterName();
         if (serverTemplate != null) {
+          LOGGER.info("XXXX processDynamicClusters serverTemplate's sslport %s", serverTemplate.getSslListenPort());
           wlsDynamicServersConfig.generateDynamicServerConfigs(
               serverTemplate, clusterName, getName());
         } else {

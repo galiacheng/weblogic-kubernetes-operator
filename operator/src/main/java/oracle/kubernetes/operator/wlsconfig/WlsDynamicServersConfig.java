@@ -150,6 +150,8 @@ public class WlsDynamicServersConfig {
       String clusterName,
       String domainName,
       boolean calculatedListenPorts) {
+    LOGGER.info("XXXX createServerConfigsFromTemplate calculatedListenPorts %s, ServerTemplate.sllListenPort %s",
+        calculatedListenPorts, serverTemplate.getSslListenPort());
     List<WlsServerConfig> serverConfigs = null;
     if (serverNames != null && !serverNames.isEmpty()) {
       serverConfigs = new ArrayList<>(serverNames.size());
