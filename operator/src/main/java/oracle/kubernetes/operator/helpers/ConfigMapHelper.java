@@ -513,9 +513,9 @@ public class ConfigMapHelper {
       String result = (String) packet.remove(ProcessingConstants.DOMAIN_INTROSPECTOR_LOG_RESULT);
       data = ConfigMapHelper.parseIntrospectorResult(result, info.getDomainUid());
 
-      LOGGER.fine("================");
-      LOGGER.fine(data.toString());
-      LOGGER.fine("================");
+      LOGGER.info("XXXX================");
+      LOGGER.info(data.toString());
+      LOGGER.info("================");
 
       wlsDomainConfig = Optional.ofNullable(data.get(IntrospectorConfigMapConstants.TOPOLOGY_YAML))
             .map(this::getDomainTopology)
@@ -828,6 +828,7 @@ public class ConfigMapHelper {
 
     @Override
     public NextAction onSuccess(Packet packet, CallResponse<V1ConfigMap> callResponse) {
+      LOGGER.info("XXX ReadIntrospectorConfigMapStep onSuccess");
       V1ConfigMap result = callResponse.getResult();
       copyMapEntryToPacket(result, packet, SECRETS_MD_5);
       copyMapEntryToPacket(result, packet, DOMAINZIP_HASH);
@@ -859,7 +860,7 @@ public class ConfigMapHelper {
           info.getNamespace(),
           info.getDomainUid(),
           new Scan(domainTopology.getDomain(), new DateTime()));
-
+      LOGGER.info("XXXX set SCAN to " + domainTopology.getDomain());
       packet.put(ProcessingConstants.DOMAIN_TOPOLOGY, domainTopology.getDomain());
     }
 

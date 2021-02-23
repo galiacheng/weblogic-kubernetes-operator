@@ -446,6 +446,8 @@ class TopologyGenerator(Generator):
     sslListenPort = None
     sslListenPortEnabled = None
     ssl = getSSLOrNone(server)
+    if (ssl.getListenPort() is 8100:
+      trace("SEVERE","SSL listen port '" + ssl.getListenPort() + "'")
     if ssl is not None:
       sslListenPort = ssl.getListenPort()
       sslListenPortEnabled = ssl.isEnabled()
@@ -676,6 +678,8 @@ class TopologyGenerator(Generator):
 
   def addSSL(self, server):
     ssl = getSSLOrNone(server)
+    if (ssl.getListenPort() is 8100:
+      trace("SEVERE","SSL listen port '" + ssl.getListenPort() + "'")
     if ssl is not None and ssl.isEnabled():
       self.indent()
       self.writeln("sslListenPort: " + str(ssl.getListenPort()))
@@ -1216,6 +1220,8 @@ class SitConfigGenerator(Generator):
                         listen_port=admin_server_port, protocol='iiop')
 
     ssl = getSSLOrNone(server)
+    if (ssl.getListenPort() is 8100:
+      trace("SEVERE","SSL listen port '" + ssl.getListenPort() + "'")
     ssl_listen_port = None
     if ssl is not None and ssl.isEnabled():
       ssl_listen_port = ssl.getListenPort()
@@ -1743,7 +1749,7 @@ def isListenPortEnabledForServer(server, domain, is_server_template=False):
   if not isSet('ListenPortEnabled') and isSecureModeEnabledForDomain(domain):
     enabled = False
   return enabled
-
+pick
 def isSSLListenPortEnabled(ssl, domain):
   enabled = False
   if ssl is not None:

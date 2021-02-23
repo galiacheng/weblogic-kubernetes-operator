@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import javax.annotation.Nonnull;
 
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.utils.OperatorUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -16,6 +18,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 
 /** Contains configuration of a WLS cluster. */
 public class WlsClusterConfig {
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
 
   private String name;
   private final List<WlsServerConfig> servers = new ArrayList<>();
@@ -45,6 +48,7 @@ public class WlsClusterConfig {
    *     configuration for this cluster
    */
   public WlsClusterConfig(String clusterName, WlsDynamicServersConfig dynamicServersConfig) {
+    LOGGER.info("XXX WlsClusterConfig constructor: ");
     this.name = clusterName;
     this.dynamicServersConfig = dynamicServersConfig;
   }
