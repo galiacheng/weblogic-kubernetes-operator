@@ -107,6 +107,8 @@ public class WlsDynamicServersConfig {
 
       if (serverTemplateName != null) {
         serverTemplate = serverTemplates.get(serverTemplateName);
+        LOGGER.info("XXXX WlsDynamicServerSConfig serverTemplate sslport = "
+            + serverTemplate.getSslListenPort());
         if (serverTemplate == null) {
           LOGGER.warning(
               MessageKeys.WLS_SERVER_TEMPLATE_NOT_FOUND, serverTemplateName, clusterName);
@@ -150,8 +152,8 @@ public class WlsDynamicServersConfig {
       String clusterName,
       String domainName,
       boolean calculatedListenPorts) {
-    LOGGER.info("XXXX createServerConfigsFromTemplate calculatedListenPorts %s, ServerTemplate.sllListenPort %s",
-        calculatedListenPorts, serverTemplate.getSslListenPort());
+    LOGGER.info("XXXX createServerConfigsFromTemplate calculatedListenPorts = " + calculatedListenPorts
+            + " ServerTemplate.sllListenPort =" + calculatedListenPorts, serverTemplate.getSslListenPort());
     List<WlsServerConfig> serverConfigs = null;
     if (serverNames != null && !serverNames.isEmpty()) {
       serverConfigs = new ArrayList<>(serverNames.size());
@@ -295,6 +297,7 @@ public class WlsDynamicServersConfig {
    */
   public void generateDynamicServerConfigs(
       WlsServerConfig serverTemplate, String clusterName, String domainName) {
+    LOGGER.info("XXXX generateDynamicServerConfigs serverTemplate sslport = " + serverTemplate.getSslListenPort());
     List<String> dynamicServerNames = generateDynamicServerNames();
     serverConfigs =
         createServerConfigsFromTemplate(
