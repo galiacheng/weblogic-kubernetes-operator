@@ -417,7 +417,12 @@ public class ServiceHelper {
     }
 
     void addServicePorts(WlsServerConfig serverConfig) {
-      LOGGER.info("XXXX addServicePorts: sslListenPort = " + serverConfig.getSslListenPort());
+      LOGGER.info("XXXX addServicePorts: server = " + serverConfig.getName()
+          + " sslListenPort = " + serverConfig.getSslListenPort());
+      if (serverConfig.getSslListenPort() != null && serverConfig.getSslListenPort() == 8100) {
+        Exception e = new Exception("XXXX addServicePorts: port == 8100!! server = " + serverConfig.getName());
+        LOGGER.info("XXXX addServicePorts: port == 8100!! server = " + serverConfig.getName(), e);
+      }
       getNetworkAccessPoints(serverConfig).forEach(this::addNapServicePort);
       boolean istioEnabled = this.getDomain().isIstioEnabled();
       if (!istioEnabled) {
