@@ -104,6 +104,8 @@ public class ManagedServerUpIteratorStep extends Step {
                     .map(ssi -> createManagedServerUpWaiters(packet, ssi)).collect(Collectors.toList());
     work.addAll(startupWaiters);
 
+    LOGGER.info("XXX: work = " + work);
+
     if (!work.isEmpty()) {
       return doForkJoin(DomainStatusUpdater.createStatusUpdateStep(
               new ManagedServerUpAfterStep(getNext())), packet, work);
@@ -149,6 +151,7 @@ public class ManagedServerUpIteratorStep extends Step {
   private Map<String, StartClusteredServersStepFactory> getStartClusteredServersStepFactories(
       Collection<ServerStartupInfo> startupInfos,
       Packet packet) {
+    LOGGER.info("XXX getStartClusteredServersStepFactories");
     DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
     Domain domain = info.getDomain();
 
@@ -186,13 +189,15 @@ public class ManagedServerUpIteratorStep extends Step {
 
     @Override
     public NextAction apply(Packet packet) {
-
+      LOGGER.info("XXX StartManagedServersStep: apply() startDetailsQueue = " + startDetailsQueue);
       if (startDetailsQueue.isEmpty()) {
         return doNext(packet);
       } else if (hasServerAvailableToStart(packet)) {
+        LOGGER.info("XXX StartManagedServersStep: hasServerAvailableToStart = " + startDetailsQueue.size());
         numStarted.getAndIncrement();
         return doForkJoin(this, packet, Collections.singletonList(startDetailsQueue.poll()));
       } else {
+        LOGGER.info("XXX StartManagedServersStep: delay ");
         return doDelay(this, packet, SCHEDULING_DETECTION_DELAY, TimeUnit.MILLISECONDS);
       }
     }
@@ -205,6 +210,8 @@ public class ManagedServerUpIteratorStep extends Step {
     }
 
     private boolean canStartConcurrently(long numReady) {
+      LOGGER.info("XXX canStartConcurrently numberReady = " + numReady + " result = "
+          + (ignoreConcurrencyLimits() || numNotReady(numReady) < this.maxConcurrency));
       return (ignoreConcurrencyLimits() || numNotReady(numReady) < this.maxConcurrency);
     }
 

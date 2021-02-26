@@ -223,6 +223,7 @@ public class ManagedServersUpStep extends Step {
     }
 
     private void addServerToStart(@Nonnull WlsServerConfig serverConfig, String clusterName, ServerSpec server) {
+      LOGGER.info("XXX addServerToStart: server = " + serverConfig.getName());
       servers.add(serverConfig.getName());
       if (shouldPrecreateServerService(server)) {
         preCreateServers.add(serverConfig.getName());
