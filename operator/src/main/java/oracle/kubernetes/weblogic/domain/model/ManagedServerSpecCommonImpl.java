@@ -3,7 +3,12 @@
 
 package oracle.kubernetes.weblogic.domain.model;
 
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
+
 public class ManagedServerSpecCommonImpl extends ServerSpecCommonImpl {
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
+
   /**
    * Constructs an object to return the effective configuration for a managed server.
    *
@@ -20,9 +25,11 @@ public class ManagedServerSpecCommonImpl extends ServerSpecCommonImpl {
 
   @Override
   public boolean shouldStart(int currentReplicas) {
+    LOGGER.info("XXX shouldStart?");
     if (isStartAdminServerOnly()) {
       return false;
     }
+    LOGGER.info("XXX shouldStart? is not admin");
     return super.shouldStart(currentReplicas);
   }
 

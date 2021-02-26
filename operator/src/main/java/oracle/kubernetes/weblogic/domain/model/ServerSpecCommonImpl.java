@@ -19,6 +19,8 @@ import io.kubernetes.client.openapi.models.V1Toleration;
 import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import oracle.kubernetes.operator.ServerStartPolicy;
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -28,6 +30,8 @@ public abstract class ServerSpecCommonImpl extends ServerSpecBase {
   private final Server server;
   private final Cluster cluster;
   private final Integer clusterLimit;
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
+
 
   /**
    * Constructs an object to return the effective configuration.
@@ -121,6 +125,7 @@ public abstract class ServerSpecCommonImpl extends ServerSpecBase {
       case ALWAYS:
         return true;
       case IF_NEEDED:
+        LOGGER.info("XX shoutStart: currentReplicas = " + currentReplicas + " clusterLimit = " + clusterLimit);
         return clusterLimit == null || currentReplicas < clusterLimit;
       default:
         return false;

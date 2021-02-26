@@ -117,7 +117,7 @@ public class ManagedServersUpStep extends Step {
     if (LOGGER.isFineEnabled()) {
       LOGGER.fine(SERVERS_UP_MSG, factory.domain.getDomainUid(), getRunningServers(info));
     }
-
+    LOGGER.info("XXX config = " + config + " end of config");
     Optional.ofNullable(config).ifPresent(wlsDomainConfig -> addServersToFactory(factory, wlsDomainConfig));
 
     info.setServerStartupInfo(factory.getStartupInfos());
@@ -345,6 +345,7 @@ public class ManagedServersUpStep extends Step {
       if (server.alwaysStart()) {
         addServerToStart(wlsServerConfig, clusterName, server);
       } else {
+        LOGGER.info("XXX addServerIfAlways: added to pending list");
         pendingServers.add(new ServerConfig(wlsClusterConfig, wlsServerConfig));
       }
     }

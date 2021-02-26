@@ -107,6 +107,7 @@ public class SecretHelper {
 
       @Override
       public NextAction onFailure(Packet packet, CallResponse<V1Secret> callResponse) {
+        LOGGER.info("XXX SecretResponseStep.onFailure(): result = " + callResponse.getStatusCode());
         if (callResponse.getStatusCode() == CallBuilder.NOT_FOUND) {
           LOGGER.warning(loggingFilter, MessageKeys.SECRET_NOT_FOUND, secretName, namespace, secretType);
           return doNext(packet);
@@ -116,6 +117,7 @@ public class SecretHelper {
 
       @Override
       public NextAction onSuccess(Packet packet, CallResponse<V1Secret> callResponse) {
+        LOGGER.info("XXX SecretResponseStep.onSuccess result = " + callResponse.getStatusCode());
         packet.put(
             SECRET_DATA_KEY, harvestAdminSecretData(callResponse.getResult(), loggingFilter));
         return doNext(packet);

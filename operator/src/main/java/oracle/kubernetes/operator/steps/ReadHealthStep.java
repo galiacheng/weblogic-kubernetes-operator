@@ -352,6 +352,7 @@ public class ReadHealthStep extends Step {
 
     @Override
     public NextAction onSuccess(Packet packet, HttpResponse<String> response) {
+      LOGGER.entering();
       try {
         new HealthResponseProcessing(packet, response).recordStateAndHealth();
         decrementIntegerInPacketAtomically(packet, REMAINING_SERVERS_HEALTH_TO_READ);
@@ -367,6 +368,7 @@ public class ReadHealthStep extends Step {
     @Override
     public NextAction onFailure(Packet packet, HttpResponse<String> response) {
       new HealthResponseProcessing(packet, response).recordFailedStateAndHealth();
+      LOGGER.entering();
       return doNext(packet);
     }
 
