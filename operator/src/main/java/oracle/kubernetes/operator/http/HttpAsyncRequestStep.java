@@ -53,7 +53,7 @@ public class HttpAsyncRequestStep extends Step {
    * @param responseStep the step to handle the response
    * @return a new step to run as part of a fiber, linked to the response step
    */
-  public static HttpAsyncRequestStep createGetRequest(String url, HttpResponseStep responseStep) {
+  static HttpAsyncRequestStep createGetRequest(String url, HttpResponseStep responseStep) {
     HttpRequest request = HttpRequest.newBuilder(URI.create(url)).GET().build();
     return create(request, responseStep);
   }
@@ -133,7 +133,7 @@ public class HttpAsyncRequestStep extends Step {
     private final String method;
     private final URI uri;
 
-    public HttpTimeoutException(String method, URI uri) {
+    HttpTimeoutException(String method, URI uri) {
       this.method = method;
       this.uri = uri;
     }
