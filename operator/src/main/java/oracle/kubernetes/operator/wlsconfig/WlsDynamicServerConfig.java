@@ -78,6 +78,9 @@ public class WlsDynamicServerConfig extends WlsServerConfig {
     if (serverTemplate.getNetworkAccessPoints() != null) {
       for (NetworkAccessPoint networkAccessPoint : serverTemplate.getNetworkAccessPoints()) {
         Integer networkAccessPointListenPort = networkAccessPoint.getListenPort();
+        LOGGER.info("XXXX WlsDynamicServerConfig.create: networkAccessPointListenPort = "
+            + networkAccessPointListenPort
+            + " calculatedListenPorts = " + calculatedListenPorts);
         if (calculatedListenPorts) {
           networkAccessPointListenPort =
               networkAccessPointListenPort == null

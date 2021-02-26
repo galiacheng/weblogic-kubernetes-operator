@@ -418,6 +418,8 @@ public class ServiceHelper {
 
     void addServicePorts(WlsServerConfig serverConfig) {
       LOGGER.info("XXXX addServicePorts: server = " + serverConfig.getName()
+          + " ListenPort = " + serverConfig.getListenPort()
+          + " AdminPort = " + serverConfig.getAdminPort()
           + " sslListenPort = " + serverConfig.getSslListenPort());
       if (serverConfig.getSslListenPort() != null && serverConfig.getSslListenPort() == 8100) {
         Exception e = new Exception("XXXX addServicePorts: port == 8100!! server = " + serverConfig.getName());
@@ -454,6 +456,7 @@ public class ServiceHelper {
     abstract void addServicePortIfNeeded(String portName, Integer port);
 
     V1ServicePort createServicePort(String portName, Integer port) {
+      LOGGER.info("XXX createServicePort port-name = " + portName + " port = " + port);
       return new V1ServicePort()
           .name(LegalNames.toDns1123LegalName(portName))
           .port(port)
