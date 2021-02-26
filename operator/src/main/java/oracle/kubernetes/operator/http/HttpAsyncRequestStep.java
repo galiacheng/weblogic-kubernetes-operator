@@ -108,7 +108,7 @@ public class HttpAsyncRequestStep extends Step {
 
     private void resume(AsyncFiber fiber, HttpResponse<String> response, Throwable throwable) {
       if (throwable != null) {
-        LOGGER.fine(MessageKeys.HTTP_REQUEST_TIMED_OUT, request.method(), request.uri(), throwable);
+        LOGGER.fine(MessageKeys.HTTP_REQUEST_TIMED_OUT, throwable);
       }
       
       Optional.ofNullable(response).ifPresent(this::recordResponse);
@@ -116,6 +116,7 @@ public class HttpAsyncRequestStep extends Step {
     }
 
     private void recordResponse(HttpResponse<String> response) {
+      LOGGER.info("XXX recordResponse status code = " + response.statusCode());
       if (response.statusCode() != HttpURLConnection.HTTP_OK) {
         LOGGER.fine(MessageKeys.HTTP_METHOD_FAILED, request.method(), request.uri(), response.statusCode());
       }
