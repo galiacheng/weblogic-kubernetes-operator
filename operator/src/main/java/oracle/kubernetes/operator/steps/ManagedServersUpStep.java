@@ -204,6 +204,7 @@ public class ManagedServersUpStep extends Step {
 
     private void addServerIfNeeded(@Nonnull WlsServerConfig serverConfig, WlsClusterConfig clusterConfig) {
       String serverName = serverConfig.getName();
+      LOGGER.info("XXX addServerIfNeeded: servername = " + serverName);
       if (adminServerOrDone(serverName)) {
         return;
       }

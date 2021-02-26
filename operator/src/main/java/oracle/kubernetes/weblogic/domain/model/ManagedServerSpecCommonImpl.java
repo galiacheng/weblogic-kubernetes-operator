@@ -29,7 +29,7 @@ public class ManagedServerSpecCommonImpl extends ServerSpecCommonImpl {
     if (isStartAdminServerOnly()) {
       return false;
     }
-    LOGGER.info("XXX shouldStart? is not admin");
+    LOGGER.info("XXX shouldStart? not admin");
     return super.shouldStart(currentReplicas);
   }
 

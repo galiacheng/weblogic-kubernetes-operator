@@ -125,7 +125,7 @@ public abstract class ServerSpecCommonImpl extends ServerSpecBase {
       case ALWAYS:
         return true;
       case IF_NEEDED:
-        LOGGER.info("XX shoutStart: currentReplicas = " + currentReplicas + " clusterLimit = " + clusterLimit);
+        LOGGER.info("XX currentReplicas = " + currentReplicas + " clusterLimit = " + clusterLimit);
         return clusterLimit == null || currentReplicas < clusterLimit;
       default:
         return false;

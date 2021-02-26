@@ -945,8 +945,10 @@ public abstract class PodStepContext extends BasePodStepContext {
           .orElse(null);
 
       if (currentPod == null) {
+        LOGGER.info("XXX creating a new pod for " + getServerName());
         return doNext(createNewPod(getNext()), packet);
       } else if (!canUseCurrentPod(currentPod)) {
+        LOGGER.info("XXX cannot use current pod for " + getServerName());
         if (shouldNotRestartAfterOnlineUpdate(dynamicUpdateResult)) {
           Map<String, String> labels = Optional.of(currentPod)
               .map(V1Pod::getMetadata)
@@ -985,6 +987,7 @@ public abstract class PodStepContext extends BasePodStepContext {
             getReasonToRecycle(currentPod));
         return doNext(replaceCurrentPod(currentPod, getNext()), packet);
       } else if (mustPatchPod(currentPod)) {
+        LOGGER.info("XXX must patch current pod for " + getServerName());
         return doNext(patchCurrentPod(currentPod, getNext()), packet);
       } else {
         logPodExists();
@@ -1061,6 +1064,8 @@ public abstract class PodStepContext extends BasePodStepContext {
 
     @Override
     public NextAction onFailure(Packet packet, CallResponse<V1Pod> callResponse) {
+      LOGGER.info("XX BaseResponse.onFailure: result = " + callResponse.getResult() + " exption = "
+          + callResponse.getExceptionString());
       if (UnrecoverableErrorBuilder.isAsyncCallUnrecoverableFailure(callResponse)) {
         return updateDomainStatus(packet, callResponse);
       } else {
