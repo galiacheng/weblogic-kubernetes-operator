@@ -91,6 +91,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.opentest4j.AssertionFailedError;
 
 import static java.nio.file.Files.createDirectories;
 import static java.nio.file.Paths.get;
@@ -133,6 +134,7 @@ import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.creat
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.deleteDomainCustomResource;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.deleteNamespace;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.exec;
+import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.getDomainCustomResource;
 import static oracle.weblogic.kubernetes.assertions.impl.Kubernetes.listPods;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReady;
@@ -415,6 +417,21 @@ class ItMonitoringExporter {
           "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
       checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
 
+      logger.info("Testing empty configuration");
+      changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_empty.yaml");
+      changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_empty.yaml");
+
+      //needs 10 secs to fetch the metrics to prometheus
+      Thread.sleep(20 * 1000);
+      // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
+      prometheusSearchKey1 =
+          "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
+      try {
+        checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+        throw new RuntimeException("Configuration is not updated ");
+      } catch (AssertionFailedError ex) {
+        logger.info("Caught expected error due empty configuration");
+      }
 
     } finally {
       logger.info("Shutting down domain5");
@@ -436,9 +453,8 @@ class ItMonitoringExporter {
       // create and verify one cluster mii domain
       logger.info("Create domain and verify that it's running");
       String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
-      String  miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME,MODEL_DIR + "/" + MONEXP_MODEL_FILE);
+      String  miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME,MODEL_DIR + "/model.ssl.yaml");
       createAndVerifyDomain(miiImage1, domain6Uid, domain6Namespace, "FromModel", 2, yaml);
-      //installCoordinator(domain5Namespace);
       installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
           domain6Namespace,
           domain6Uid);
@@ -450,6 +466,10 @@ class ItMonitoringExporter {
       changeConfigInPod(domain6Uid + "-managed-server1", domain6Namespace,"rest_jvm.yaml");
       changeConfigInPod(domain6Uid + "-managed-server2", domain6Namespace,"rest_jvm.yaml");
 
+      Domain domain = getDomainCustomResource(domain5Uid,domain5Namespace);
+      String monexpConfig = domain.getSpec().getMonitoringExporterSpecification().toString();
+      logger.info("MonitorinExporter new Configuration from crd " + monexpConfig);
+      assertTrue(monexpConfig.contains("heapFreeCurrent"));
       //needs 10 secs to fetch the metrics to prometheus
       Thread.sleep(20 * 1000);
       // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
