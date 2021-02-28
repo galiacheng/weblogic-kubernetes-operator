@@ -186,11 +186,13 @@ class ItMonitoringExporter {
   private static String domain3Namespace = null;
   private static String domain4Namespace = null;
   private static String domain5Namespace = null;
+  private static String domain6Namespace = null;
   private static String domain1Uid = "monexp-domain-1";
   private static String domain2Uid = "monexp-domain-2";
   private static String domain3Uid = "monexp-domain-3";
   private static String domain4Uid = "monexp-domain-4";
   private static String domain5Uid = "monexp-domain-5";
+  private static String domain6Uid = "monexp-domain-6";
   private static HelmParams nginxHelmParams = null;
   private static int nodeportshttp = 0;
   private static int nodeportshttps = 0;
@@ -236,7 +238,7 @@ class ItMonitoringExporter {
    */
   @BeforeAll
 
-  public static void initAll(@Namespaces(9) List<String> namespaces) {
+  public static void initAll(@Namespaces(10) List<String> namespaces) {
 
     logger = getLogger();
     // create standard, reusable retry/backoff policy
@@ -280,9 +282,13 @@ class ItMonitoringExporter {
     assertNotNull(namespaces.get(8), "Namespace list is null");
     domain5Namespace = namespaces.get(8);
 
+    logger.info("Get a unique namespace for domain6");
+    assertNotNull(namespaces.get(9), "Namespace list is null");
+    domain5Namespace = namespaces.get(9);
+
     logger.info("install and verify operator");
     installAndVerifyOperator(opNamespace, domain1Namespace,domain2Namespace,domain3Namespace,
-        domain4Namespace,domain5Namespace);
+        domain4Namespace,domain5Namespace, domain6Namespace);
 
     logger.info("install monitoring exporter");
     installMonitoringExporter();
@@ -370,23 +376,22 @@ class ItMonitoringExporter {
     }
   }
 
-
   /**
-   * Test covers end to end sample, provided in the Monitoring Exporter github project .
+   * Test covers basic functionality for MonitoringExporter SideCar .
    * Create Prometheus, Grafana.
    * Create Model in Image with monitoring exporter.
-   * Verify access to monitoring exporter WebLogic metrics via nginx.
    * Check generated monitoring exporter WebLogic metrics via Prometheus, Grafana.
    * Check basic functionality of monitoring exporter.
    */
   @Test
-  @DisplayName("Test Basic Functionality of Monitoring Exporter.")
+  @DisplayName("Test Basic Functionality of Monitoring Exporter SideCar.")
   public void testSideCarBasicFunctionality() throws Exception {
     try {
       // create and verify one cluster mii domain
       logger.info("Create domain and verify that it's running");
-      String miiImage1 = createAndVerifyMiiImage();
-      createAndVerifyDomain(miiImage1, domain5Uid, domain5Namespace, "FromModel", 2);
+      String miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME, MODEL_DIR + "/model.sessmigr.yaml");
+      String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
+      createAndVerifyDomain(miiImage1, domain5Uid, domain5Namespace, "FromModel", 2, yaml);
       //installCoordinator(domain5Namespace);
       installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
           domain5Namespace,
@@ -410,6 +415,48 @@ class ItMonitoringExporter {
     } finally {
       logger.info("Shutting down domain5");
       shutdownDomain(domain5Uid, domain5Namespace);
+    }
+  }
+
+  /**
+   * Test covers basic functionality for MonitoringExporter SideCar .
+   * Create Prometheus, Grafana.
+   * Create Model in Image with SSL enabled.
+   * Check generated monitoring exporter WebLogic metrics via Prometheus, Grafana.
+   * Check basic functionality of monitoring exporter.
+   */
+  @Test
+  @DisplayName("Test Basic Functionality of Monitoring Exporter SideCar with ssl enabled.")
+  public void testSideCarBasicFunctionalityWithSSL() throws Exception {
+    try {
+      // create and verify one cluster mii domain
+      logger.info("Create domain and verify that it's running");
+      String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
+      String  miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME,MODEL_DIR + "/" + MONEXP_MODEL_FILE);
+      createAndVerifyDomain(miiImage1, domain6Uid, domain6Namespace, "FromModel", 2, yaml);
+      //installCoordinator(domain5Namespace);
+      installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
+          domain6Namespace,
+          domain6Uid);
+
+      String sessionAppPrometheusSearchKey =
+          "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
+      checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
+
+      changeConfigInPod(domain6Uid + "-managed-server1", domain6Namespace,"rest_jvm.yaml");
+      changeConfigInPod(domain6Uid + "-managed-server2", domain6Namespace,"rest_jvm.yaml");
+
+      //needs 10 secs to fetch the metrics to prometheus
+      Thread.sleep(20 * 1000);
+      // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
+      String prometheusSearchKey1 =
+          "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
+      checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+
+
+    } finally {
+      logger.info("Shutting down domain6");
+      shutdownDomain(domain6Uid, domain6Namespace);
     }
   }
 
@@ -493,7 +540,7 @@ class ItMonitoringExporter {
     try {
       logger.info("create and verify WebLogic domain image using model in image with model files for norestport");
 
-      miiImage1 = createAndVerifyMiiImage(monitoringExporterAppDir + "/norestport");
+      miiImage1 = createAndVerifyMiiImage(MODEL_DIR + "/" + MONEXP_MODEL_FILE);
 
       // create and verify one cluster mii domain
       logger.info("Create domain and verify that it's running");
@@ -1326,22 +1373,22 @@ class ItMonitoringExporter {
   }
 
   private static void buildMonitoringExporterImage(String imageName) {
-    String https_proxy = System.getenv("HTTPS_PROXY");
-    logger.info(" https_proxy : " + https_proxy);
+    String httpsproxy = System.getenv("HTTPS_PROXY");
+    logger.info(" httpsproxy : " + httpsproxy);
     String proxyHost = "";
     String command;
-    if (https_proxy != null) {
-      int firstIndex = https_proxy.lastIndexOf("www");
-      int lastIndex = https_proxy.lastIndexOf(":");
+    if (httpsproxy != null) {
+      int firstIndex = httpsproxy.lastIndexOf("www");
+      int lastIndex = httpsproxy.lastIndexOf(":");
       logger.info("Got indexes : " + firstIndex + " : " + lastIndex);
-      proxyHost = https_proxy.substring(firstIndex,lastIndex);
+      proxyHost = httpsproxy.substring(firstIndex,lastIndex);
       logger.info(" proxyHost: " + proxyHost);
 
       command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true "
             + " &&   docker build . -t "
             + imageName
-            + " --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" --build-arg https_proxy=%s",
-        monitoringExporterSrcDir, proxyHost, https_proxy);
+            + " --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" --build-arg httpsproxy=%s",
+        monitoringExporterSrcDir, proxyHost, httpsproxy);
     } else {
       command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true "
               + " &&   docker build . -t "
@@ -1372,17 +1419,17 @@ class ItMonitoringExporter {
 
 
   /**
-   * Create mii image with monitoring exporter webapp.
+   * Create mii image.
    */
-  private static String createAndVerifyMiiImage() {
+  private static String createAndVerifyMiiImage(String appName, String modelFile) {
     // create image with model files
     logger.info("Create image with model file and verify");
 
     List<String> appList = new ArrayList();
-    appList.add(SESSMIGR_APP_NAME);
+    appList.add(appName);
 
     // build the model file list
-    final List<String> modelList = Collections.singletonList(MODEL_DIR + "/model.sessmigr.yaml");
+    final List<String> modelList = Collections.singletonList(modelFile);
     String myImage =
         createMiiImageAndVerify(MONEXP_IMAGE_NAME, modelList, appList);
 
@@ -1484,6 +1531,17 @@ class ItMonitoringExporter {
                                             String namespace,
                                             String domainHomeSource,
                                             int replicaCount) {
+    createAndVerifyDomain(miiImage,domainUid, namespace, domainHomeSource, replicaCount, null);
+
+  }
+
+  //create domain from provided image and verify it's start
+  private static void createAndVerifyDomain(String miiImage,
+                                            String domainUid,
+                                            String namespace,
+                                            String domainHomeSource,
+                                            int replicaCount,
+                                            String monexpConfig) {
     // create docker registry secret to pull the image from registry
     // this secret is used only for non-kind cluster
     // create secret for admin credentials
@@ -1506,7 +1564,7 @@ class ItMonitoringExporter {
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, namespace, miiImage);
     createDomainCrAndVerify(adminSecretName, OCIR_SECRET_NAME, encryptionSecretName, miiImage,domainUid,
-            namespace, domainHomeSource, replicaCount);
+            namespace, domainHomeSource, replicaCount, monexpConfig);
     String adminServerPodName = domainUid + "-admin-server";
 
     // check that admin service exists in the domain namespace
@@ -1548,7 +1606,8 @@ class ItMonitoringExporter {
                                               String domainUid,
                                               String namespace,
                                               String domainHomeSource,
-                                              int replicaCount) {
+                                              int replicaCount,
+                                              String monexpConfig) {
     int t3ChannelPort = getNextFreePort(31570, 32767);
     // create the domain CR
     Domain domain = new Domain()
@@ -1583,8 +1642,8 @@ class ItMonitoringExporter {
                         .channelName("default")
                         .nodePort(0))
                     .addChannelsItem(new Channel()
-                    .channelName("T3Channel")
-                    .nodePort(t3ChannelPort))))
+                        .channelName("T3Channel")
+                        .nodePort(t3ChannelPort))))
             .addClustersItem(new Cluster()
                 .clusterName(clusterName)
                 .replicas(replicaCount)
@@ -1598,26 +1657,20 @@ class ItMonitoringExporter {
     // create domain using model in image
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, namespace, miiImage);
-    boolean isSideCar = true;
-    String monexpImage = "phx.ocir.io/weblogick8s/exporter:beta";
-    if (isSideCar) {
-      String yaml = String.format("%s/exporter/exporter-config.yaml",
-          RESOURCE_DIR);
-      logger.info("yaml config file path : " + yaml);
+    if (monexpConfig != null) {
+      String monexpImage = "phx.ocir.io/weblogick8s/exporter:beta";
+      logger.info("yaml config file path : " + monexpConfig);
       String contents = null;
       try {
-        contents = new String(Files.readAllBytes(Paths.get(yaml)));
+        contents = new String(Files.readAllBytes(Paths.get(monexpConfig)));
       } catch (IOException e) {
         e.printStackTrace();
       }
       domain.getSpec().createMonitoringExporterConfiguration(contents);
-
       domain.getSpec().setMonitoringExporterImage(monexpImage);
       domain.getSpec().setMonitoringExporterImagePullPolicy("IfNotPresent");
+      logger.info(domain.getSpec().getMonitoringExporterSpecification().toString());
     }
-    logger.info(domain.toString());
-    logger.info(domain.getSpec().getMonitoringExporterSpecification().toString());
-
     createDomainAndVerify(domain, namespace);
   }
 
