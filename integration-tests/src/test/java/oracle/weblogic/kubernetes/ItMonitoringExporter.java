@@ -284,7 +284,7 @@ class ItMonitoringExporter {
 
     logger.info("Get a unique namespace for domain6");
     assertNotNull(namespaces.get(9), "Namespace list is null");
-    domain5Namespace = namespaces.get(9);
+    domain6Namespace = namespaces.get(9);
 
     logger.info("install and verify operator");
     installAndVerifyOperator(opNamespace, domain1Namespace,domain2Namespace,domain3Namespace,
