@@ -221,6 +221,7 @@ class ItMonitoringExporter {
   private static String miiImage = null;
   private static String wdtImage = null;
   private static String webhookImage = null;
+  private static String exporterImage = null;
   private static String  coordinatorImage = null;
   private static int managedServerPort = 8001;
   private static int nodeportserver;
@@ -292,8 +293,11 @@ class ItMonitoringExporter {
 
     logger.info("install monitoring exporter");
     installMonitoringExporter();
+    exporterImage = assertDoesNotThrow(() -> createPushImage(monitoringExporterSrcDir, "exporter",
+        domain5Namespace, OCIR_SECRET_NAME, getDockerExtraArgs()),
+        "Failed to create image for exporter");
     //this is temporary untill image is released
-    buildMonitoringExporterImage("phx.ocir.io/weblogick8s/exporter:beta");
+    //buildMonitoringExporterImage("phx.ocir.io/weblogick8s/exporter:beta");
 
     logger.info("create and verify WebLogic domain image using model in image with model files");
     miiImage = createAndVerifyMiiImage(monitoringExporterAppDir);
@@ -949,7 +953,7 @@ class ItMonitoringExporter {
     if (!DOMAIN_IMAGES_REPO.isEmpty()) {
       imagePullPolicy = "Always";
     }
-    String image = createPushImage(dockerFileDir,baseImageName, namespace, secretName);
+    String image = createPushImage(dockerFileDir,baseImageName, namespace, secretName, "");
     logger.info("Installing {0} in namespace {1}", baseImageName, namespace);
     if (baseImageName.equalsIgnoreCase(("webhook"))) {
       webhookImage = image;
@@ -1231,7 +1235,8 @@ class ItMonitoringExporter {
    * @return image name
    */
   public static String createPushImage(String dockerFileDir, String baseImageName,
-                                                    String namespace, String secretName) throws ApiException {
+                                       String namespace, String secretName,
+                                       String extraDockerArgs) throws ApiException {
     // create unique image name with date
     final String imageTag = TestUtils.getDateAndTimeStamp();
     // Add repository name in image name for Jenkins runs
@@ -1240,7 +1245,7 @@ class ItMonitoringExporter {
     final String image = imageName + ":" + imageTag;
 
     //build image
-    assertTrue(Docker.createImage(dockerFileDir, image), "Failed to create image " + baseImageName);
+    assertTrue(Docker.createImage(dockerFileDir, image, extraDockerArgs), "Failed to create image " + baseImageName);
     logger.info("image is created with name {0}", image);
     if (!new Namespace().exists(namespace)) {
       createNamespace(namespace);
@@ -1387,7 +1392,7 @@ class ItMonitoringExporter {
       command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true "
             + " &&   docker build . -t "
             + imageName
-            + " --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" --build-arg httpsproxy=%s",
+            + " --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" --build-arg https_proxy=%s",
         monitoringExporterSrcDir, proxyHost, httpsproxy);
     } else {
       command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true "
@@ -1402,6 +1407,43 @@ class ItMonitoringExporter {
         .execute(), "Failed to build monitoring exporter image");
     // docker login and push image to docker registry if necessary
     dockerLoginAndPushImageToRegistry(imageName);
+  }
+
+  private static String getDockerExtraArgs() {
+    StringBuffer extraArgs = new StringBuffer("");
+
+    String httpsproxy = Optional.ofNullable(System.getenv("HTTPS_PROXY")).orElse(System.getenv("https_proxy"));
+    String httpproxy = Optional.ofNullable(System.getenv("HTTP_PROXY")).orElse(System.getenv("http_proxy"));
+    String noproxy = Optional.ofNullable(System.getenv("NO_PROXY")).orElse(System.getenv("no_proxy"));
+    logger.info(" httpsproxy : " + httpsproxy);
+    String proxyHost = "";
+    StringBuffer mvnArgs = new StringBuffer("");
+    if (httpsproxy != null) {
+      logger.info(" httpsproxy : " + httpsproxy);
+      proxyHost = httpsproxy.substring(httpsproxy.lastIndexOf("www"), httpsproxy.lastIndexOf(":"));
+      logger.info(" proxyHost: " + proxyHost);
+      mvnArgs.append(String.format(" -Dhttps.proxyHost=%s -Dhttps.proxyPort=80 ",
+          proxyHost));
+      //extraArgs.append(String.format(" --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" "
+      extraArgs.append(String.format(" --build-arg https_proxy=%s", httpsproxy));
+    }
+    if (httpproxy != null) {
+      logger.info(" httpproxy : " + httpproxy);
+      proxyHost = httpproxy.substring(httpproxy.lastIndexOf("www"), httpproxy.lastIndexOf(":"));
+      logger.info(" proxyHost: " + proxyHost);
+      mvnArgs.append(String.format(" -Dhttp.proxyHost=%s -Dhttp.proxyPort=80 ",
+          proxyHost));
+      //extraArgs.append(String.format(" --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" "
+      extraArgs.append(String.format(" --build-arg http_proxy=%s", httpproxy));
+    }
+    if (noproxy != null) {
+      logger.info(" noproxy : " + noproxy);
+      extraArgs.append(String.format(" --build-arg no_proxy=%s",noproxy));
+    }
+    if (!mvnArgs.equals("")) {
+      extraArgs.append(" --build-arg MAVEN_OPTS=\" " + mvnArgs.toString() + "\"");
+    }
+    return extraArgs.toString();
   }
 
   /**
@@ -1658,7 +1700,7 @@ class ItMonitoringExporter {
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, namespace, miiImage);
     if (monexpConfig != null) {
-      String monexpImage = "phx.ocir.io/weblogick8s/exporter:beta";
+      //String monexpImage = "phx.ocir.io/weblogick8s/exporter:beta";
       logger.info("yaml config file path : " + monexpConfig);
       String contents = null;
       try {
@@ -1666,9 +1708,13 @@ class ItMonitoringExporter {
       } catch (IOException e) {
         e.printStackTrace();
       }
+      String imagePullPolicy = "IfNotPresent";
+      if (!DOMAIN_IMAGES_REPO.isEmpty()) {
+        imagePullPolicy = "Always";
+      }
       domain.getSpec().createMonitoringExporterConfiguration(contents);
-      domain.getSpec().setMonitoringExporterImage(monexpImage);
-      domain.getSpec().setMonitoringExporterImagePullPolicy("IfNotPresent");
+      domain.getSpec().setMonitoringExporterImage(exporterImage);
+      domain.getSpec().setMonitoringExporterImagePullPolicy(imagePullPolicy);
       logger.info(domain.getSpec().getMonitoringExporterSpecification().toString());
     }
     createDomainAndVerify(domain, namespace);
