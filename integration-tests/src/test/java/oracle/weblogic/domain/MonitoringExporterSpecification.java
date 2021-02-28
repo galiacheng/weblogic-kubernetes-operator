@@ -3,28 +3,17 @@
 
 package oracle.weblogic.domain;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-
-import static oracle.weblogic.kubernetes.utils.ThreadSafeLogger.getLogger;
-
 import com.google.gson.Gson;
+import io.swagger.annotations.ApiModelProperty;
 import oracle.weblogic.domain.MonitoringExporterConfiguration;
-import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.yaml.snakeyaml.Yaml;
-import io.swagger.annotations.ApiModelProperty;
 
 
 public class MonitoringExporterSpecification {

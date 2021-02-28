@@ -634,18 +634,26 @@ public class DomainSpec {
     return serverService;
   }
 
-  public MonitoringExporterSpecification getMonitoringExporterSpecification() { return monitoringExporter; }
+  public MonitoringExporterSpecification getMonitoringExporterSpecification() {
+    return monitoringExporter;
+  }
 
   public DomainSpec monitoringExporterSpecification(MonitoringExporterSpecification monitoringExporter) {
     this.monitoringExporter = monitoringExporter;
     return this;
   }
 
+
+  /**
+   * Creates MonitoringExporter configuration based on provided yaml file
+   * for the monitoring exporter sidecar.
+   * @param yaml path to the monitoring exporter yaml file
+   */
+
   public void createMonitoringExporterConfiguration(String yaml) {
     if (monitoringExporter == null) {
       monitoringExporter = new MonitoringExporterSpecification();
     }
-    //monitoringExporter.loadYaml(yaml);
     monitoringExporter.createConfiguration(yaml);
   }
 

@@ -66,7 +66,6 @@ import oracle.weblogic.domain.Configuration;
 import oracle.weblogic.domain.Domain;
 import oracle.weblogic.domain.DomainSpec;
 import oracle.weblogic.domain.Model;
-import oracle.weblogic.domain.MonitoringExporterSpecification;
 import oracle.weblogic.domain.ServerPod;
 import oracle.weblogic.kubernetes.actions.impl.Grafana;
 import oracle.weblogic.kubernetes.actions.impl.GrafanaParams;
@@ -105,7 +104,6 @@ import static oracle.weblogic.kubernetes.TestConstants.DOMAIN_IMAGES_REPO;
 import static oracle.weblogic.kubernetes.TestConstants.GRAFANA_CHART_VERSION;
 import static oracle.weblogic.kubernetes.TestConstants.K8S_NODEPORT_HOST;
 import static oracle.weblogic.kubernetes.TestConstants.MANAGED_SERVER_NAME_BASE;
-import static oracle.weblogic.kubernetes.TestConstants.MII_BASIC_IMAGE_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.MONITORING_EXPORTER_VERSION;
 import static oracle.weblogic.kubernetes.TestConstants.OCIR_EMAIL;
 import static oracle.weblogic.kubernetes.TestConstants.OCIR_PASSWORD;
@@ -283,7 +281,8 @@ class ItMonitoringExporter {
     domain5Namespace = namespaces.get(8);
 
     logger.info("install and verify operator");
-    installAndVerifyOperator(opNamespace, domain1Namespace,domain2Namespace,domain3Namespace,domain4Namespace,domain5Namespace);
+    installAndVerifyOperator(opNamespace, domain1Namespace,domain2Namespace,domain3Namespace,
+        domain4Namespace,domain5Namespace);
 
     logger.info("install monitoring exporter");
     installMonitoringExporter();
@@ -397,8 +396,8 @@ class ItMonitoringExporter {
           "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
       checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
 
-      changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_jvm.yaml" );
-      changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_jvm.yaml" );
+      changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_jvm.yaml");
+      changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_jvm.yaml");
 
       //needs 10 secs to fetch the metrics to prometheus
       Thread.sleep(20 * 1000);
@@ -1328,7 +1327,7 @@ class ItMonitoringExporter {
 
   private static void buildMonitoringExporterImage(String imageName) {
     String https_proxy = System.getenv("HTTPS_PROXY");
-    logger.info(" https_proxy : " + https_proxy );
+    logger.info(" https_proxy : " + https_proxy);
     String proxyHost = "";
     String command;
     if (https_proxy != null) {
@@ -1338,15 +1337,14 @@ class ItMonitoringExporter {
       proxyHost = https_proxy.substring(firstIndex,lastIndex);
       logger.info(" proxyHost: " + proxyHost);
 
-      command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true " +
-            " &&   docker build . -t "
+      command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true "
+            + " &&   docker build . -t "
             + imageName
-            +
-            " --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" --build-arg https_proxy=%s",
+            + " --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" --build-arg https_proxy=%s",
         monitoringExporterSrcDir, proxyHost, https_proxy);
     } else {
-      command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true " +
-              " &&   docker build . -t "
+      command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true "
+              + " &&   docker build . -t "
               + imageName
               + monitoringExporterSrcDir);
     }
@@ -1602,7 +1600,7 @@ class ItMonitoringExporter {
         domainUid, namespace, miiImage);
     boolean isSideCar = true;
     String monexpImage = "phx.ocir.io/weblogick8s/exporter:beta";
-    if(isSideCar) {
+    if (isSideCar) {
       String yaml = String.format("%s/exporter/exporter-config.yaml",
           RESOURCE_DIR);
       logger.info("yaml config file path : " + yaml);
@@ -1686,19 +1684,21 @@ class ItMonitoringExporter {
   }
 
   private static void changeConfigInPod(String podName, String namespace, String configYaml) {
-    V1Pod exporterPod = assertDoesNotThrow(() ->getPod(namespace, "", podName),
+    V1Pod exporterPod = assertDoesNotThrow(() -> getPod(namespace, "", podName),
         " Can't retreive pod " + podName);
     logger.info("Copying config file {0} to pod directory {1}",
-        Paths.get(RESOURCE_DIR,"/exporter/" + configYaml).toString(), "/tmp/"+ configYaml);
+        Paths.get(RESOURCE_DIR,"/exporter/" + configYaml).toString(), "/tmp/" + configYaml);
     assertDoesNotThrow(() -> copyFileToPod(namespace, podName, "monitoring-exporter",
-        Paths.get(RESOURCE_DIR,"/exporter/" + configYaml), Paths.get("/tmp/"+ configYaml)),
+        Paths.get(RESOURCE_DIR,"/exporter/" + configYaml), Paths.get("/tmp/" + configYaml)),
         "Copying file to pod failed");
-    execInPod(exporterPod, "monitoring-exporter", true, "curl -X PUT -H \"content-type: application/yaml\" --data-binary \"@/tmp/"
+    execInPod(exporterPod, "monitoring-exporter", true,
+        "curl -X PUT -H \"content-type: application/yaml\" --data-binary \"@/tmp/"
         + configYaml + "\" -i -u weblogic:welcome1 http://localhost:8080/configuration");
     execInPod(exporterPod, "monitoring-exporter", true, "curl -X GET  "
          + " -i -u weblogic:welcome1 http://localhost:8080/metrics");
 
   }
+
   /**
    * Check metrics using Prometheus.
    *
