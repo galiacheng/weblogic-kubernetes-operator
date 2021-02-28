@@ -66,6 +66,7 @@ import oracle.weblogic.domain.Configuration;
 import oracle.weblogic.domain.Domain;
 import oracle.weblogic.domain.DomainSpec;
 import oracle.weblogic.domain.Model;
+import oracle.weblogic.domain.MonitoringExporterSpecification;
 import oracle.weblogic.domain.ServerPod;
 import oracle.weblogic.kubernetes.actions.impl.Grafana;
 import oracle.weblogic.kubernetes.actions.impl.GrafanaParams;
@@ -104,6 +105,7 @@ import static oracle.weblogic.kubernetes.TestConstants.DOMAIN_IMAGES_REPO;
 import static oracle.weblogic.kubernetes.TestConstants.GRAFANA_CHART_VERSION;
 import static oracle.weblogic.kubernetes.TestConstants.K8S_NODEPORT_HOST;
 import static oracle.weblogic.kubernetes.TestConstants.MANAGED_SERVER_NAME_BASE;
+import static oracle.weblogic.kubernetes.TestConstants.MII_BASIC_IMAGE_NAME;
 import static oracle.weblogic.kubernetes.TestConstants.MONITORING_EXPORTER_VERSION;
 import static oracle.weblogic.kubernetes.TestConstants.OCIR_EMAIL;
 import static oracle.weblogic.kubernetes.TestConstants.OCIR_PASSWORD;
@@ -124,6 +126,7 @@ import static oracle.weblogic.kubernetes.actions.TestActions.deleteImage;
 import static oracle.weblogic.kubernetes.actions.TestActions.deletePersistentVolume;
 import static oracle.weblogic.kubernetes.actions.TestActions.deletePersistentVolumeClaim;
 import static oracle.weblogic.kubernetes.actions.TestActions.deleteSecret;
+import static oracle.weblogic.kubernetes.actions.TestActions.getPod;
 import static oracle.weblogic.kubernetes.actions.TestActions.getServiceNodePort;
 import static oracle.weblogic.kubernetes.actions.TestActions.shutdownDomain;
 import static oracle.weblogic.kubernetes.actions.TestActions.uninstallNginx;
@@ -145,6 +148,7 @@ import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createOcirRepoSec
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createPVPVCAndVerify;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createSecretWithUsernamePassword;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.dockerLoginAndPushImageToRegistry;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.execInPod;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyGrafana;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyNginx;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.installAndVerifyOperator;
@@ -183,10 +187,12 @@ class ItMonitoringExporter {
   private static String domain2Namespace = null;
   private static String domain3Namespace = null;
   private static String domain4Namespace = null;
+  private static String domain5Namespace = null;
   private static String domain1Uid = "monexp-domain-1";
   private static String domain2Uid = "monexp-domain-2";
   private static String domain3Uid = "monexp-domain-3";
   private static String domain4Uid = "monexp-domain-4";
+  private static String domain5Uid = "monexp-domain-5";
   private static HelmParams nginxHelmParams = null;
   private static int nodeportshttp = 0;
   private static int nodeportshttps = 0;
@@ -232,7 +238,7 @@ class ItMonitoringExporter {
    */
   @BeforeAll
 
-  public static void initAll(@Namespaces(8) List<String> namespaces) {
+  public static void initAll(@Namespaces(9) List<String> namespaces) {
 
     logger = getLogger();
     // create standard, reusable retry/backoff policy
@@ -272,11 +278,17 @@ class ItMonitoringExporter {
     assertNotNull(namespaces.get(7), "Namespace list is null");
     domain4Namespace = namespaces.get(7);
 
+    logger.info("Get a unique namespace for domain5");
+    assertNotNull(namespaces.get(8), "Namespace list is null");
+    domain5Namespace = namespaces.get(8);
+
     logger.info("install and verify operator");
-    installAndVerifyOperator(opNamespace, domain1Namespace,domain2Namespace,domain3Namespace,domain4Namespace);
+    installAndVerifyOperator(opNamespace, domain1Namespace,domain2Namespace,domain3Namespace,domain4Namespace,domain5Namespace);
 
     logger.info("install monitoring exporter");
     installMonitoringExporter();
+    //this is temporary untill image is released
+    buildMonitoringExporterImage("phx.ocir.io/weblogick8s/exporter:beta");
 
     logger.info("create and verify WebLogic domain image using model in image with model files");
     miiImage = createAndVerifyMiiImage(monitoringExporterAppDir);
@@ -300,7 +312,7 @@ class ItMonitoringExporter {
     assertDoesNotThrow(() -> createPvAndPvc("prometheus", monitoringNS, labels));
     assertDoesNotThrow(() -> createPvAndPvc("alertmanager",monitoringNS, labels));
     assertDoesNotThrow(() -> createPvAndPvc("grafana", monitoringNS, labels));
-
+    cleanupPromGrafanaClusterRoles();
   }
 
   /**
@@ -359,6 +371,49 @@ class ItMonitoringExporter {
     }
   }
 
+
+  /**
+   * Test covers end to end sample, provided in the Monitoring Exporter github project .
+   * Create Prometheus, Grafana.
+   * Create Model in Image with monitoring exporter.
+   * Verify access to monitoring exporter WebLogic metrics via nginx.
+   * Check generated monitoring exporter WebLogic metrics via Prometheus, Grafana.
+   * Check basic functionality of monitoring exporter.
+   */
+  @Test
+  @DisplayName("Test Basic Functionality of Monitoring Exporter.")
+  public void testSideCarBasicFunctionality() throws Exception {
+    try {
+      // create and verify one cluster mii domain
+      logger.info("Create domain and verify that it's running");
+      String miiImage1 = createAndVerifyMiiImage();
+      createAndVerifyDomain(miiImage1, domain5Uid, domain5Namespace, "FromModel", 2);
+      //installCoordinator(domain5Namespace);
+      installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
+          domain5Namespace,
+          domain5Uid);
+
+      String sessionAppPrometheusSearchKey =
+          "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
+      checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
+
+      changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_jvm.yaml" );
+      changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_jvm.yaml" );
+
+      //needs 10 secs to fetch the metrics to prometheus
+      Thread.sleep(20 * 1000);
+      // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
+      String prometheusSearchKey1 =
+          "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
+      checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+
+
+    } finally {
+      logger.info("Shutting down domain5");
+      shutdownDomain(domain5Uid, domain5Namespace);
+    }
+  }
+
   /**
    * Test covers end to end sample, provided in the Monitoring Exporter github project .
    * Create Prometheus, Grafana.
@@ -374,6 +429,7 @@ class ItMonitoringExporter {
       // create and verify one cluster mii domain
       logger.info("Create domain and verify that it's running");
       createAndVerifyDomain(miiImage, domain4Uid, domain4Namespace, "FromModel", 1);
+      installCoordinator(domain4Namespace);
       // create ingress for the domain
       logger.info("Creating ingress for domain {0} in namespace {1}", domain1Uid, domain1Namespace);
       ingressHost1List =
@@ -580,6 +636,7 @@ class ItMonitoringExporter {
                                         ) throws IOException, ApiException {
     final String prometheusRegexValue = String.format("regex: %s;%s;%s", domainNS, domainUid, clusterName);
     if (promHelmParams == null) {
+      cleanupPromGrafanaClusterRoles();
       logger.info("create a staging location for monitoring creation scripts");
       Path fileTemp = Paths.get(RESULTS_ROOT, "ItMonitoringExporter", "createTempValueFile");
       FileUtils.deleteDirectory(fileTemp.toFile());
@@ -617,12 +674,6 @@ class ItMonitoringExporter {
       prometheusDomainRegexValue = prometheusRegexValue;
     }
     logger.info("Prometheus is running");
-
-    String testappPrometheusSearchKey =
-            "wls_servlet_invocation_total_count%7Bapp%3D%22wls-exporter%22%7D%5B15s%5D";
-
-    assertDoesNotThrow(() -> checkMetricsViaPrometheus(testappPrometheusSearchKey, "wls-exporter"));
-
 
     if (grafanaHelmParams == null) {
       //logger.info("Node Port for Grafana is " + nodeportgrafana);
@@ -1184,8 +1235,9 @@ class ItMonitoringExporter {
     Path monitoringAppNoRestPort = Paths.get(RESULTS_ROOT, "monitoringexp", "apps", "norestport");
     assertDoesNotThrow(() -> FileUtils.deleteDirectory(monitoringAppNoRestPort.toFile()));
     assertDoesNotThrow(() -> Files.createDirectories(monitoringAppNoRestPort));
-    String monitoringExporterBranch = Optional.ofNullable(System.getenv("MONITORING_EXPORTER_BRANCH"))
-        .orElse("master");
+    //String monitoringExporterBranch = Optional.ofNullable(System.getenv("MONITORING_EXPORTER_BRANCH"))
+    //   .orElse("master");
+    String monitoringExporterBranch = "refactor_for_helidon";
 
 
 
@@ -1274,6 +1326,39 @@ class ItMonitoringExporter {
         java.nio.file.Files.copy(srcFile, targetFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING));
   }
 
+  private static void buildMonitoringExporterImage(String imageName) {
+    String https_proxy = System.getenv("HTTPS_PROXY");
+    logger.info(" https_proxy : " + https_proxy );
+    String proxyHost = "";
+    String command;
+    if (https_proxy != null) {
+      int firstIndex = https_proxy.lastIndexOf("www");
+      int lastIndex = https_proxy.lastIndexOf(":");
+      logger.info("Got indexes : " + firstIndex + " : " + lastIndex);
+      proxyHost = https_proxy.substring(firstIndex,lastIndex);
+      logger.info(" proxyHost: " + proxyHost);
+
+      command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true " +
+            " &&   docker build . -t "
+            + imageName
+            +
+            " --build-arg MAVEN_OPTS=\"-Dhttps.proxyHost=%s -Dhttps.proxyPort=80\" --build-arg https_proxy=%s",
+        monitoringExporterSrcDir, proxyHost, https_proxy);
+    } else {
+      command = String.format("cd %s && mvn clean install -Dmaven.test.skip=true " +
+              " &&   docker build . -t "
+              + imageName
+              + monitoringExporterSrcDir);
+    }
+    logger.info("Executing command " + command);
+    assertTrue(new oracle.weblogic.kubernetes.actions.impl.primitive.Command()
+        .withParams(new oracle.weblogic.kubernetes.actions.impl.primitive.CommandParams()
+            .command(command))
+        .execute(), "Failed to build monitoring exporter image");
+    // docker login and push image to docker registry if necessary
+    dockerLoginAndPushImageToRegistry(imageName);
+  }
+
   /**
   * Delete monitoring exporter dir.
    */
@@ -1285,6 +1370,28 @@ class ItMonitoringExporter {
     assertDoesNotThrow(() -> FileUtils.deleteDirectory(monitoringApp.toFile()));
     Path fileTemp = Paths.get(RESULTS_ROOT, "ItMonitoringExporter", "promCreateTempValueFile");
     assertDoesNotThrow(() -> FileUtils.deleteDirectory(fileTemp.toFile()));
+  }
+
+
+  /**
+   * Create mii image with monitoring exporter webapp.
+   */
+  private static String createAndVerifyMiiImage() {
+    // create image with model files
+    logger.info("Create image with model file and verify");
+
+    List<String> appList = new ArrayList();
+    appList.add(SESSMIGR_APP_NAME);
+
+    // build the model file list
+    final List<String> modelList = Collections.singletonList(MODEL_DIR + "/model.sessmigr.yaml");
+    String myImage =
+        createMiiImageAndVerify(MONEXP_IMAGE_NAME, modelList, appList);
+
+    // docker login and push image to docker registry if necessary
+    dockerLoginAndPushImageToRegistry(myImage);
+
+    return myImage;
   }
 
   /**
@@ -1493,6 +1600,26 @@ class ItMonitoringExporter {
     // create domain using model in image
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, namespace, miiImage);
+    boolean isSideCar = true;
+    String monexpImage = "phx.ocir.io/weblogick8s/exporter:beta";
+    if(isSideCar) {
+      String yaml = String.format("%s/exporter/exporter-config.yaml",
+          RESOURCE_DIR);
+      logger.info("yaml config file path : " + yaml);
+      String contents = null;
+      try {
+        contents = new String(Files.readAllBytes(Paths.get(yaml)));
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      domain.getSpec().createMonitoringExporterConfiguration(contents);
+
+      domain.getSpec().setMonitoringExporterImage(monexpImage);
+      domain.getSpec().setMonitoringExporterImagePullPolicy("IfNotPresent");
+    }
+    logger.info(domain.toString());
+    logger.info(domain.getSpec().getMonitoringExporterSpecification().toString());
+
     createDomainAndVerify(domain, namespace);
   }
 
@@ -1558,6 +1685,20 @@ class ItMonitoringExporter {
     return isFound;
   }
 
+  private static void changeConfigInPod(String podName, String namespace, String configYaml) {
+    V1Pod exporterPod = assertDoesNotThrow(() ->getPod(namespace, "", podName),
+        " Can't retreive pod " + podName);
+    logger.info("Copying config file {0} to pod directory {1}",
+        Paths.get(RESOURCE_DIR,"/exporter/" + configYaml).toString(), "/tmp/"+ configYaml);
+    assertDoesNotThrow(() -> copyFileToPod(namespace, podName, "monitoring-exporter",
+        Paths.get(RESOURCE_DIR,"/exporter/" + configYaml), Paths.get("/tmp/"+ configYaml)),
+        "Copying file to pod failed");
+    execInPod(exporterPod, "monitoring-exporter", true, "curl -X PUT -H \"content-type: application/yaml\" --data-binary \"@/tmp/"
+        + configYaml + "\" -i -u weblogic:welcome1 http://localhost:8080/configuration");
+    execInPod(exporterPod, "monitoring-exporter", true, "curl -X GET  "
+         + " -i -u weblogic:welcome1 http://localhost:8080/metrics");
+
+  }
   /**
    * Check metrics using Prometheus.
    *
@@ -1645,6 +1786,10 @@ class ItMonitoringExporter {
       grafanaHelmParams = null;
       logger.info("Grafana is uninstalled");
     }
+    cleanupPromGrafanaClusterRoles();
+  }
+
+  private static void cleanupPromGrafanaClusterRoles() {
     //extra cleanup
     try {
       if (ClusterRole.clusterRoleExists("prometheus-kube-state-metrics")) {

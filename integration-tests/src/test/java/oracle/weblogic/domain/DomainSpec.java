@@ -153,6 +153,10 @@ public class DomainSpec {
   private String serverStartState;
 
   @ApiModelProperty(
+      "Configuration for monitoring exporter.")
+  private MonitoringExporterSpecification monitoringExporter;
+
+  @ApiModelProperty(
       "If present, every time this value is updated the operator will restart"
           + " the required servers.")
   private String restartVersion;
@@ -628,6 +632,49 @@ public class DomainSpec {
 
   public ServerService getServerService() {
     return serverService;
+  }
+
+  public MonitoringExporterSpecification getMonitoringExporterSpecification() { return monitoringExporter; }
+
+  public DomainSpec monitoringExporterSpecification(MonitoringExporterSpecification monitoringExporter) {
+    this.monitoringExporter = monitoringExporter;
+    return this;
+  }
+
+  public void createMonitoringExporterConfiguration(String yaml) {
+    if (monitoringExporter == null) {
+      monitoringExporter = new MonitoringExporterSpecification();
+    }
+    //monitoringExporter.loadYaml(yaml);
+    monitoringExporter.createConfiguration(yaml);
+  }
+
+  String getMonitoringExporterImage() {
+    return monitoringExporter == null ? null : monitoringExporter.getImage();
+  }
+
+  String getMonitoringExporterImagePullPolicy() {
+    return monitoringExporter == null ? null : monitoringExporter.getImagePullPolicy();
+  }
+
+  /**
+   * Specifies the image for the monitoring exporter sidecar.
+   * @param imageName the name of the docker image
+   */
+  public void setMonitoringExporterImage(String imageName) {
+    assert monitoringExporter != null : "May not set image without configuration";
+
+    monitoringExporter.setImage(imageName);
+  }
+
+  /**
+   * Specifies the pull policy for the exporter image.
+   * @param pullPolicy a Kubernetes pull policy
+   */
+  public void setMonitoringExporterImagePullPolicy(String pullPolicy) {
+    assert monitoringExporter != null : "May not set image pull policy without configuration";
+
+    monitoringExporter.setImagePullPolicy(pullPolicy);
   }
 
   public void setServerService(ServerService serverService) {
