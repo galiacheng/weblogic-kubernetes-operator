@@ -124,6 +124,7 @@ import static oracle.weblogic.kubernetes.actions.ActionConstants.WLS;
 import static oracle.weblogic.kubernetes.actions.TestActions.deleteImage;
 import static oracle.weblogic.kubernetes.actions.TestActions.deletePersistentVolume;
 import static oracle.weblogic.kubernetes.actions.TestActions.deletePersistentVolumeClaim;
+import static oracle.weblogic.kubernetes.actions.TestActions.deletePod;
 import static oracle.weblogic.kubernetes.actions.TestActions.deleteSecret;
 import static oracle.weblogic.kubernetes.actions.TestActions.getPod;
 import static oracle.weblogic.kubernetes.actions.TestActions.getServiceNodePort;
@@ -138,6 +139,7 @@ import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.getDo
 import static oracle.weblogic.kubernetes.assertions.impl.Kubernetes.listPods;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReady;
+import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReadyAndServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createDockerRegistrySecret;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createDomainAndVerify;
@@ -398,7 +400,6 @@ class ItMonitoringExporter {
       String miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME, MODEL_DIR + "/model.sessmigr.yaml");
       String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
       createAndVerifyDomain(miiImage1, domain5Uid, domain5Namespace, "FromModel", 2, yaml);
-      //installCoordinator(domain5Namespace);
       installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
           domain5Namespace,
           domain5Uid);
@@ -429,6 +430,23 @@ class ItMonitoringExporter {
       try {
         checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
         throw new RuntimeException("Configuration is not updated ");
+      } catch (ConditionTimeoutException ex) {
+        logger.info("Caught expected error due empty configuration");
+      }
+      //restart managed servers to check if new configuration is applied
+      // delete server pods
+      for (int i = 1; i <= replicaCount; i++) {
+        final String managedServerPodName = domain5Uid + "-managed-server" + i;
+        logger.info("Deleting managed server {0} in namespace {1}", managedServerPodName, domain5Namespace);
+        assertDoesNotThrow(() -> deletePod(managedServerPodName, domain5Namespace),
+            "Got exception while deleting server " + managedServerPodName);
+        logger.info("Waiting for restart of managed pod");
+        checkPodReadyAndServiceExists(managedServerPodName, domain5Uid, domain5Namespace);
+      }
+      logger.info("Checking metrics configuration after server restart");
+      try {
+        checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+        throw new RuntimeException("Configuration got reverted to original, updated configuration was not saved ");
       } catch (ConditionTimeoutException ex) {
         logger.info("Caught expected error due empty configuration");
       }
