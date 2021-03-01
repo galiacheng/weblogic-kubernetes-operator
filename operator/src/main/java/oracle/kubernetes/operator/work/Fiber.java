@@ -153,17 +153,18 @@ public final class Fiber implements Runnable, ComponentRegistry, AsyncFiber {
    */
   @Override
   public void resume(Packet resumePacket) {
+    LOGGER.info("XXX fiber resumed : name = " + getName() + " status = " + status.get());
     if (status.get() == NOT_COMPLETE) {
 
-      if (LOGGER.isFinerEnabled()) {
-        LOGGER.finer("{0} resumed", getName());
+      if (LOGGER.isFineEnabled()) {
+        LOGGER.fine("{0} resumed", getName());
       }
 
       boolean doAddRunnable = false;
       lock.lock();
       try {
-        if (LOGGER.isFinerEnabled()) {
-          LOGGER.finer("{0} resuming.", getName());
+        if (LOGGER.isFineEnabled()) {
+          LOGGER.fine("{0} resuming.", getName());
         }
         na.packet = resumePacket;
         if (na.kind == Kind.SUSPEND) {
@@ -172,8 +173,8 @@ public final class Fiber implements Runnable, ComponentRegistry, AsyncFiber {
           resume.invoke(na.next, na.packet);
           na = resume;
         } else {
-          if (LOGGER.isFinerEnabled()) {
-            LOGGER.finer(
+          if (LOGGER.isFineEnabled()) {
+            LOGGER.fine(
                 "{0} taking no action on resume because not suspended", getName());
           }
         }
