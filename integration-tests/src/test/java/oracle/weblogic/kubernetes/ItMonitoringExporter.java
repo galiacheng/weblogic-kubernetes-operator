@@ -394,66 +394,61 @@ class ItMonitoringExporter {
   @Test
   @DisplayName("Test Basic Functionality of Monitoring Exporter SideCar.")
   public void testSideCarBasicFunctionality() throws Exception {
+
+    // create and verify one cluster mii domain
+    logger.info("Create domain and verify that it's running");
+    String miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME, MODEL_DIR + "/model.sessmigr.yaml");
+    String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
+    createAndVerifyDomain(miiImage1, domain5Uid, domain5Namespace, "FromModel", 2, yaml);
+    installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
+        domain5Namespace,
+        domain5Uid);
+
+    String sessionAppPrometheusSearchKey =
+        "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
+    checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
+
+    changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_jvm.yaml");
+    changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_jvm.yaml");
+
+    //needs 10 secs to fetch the metrics to prometheus
+    Thread.sleep(20 * 1000);
+    // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
+    String prometheusSearchKey1 =
+        "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
+    checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+
+    logger.info("Testing empty configuration");
+    changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_empty.yaml");
+    changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_empty.yaml");
+
+    //needs 10 secs to fetch the metrics to prometheus
+    Thread.sleep(20 * 1000);
+    // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
+    prometheusSearchKey1 =
+        "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
     try {
-      // create and verify one cluster mii domain
-      logger.info("Create domain and verify that it's running");
-      String miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME, MODEL_DIR + "/model.sessmigr.yaml");
-      String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
-      createAndVerifyDomain(miiImage1, domain5Uid, domain5Namespace, "FromModel", 2, yaml);
-      installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
-          domain5Namespace,
-          domain5Uid);
-
-      String sessionAppPrometheusSearchKey =
-          "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
-      checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
-
-      changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_jvm.yaml");
-      changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_jvm.yaml");
-
-      //needs 10 secs to fetch the metrics to prometheus
-      Thread.sleep(20 * 1000);
-      // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-      String prometheusSearchKey1 =
-          "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
       checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
-
-      logger.info("Testing empty configuration");
-      changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_empty.yaml");
-      changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_empty.yaml");
-
-      //needs 10 secs to fetch the metrics to prometheus
-      Thread.sleep(20 * 1000);
-      // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-      prometheusSearchKey1 =
-          "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
-      try {
-        checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
-        throw new RuntimeException("Configuration is not updated ");
-      } catch (ConditionTimeoutException ex) {
-        logger.info("Caught expected error due empty configuration");
-      }
-      //restart managed servers to check if new configuration is applied
-      // delete server pods
-      for (int i = 1; i <= replicaCount; i++) {
-        final String managedServerPodName = domain5Uid + "-managed-server" + i;
-        logger.info("Deleting managed server {0} in namespace {1}", managedServerPodName, domain5Namespace);
-        assertDoesNotThrow(() -> deletePod(managedServerPodName, domain5Namespace),
-            "Got exception while deleting server " + managedServerPodName);
-        logger.info("Waiting for restart of managed pod");
-        checkPodReadyAndServiceExists(managedServerPodName, domain5Uid, domain5Namespace);
-      }
-      logger.info("Checking metrics configuration after server restart");
-      try {
-        checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
-        throw new RuntimeException("Configuration got reverted to original, updated configuration was not saved ");
-      } catch (ConditionTimeoutException ex) {
-        logger.info("Caught expected error due empty configuration");
-      }
-
-    } finally {
-      logger.info("Shutting down domain5");
-      shutdownDomain(domain5Uid, domain5Namespace);
+      throw new RuntimeException("Configuration is not updated ");
+    } catch (ConditionTimeoutException ex) {
+      logger.info("Caught expected error due empty configuration");
+    }
+    //restart managed servers to check if new configuration is applied
+    // delete server pods
+    for (int i = 1; i <= replicaCount; i++) {
+      final String managedServerPodName = domain5Uid + "-managed-server" + i;
+      logger.info("Deleting managed server {0} in namespace {1}", managedServerPodName, domain5Namespace);
+      assertDoesNotThrow(() -> deletePod(managedServerPodName, domain5Namespace),
+          "Got exception while deleting server " + managedServerPodName);
+      logger.info("Waiting for restart of managed pod");
+      checkPodReadyAndServiceExists(managedServerPodName, domain5Uid, domain5Namespace);
+    }
+    logger.info("Checking metrics configuration after server restart");
+    try {
+      checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+      throw new RuntimeException("Configuration got reverted to original, updated configuration was not saved ");
+    } catch (ConditionTimeoutException ex) {
+      logger.info("Caught expected error due empty configuration");
     }
   }
 
@@ -467,39 +462,33 @@ class ItMonitoringExporter {
   @Test
   @DisplayName("Test Basic Functionality of Monitoring Exporter SideCar with ssl enabled.")
   public void testSideCarBasicFunctionalityWithSSL() throws Exception {
-    try {
-      // create and verify one cluster mii domain
-      logger.info("Create domain and verify that it's running");
-      String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
-      String  miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME,MODEL_DIR + "/model.ssl.yaml");
-      createAndVerifyDomain(miiImage1, domain6Uid, domain6Namespace, "FromModel", 2, yaml);
-      installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
-          domain6Namespace,
-          domain6Uid);
 
-      String sessionAppPrometheusSearchKey =
-          "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
-      checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
+    // create and verify one cluster mii domain
+    logger.info("Create domain and verify that it's running");
+    String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
+    String  miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME,MODEL_DIR + "/model.ssl.yaml");
+    createAndVerifyDomain(miiImage1, domain6Uid, domain6Namespace, "FromModel", 2, yaml);
+    installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
+        domain6Namespace,
+        domain6Uid);
 
-      changeConfigInPod(domain6Uid + "-managed-server1", domain6Namespace,"rest_jvm.yaml");
-      changeConfigInPod(domain6Uid + "-managed-server2", domain6Namespace,"rest_jvm.yaml");
+    String sessionAppPrometheusSearchKey =
+        "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
+    checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
 
-      Domain domain = getDomainCustomResource(domain5Uid,domain5Namespace);
-      String monexpConfig = domain.getSpec().getMonitoringExporterSpecification().toString();
-      logger.info("MonitorinExporter new Configuration from crd " + monexpConfig);
-      assertTrue(monexpConfig.contains("heapFreeCurrent"));
-      //needs 10 secs to fetch the metrics to prometheus
-      Thread.sleep(20 * 1000);
-      // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-      String prometheusSearchKey1 =
-          "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
-      checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+    changeConfigInPod(domain6Uid + "-managed-server1", domain6Namespace,"rest_jvm.yaml");
+    changeConfigInPod(domain6Uid + "-managed-server2", domain6Namespace,"rest_jvm.yaml");
 
-
-    } finally {
-      logger.info("Shutting down domain6");
-      shutdownDomain(domain6Uid, domain6Namespace);
-    }
+    Domain domain = getDomainCustomResource(domain5Uid,domain5Namespace);
+    String monexpConfig = domain.getSpec().getMonitoringExporterSpecification().toString();
+    logger.info("MonitorinExporter new Configuration from crd " + monexpConfig);
+    assertTrue(monexpConfig.contains("heapFreeCurrent"));
+    //needs 10 secs to fetch the metrics to prometheus
+    Thread.sleep(20 * 1000);
+    // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
+    String prometheusSearchKey1 =
+        "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
+    checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
   }
 
   /**
@@ -513,62 +502,57 @@ class ItMonitoringExporter {
   @Test
   @DisplayName("Test Basic Functionality of Monitoring Exporter.")
   public void testBasicFunctionality() throws Exception {
-    try {
-      // create and verify one cluster mii domain
-      logger.info("Create domain and verify that it's running");
-      createAndVerifyDomain(miiImage, domain4Uid, domain4Namespace, "FromModel", 1);
+    // create and verify one cluster mii domain
+    logger.info("Create domain and verify that it's running");
+    createAndVerifyDomain(miiImage, domain4Uid, domain4Namespace, "FromModel", 1);
 
-      // create ingress for the domain
-      logger.info("Creating ingress for domain {0} in namespace {1}", domain1Uid, domain1Namespace);
-      ingressHost1List =
-         createIngressForDomainAndVerify(domain4Uid, domain4Namespace, clusterNameMsPortMap, false);
-      verifyMonExpAppAccessThroughNginx(ingressHost1List.get(0), 1);
-      installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
-          domain4Namespace,
-          domain4Uid);
+    // create ingress for the domain
+    logger.info("Creating ingress for domain {0} in namespace {1}", domain1Uid, domain1Namespace);
+    ingressHost1List =
+       createIngressForDomainAndVerify(domain4Uid, domain4Namespace, clusterNameMsPortMap, false);
+    verifyMonExpAppAccessThroughNginx(ingressHost1List.get(0), 1);
+    installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
+        domain4Namespace,
+        domain4Uid);
 
-      logger.info("Testing replace configuration");
-      replaceConfiguration();
-      logger.info("Testing append configuration");
-      appendConfiguration();
-      logger.info("Testing replace One Attribute Value AsArray configuration");
-      replaceOneAttributeValueAsArrayConfiguration();
-      logger.info("Testing append One Attribute Value AsArray configuration");
-      appendArrayWithOneExistedAndOneDifferentAttributeValueAsArrayConfiguration();
-      logger.info("Testing append with empty configuration");
-      appendWithEmptyConfiguration();
-      logger.info("Testing append with invalid yaml configuration");
-      appendWithNotYamlConfiguration();
-      logger.info("Testing replace with invalid yaml configuration");
-      replaceWithNotYamlConfiguration();
-      logger.info("Testing append with corrupted yaml configuration");
-      appendWithCorruptedYamlConfiguration();
-      logger.info("Testing replace with corrupted yaml configuration");
-      replaceWithCorruptedYamlConfiguration();
-      logger.info("Testing replace with dublicated values yaml configuration");
-      replaceWithDublicatedValuesConfiguration();
-      logger.info("Testing append with corrupted yaml configuration");
-      appendWithDuplicatedValuesConfiguration();
-      logger.info("Testing replace with name snake false yaml configuration");
-      replaceMetricsNameSnakeCaseFalseConfiguration();
-      logger.info("Testing change with no credentials configuration");
-      changeConfigNoCredentials();
-      logger.info("Testing change with no invalid user configuration");
-      changeConfigInvalidUser();
-      logger.info("Testing change with no invalid pass configuration");
-      changeConfigInvalidPass();
-      logger.info("Testing change with empty user configuration");
-      changeConfigEmptyUser();
-      logger.info("Testing change with no empty pass configuration");
-      changeConfigEmptyPass();
-      logger.info("Testing replace with domain qualifier configuration");
-      replaceMetricsDomainQualifierTrueConfiguration();
-      logger.info("Testing replace with no restPort configuration");
-      replaceMetricsNoRestPortConfiguration();
-    } finally {
-      logger.info("Shutting down domain4");
-      shutdownDomain(domain4Uid, domain4Namespace);
-    }
+    logger.info("Testing replace configuration");
+    replaceConfiguration();
+    logger.info("Testing append configuration");
+    appendConfiguration();
+    logger.info("Testing replace One Attribute Value AsArray configuration");
+    replaceOneAttributeValueAsArrayConfiguration();
+    logger.info("Testing append One Attribute Value AsArray configuration");
+    appendArrayWithOneExistedAndOneDifferentAttributeValueAsArrayConfiguration();
+    logger.info("Testing append with empty configuration");
+    appendWithEmptyConfiguration();
+    logger.info("Testing append with invalid yaml configuration");
+    appendWithNotYamlConfiguration();
+    logger.info("Testing replace with invalid yaml configuration");
+    replaceWithNotYamlConfiguration();
+    logger.info("Testing append with corrupted yaml configuration");
+    appendWithCorruptedYamlConfiguration();
+    logger.info("Testing replace with corrupted yaml configuration");
+    replaceWithCorruptedYamlConfiguration();
+    logger.info("Testing replace with dublicated values yaml configuration");
+    replaceWithDublicatedValuesConfiguration();
+    logger.info("Testing append with corrupted yaml configuration");
+    appendWithDuplicatedValuesConfiguration();
+    logger.info("Testing replace with name snake false yaml configuration");
+    replaceMetricsNameSnakeCaseFalseConfiguration();
+    logger.info("Testing change with no credentials configuration");
+    changeConfigNoCredentials();
+    logger.info("Testing change with no invalid user configuration");
+    changeConfigInvalidUser();
+    logger.info("Testing change with no invalid pass configuration");
+    changeConfigInvalidPass();
+    logger.info("Testing change with empty user configuration");
+    changeConfigEmptyUser();
+    logger.info("Testing change with no empty pass configuration");
+    changeConfigEmptyPass();
+    logger.info("Testing replace with domain qualifier configuration");
+    replaceMetricsDomainQualifierTrueConfiguration();
+    logger.info("Testing replace with no restPort configuration");
+    replaceMetricsNoRestPortConfiguration();
   }
 
   /**
@@ -578,7 +562,6 @@ class ItMonitoringExporter {
   @DisplayName("Test Monitoring Exporter access to metrics via https.")
   public void testAccessExporterViaHttps() throws Exception {
     String miiImage1 = null;
-
     try {
       logger.info("create and verify WebLogic domain image using model in image with model files for norestport");
 
@@ -610,7 +593,7 @@ class ItMonitoringExporter {
           "monitoring exporter metrics page can't be accessed via https");
     } finally {
       logger.info("Shutting down domain3");
-      shutdownDomain(domain3Uid, domain3Namespace);
+      //shutdownDomain(domain3Uid, domain3Namespace);
       if (miiImage1 != null) {
         deleteImage(miiImage1);
       }
