@@ -87,11 +87,11 @@ import oracle.weblogic.kubernetes.utils.ExecResult;
 import oracle.weblogic.kubernetes.utils.TestUtils;
 import org.apache.commons.io.FileUtils;
 import org.awaitility.core.ConditionFactory;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.opentest4j.AssertionFailedError;
 
 import static java.nio.file.Files.createDirectories;
 import static java.nio.file.Paths.get;
@@ -429,7 +429,7 @@ class ItMonitoringExporter {
       try {
         checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
         throw new RuntimeException("Configuration is not updated ");
-      } catch (AssertionFailedError ex) {
+      } catch (ConditionTimeoutException ex) {
         logger.info("Caught expected error due empty configuration");
       }
 
@@ -564,7 +564,7 @@ class ItMonitoringExporter {
     try {
       logger.info("create and verify WebLogic domain image using model in image with model files for norestport");
 
-      miiImage1 = createAndVerifyMiiImage(MODEL_DIR + "/" + MONEXP_MODEL_FILE);
+      miiImage1 = createAndVerifyMiiImage(monitoringExporterAppDir + "/norestport");
 
       // create and verify one cluster mii domain
       logger.info("Create domain and verify that it's running");
