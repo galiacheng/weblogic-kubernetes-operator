@@ -445,7 +445,7 @@ class ItMonitoringExporter {
     }
     logger.info("Checking metrics configuration after server restart");
     try {
-      checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+      checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
       throw new RuntimeException("Configuration got reverted to original, updated configuration was not saved ");
     } catch (ConditionTimeoutException ex) {
       logger.info("Caught expected error due empty configuration");
