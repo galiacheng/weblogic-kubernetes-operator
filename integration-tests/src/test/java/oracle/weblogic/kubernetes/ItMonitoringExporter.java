@@ -128,17 +128,13 @@ import static oracle.weblogic.kubernetes.actions.TestActions.deletePod;
 import static oracle.weblogic.kubernetes.actions.TestActions.deleteSecret;
 import static oracle.weblogic.kubernetes.actions.TestActions.getPod;
 import static oracle.weblogic.kubernetes.actions.TestActions.getServiceNodePort;
-import static oracle.weblogic.kubernetes.actions.TestActions.shutdownDomain;
 import static oracle.weblogic.kubernetes.actions.TestActions.uninstallNginx;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.copyFileToPod;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.createNamespace;
-import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.deleteDomainCustomResource;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.deleteNamespace;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.exec;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.getDomainCustomResource;
 import static oracle.weblogic.kubernetes.assertions.impl.Kubernetes.listPods;
-import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodExists;
-import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReady;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReadyAndServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createDockerRegistrySecret;
@@ -191,12 +187,14 @@ class ItMonitoringExporter {
   private static String domain4Namespace = null;
   private static String domain5Namespace = null;
   private static String domain6Namespace = null;
+  private static String domain7Namespace = null;
   private static String domain1Uid = "monexp-domain-1";
   private static String domain2Uid = "monexp-domain-2";
   private static String domain3Uid = "monexp-domain-3";
   private static String domain4Uid = "monexp-domain-4";
   private static String domain5Uid = "monexp-domain-5";
   private static String domain6Uid = "monexp-domain-6";
+  private static String domain7Uid = "monexp-domain-7";
   private static HelmParams nginxHelmParams = null;
   private static int nodeportshttp = 0;
   private static int nodeportshttps = 0;
@@ -221,7 +219,8 @@ class ItMonitoringExporter {
   private static final String MONEXP_IMAGE_NAME = "monexp-image";
   private static final String SESSMIGR_APP_NAME = "sessmigr-app";
 
-  private static String clusterName = "cluster-1";
+  private static String cluster1Name = "cluster-1";
+  private static String cluster2Name = "cluster-2";
   private static String miiImage = null;
   private static String wdtImage = null;
   private static String webhookImage = null;
@@ -233,6 +232,7 @@ class ItMonitoringExporter {
   private static String prometheusDomainRegexValue = null;
   private static Map<String, Integer> clusterNameMsPortMap;
   private static LoggingFacade logger = null;
+  private static List<String> clusterNames = new ArrayList<>();
 
   /**
    * Install operator and NGINX. Create model in image domain with multiple clusters.
@@ -243,7 +243,7 @@ class ItMonitoringExporter {
    */
   @BeforeAll
 
-  public static void initAll(@Namespaces(10) List<String> namespaces) {
+  public static void initAll(@Namespaces(11) List<String> namespaces) {
 
     logger = getLogger();
     // create standard, reusable retry/backoff policy
@@ -291,9 +291,13 @@ class ItMonitoringExporter {
     assertNotNull(namespaces.get(9), "Namespace list is null");
     domain6Namespace = namespaces.get(9);
 
+    logger.info("Get a unique namespace for domain7");
+    assertNotNull(namespaces.get(10), "Namespace list is null");
+    domain7Namespace = namespaces.get(10);
+
     logger.info("install and verify operator");
     installAndVerifyOperator(opNamespace, domain1Namespace,domain2Namespace,domain3Namespace,
-        domain4Namespace,domain5Namespace, domain6Namespace);
+        domain4Namespace,domain5Namespace, domain6Namespace, domain7Namespace);
 
     logger.info("install monitoring exporter");
     installMonitoringExporter();
@@ -315,7 +319,10 @@ class ItMonitoringExporter {
     logger.info("NGINX http node port: {0}", nodeportshttp);
     logger.info("NGINX https node port: {0}", nodeportshttps);
     clusterNameMsPortMap = new HashMap<>();
-    clusterNameMsPortMap.put(clusterName, managedServerPort);
+    clusterNameMsPortMap.put(cluster1Name, managedServerPort);
+    clusterNameMsPortMap.put(cluster2Name, managedServerPort);
+    clusterNames.add(cluster1Name);
+    clusterNames.add(cluster2Name);
 
     exporterUrl = String.format("http://%s:%s/wls-exporter/",K8S_NODEPORT_HOST,nodeportshttp);
     logger.info("create pv and pvc for monitoring");
@@ -343,7 +350,7 @@ class ItMonitoringExporter {
     wdtImage = createAndVerifyDomainInImage();
     try {
       logger.info("Create wdt domain and verify that it's running");
-      createAndVerifyDomain(wdtImage, domain2Uid, domain2Namespace, "Image", replicaCount);
+      createAndVerifyDomain(wdtImage, domain2Uid, domain2Namespace, "Image", replicaCount, false);
       ingressHost2List =
               createIngressForDomainAndVerify(domain2Uid, domain2Namespace, clusterNameMsPortMap);
       logger.info("Installing Prometheus and Grafana");
@@ -367,10 +374,10 @@ class ItMonitoringExporter {
 
       // create and verify one cluster mii domain
       logger.info("Create domain and verify that it's running");
-      createAndVerifyDomain(miiImage, domain1Uid, domain1Namespace, "FromModel", 1);
+      createAndVerifyDomain(miiImage, domain1Uid, domain1Namespace, "FromModel", 1, true);
 
-      String oldRegex = String.format("regex: %s;%s;%s", domain2Namespace, domain2Uid, clusterName);
-      String newRegex = String.format("regex: %s;%s;%s", domain1Namespace, domain1Uid, clusterName);
+      String oldRegex = String.format("regex: %s;%s", domain2Namespace, domain2Uid);
+      String newRegex = String.format("regex: %s;%s", domain1Namespace, domain1Uid);
       editPrometheusCM(oldRegex, newRegex);
       String sessionAppPrometheusSearchKey =
               "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
@@ -378,9 +385,9 @@ class ItMonitoringExporter {
       checkPromGrafanaLatestVersion();
     } finally {
       logger.info("Shutting down domain1");
-      shutdownDomain(domain1Uid, domain1Namespace);
+      //shutdownDomain(domain1Uid, domain1Namespace);
       logger.info("Shutting down domain2");
-      shutdownDomain(domain2Uid, domain2Namespace);
+      //shutdownDomain(domain2Uid, domain2Namespace);
     }
   }
 
@@ -399,36 +406,44 @@ class ItMonitoringExporter {
     logger.info("Create domain and verify that it's running");
     String miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME, MODEL_DIR + "/model.sessmigr.yaml");
     String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
-    createAndVerifyDomain(miiImage1, domain5Uid, domain5Namespace, "FromModel", 2, yaml);
+    createAndVerifyDomain(miiImage1, domain7Uid, domain7Namespace, "FromModel", 2, false, yaml);
     installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
-        domain5Namespace,
-        domain5Uid);
+        domain7Namespace,
+        domain7Uid);
 
     String sessionAppPrometheusSearchKey =
         "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
     checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
-
-    changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_jvm.yaml");
-    changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_jvm.yaml");
+    Domain domain = getDomainCustomResource(domain7Uid,domain7Namespace);
+    String monexpConfig = domain.getSpec().getMonitoringExporterSpecification().toString();
+    logger.info("MonitorinExporter new Configuration from crd " + monexpConfig);
+    assertTrue(monexpConfig.contains("openSessionsHighCount"));
+/*
+    changeConfigInPod(domain7Uid + "-managed-server1",
+        domain7Namespace,"rest_jvm.yaml");
+    changeConfigInPod(domain7Uid +  "-managed-server1",
+        domain7Namespace,"rest_jvm.yaml");
+    changeConfigInPod(domain7Uid + "-managed-server2", domain7Namespace,"rest_jvm.yaml");
+    changeConfigInPod(domain7Uid + "-managed-server1", domain7Namespace,"rest_jvm.yaml");
 
     //needs 10 secs to fetch the metrics to prometheus
     Thread.sleep(20 * 1000);
     // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-    String prometheusSearchKey1 =
-        "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
-    checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+    checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + "managed-server1%22%7D%5B15s%5D",
+         "managed-server1");
+    checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + "managed-server1%22%7D%5B15s%5D",
+        "managed-server2");
 
     logger.info("Testing empty configuration");
-    changeConfigInPod(domain5Uid + "-managed-server1", domain5Namespace,"rest_empty.yaml");
-    changeConfigInPod(domain5Uid + "-managed-server2", domain5Namespace,"rest_empty.yaml");
+    changeConfigInPod(domain7Uid + "-managed-server1", domain7Namespace,"rest_empty.yaml");
+    changeConfigInPod(domain7Uid + "-managed-server2", domain7Namespace,"rest_empty.yaml");
 
     //needs 10 secs to fetch the metrics to prometheus
     Thread.sleep(20 * 1000);
     // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-    prometheusSearchKey1 =
-        "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
     try {
-      checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+      checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + "managed-server1%22%7D%5B15s%5D",
+          "managed-server1");
       throw new RuntimeException("Configuration is not updated ");
     } catch (ConditionTimeoutException ex) {
       logger.info("Caught expected error due empty configuration");
@@ -436,20 +451,50 @@ class ItMonitoringExporter {
     //restart managed servers to check if new configuration is applied
     // delete server pods
     for (int i = 1; i <= replicaCount; i++) {
-      final String managedServerPodName = domain5Uid + "-managed-server" + i;
-      logger.info("Deleting managed server {0} in namespace {1}", managedServerPodName, domain5Namespace);
-      assertDoesNotThrow(() -> deletePod(managedServerPodName, domain5Namespace),
+      final String managedServerPodName = domain7Uid + "-managed-server" + i;
+      logger.info("Deleting managed server {0} in namespace {1}", managedServerPodName, domain7Namespace);
+      assertDoesNotThrow(() -> deletePod(managedServerPodName, domain7Namespace),
           "Got exception while deleting server " + managedServerPodName);
       logger.info("Waiting for restart of managed pod");
-      checkPodReadyAndServiceExists(managedServerPodName, domain5Uid, domain5Namespace);
+      checkPodReadyAndServiceExists(managedServerPodName, domain7Uid, domain7Namespace);
     }
     logger.info("Checking metrics configuration after server restart");
     try {
-      checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
+      checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + "managed-server1%22%7D%5B15s%5D",
+          "managed-server1");
       throw new RuntimeException("Configuration got reverted to original, updated configuration was not saved ");
     } catch (ConditionTimeoutException ex) {
       logger.info("Caught expected error due empty configuration");
     }
+    */
+
+  }
+
+  /**
+   * Test covers basic functionality for MonitoringExporter SideCar .
+   * Create Prometheus, Grafana.
+   * Create Model in Image with monitoring exporter.
+   * Check generated monitoring exporter WebLogic metrics via Prometheus, Grafana.
+   * Check basic functionality of monitoring exporter.
+   */
+  @Test
+  @DisplayName("Test Basic Functionality of Monitoring Exporter SideCar for domain with two clusters.")
+  public void testSideCarBasicFunctionalityTwoClusters() throws Exception {
+
+    // create and verify one cluster mii domain
+    logger.info("Create domain and verify that it's running");
+    String miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME, MODEL_DIR + "/model.sessmigr.2clusters.yaml");
+    String yaml = RESOURCE_DIR + "/exporter/rest_jvm.yaml";
+    createAndVerifyDomain(miiImage1, domain5Uid, domain5Namespace, "FromModel", 2, true, yaml);
+    installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
+        domain5Namespace,
+        domain5Uid);
+
+    // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
+    checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + cluster1Name + "-managed-server1%22%7D%5B15s%5D",
+        cluster1Name + "-managed-server1");
+    checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + cluster2Name + "-managed-server2%22%7D%5B15s%5D",
+        cluster2Name + "-managed-server2");
   }
 
   /**
@@ -467,7 +512,7 @@ class ItMonitoringExporter {
     logger.info("Create domain and verify that it's running");
     String yaml = RESOURCE_DIR + "/exporter/rest_webapp.yaml";
     String  miiImage1 = createAndVerifyMiiImage(SESSMIGR_APP_NAME,MODEL_DIR + "/model.ssl.yaml");
-    createAndVerifyDomain(miiImage1, domain6Uid, domain6Namespace, "FromModel", 2, yaml);
+    createAndVerifyDomain(miiImage1, domain6Uid, domain6Namespace, "FromModel", 2, false, yaml);
     installPrometheusGrafana(PROMETHEUS_CHART_VERSION, GRAFANA_CHART_VERSION,
         domain6Namespace,
         domain6Uid);
@@ -476,19 +521,10 @@ class ItMonitoringExporter {
         "wls_servlet_invocation_total_count%7Bapp%3D%22myear%22%7D%5B15s%5D";
     checkMetricsViaPrometheus(sessionAppPrometheusSearchKey, "sessmigr");
 
-    changeConfigInPod(domain6Uid + "-managed-server1", domain6Namespace,"rest_jvm.yaml");
-    changeConfigInPod(domain6Uid + "-managed-server2", domain6Namespace,"rest_jvm.yaml");
-
-    Domain domain = getDomainCustomResource(domain5Uid,domain5Namespace);
+    Domain domain = getDomainCustomResource(domain6Uid,domain6Namespace);
     String monexpConfig = domain.getSpec().getMonitoringExporterSpecification().toString();
     logger.info("MonitorinExporter new Configuration from crd " + monexpConfig);
-    assertTrue(monexpConfig.contains("heapFreeCurrent"));
-    //needs 10 secs to fetch the metrics to prometheus
-    Thread.sleep(20 * 1000);
-    // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-    String prometheusSearchKey1 =
-        "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
-    checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+    assertTrue(monexpConfig.contains("openSessionsHighCount"));
   }
 
   /**
@@ -504,7 +540,7 @@ class ItMonitoringExporter {
   public void testBasicFunctionality() throws Exception {
     // create and verify one cluster mii domain
     logger.info("Create domain and verify that it's running");
-    createAndVerifyDomain(miiImage, domain4Uid, domain4Namespace, "FromModel", 1);
+    createAndVerifyDomain(miiImage, domain4Uid, domain4Namespace, "FromModel", 1, true);
 
     // create ingress for the domain
     logger.info("Creating ingress for domain {0} in namespace {1}", domain1Uid, domain1Namespace);
@@ -562,6 +598,7 @@ class ItMonitoringExporter {
   @DisplayName("Test Monitoring Exporter access to metrics via https.")
   public void testAccessExporterViaHttps() throws Exception {
     String miiImage1 = null;
+
     try {
       logger.info("create and verify WebLogic domain image using model in image with model files for norestport");
 
@@ -569,28 +606,33 @@ class ItMonitoringExporter {
 
       // create and verify one cluster mii domain
       logger.info("Create domain and verify that it's running");
-      createAndVerifyDomain(miiImage1, domain3Uid, domain3Namespace, "FromModel", 1);
+      createAndVerifyDomain(miiImage1, domain3Uid, domain3Namespace, "FromModel", 1, true);
       //verify access to Monitoring Exporter
       logger.info("checking access to wls metrics via http connection");
-      assertFalse(verifyMonExpAppAccess("wls-exporter",
-          "restPort",
-          domain3Uid,
-          domain3Namespace,
-          false));
-      assertTrue(verifyMonExpAppAccess("wls-exporter/metrics",
-          "wls_servlet_invocation_total_count",
-          domain3Uid,
-          domain3Namespace,
-          false));
+
+      clusterNames.stream().forEach((clusterName) -> {
+        assertFalse(verifyMonExpAppAccess("wls-exporter",
+            "restPort",
+            domain3Uid,
+            domain3Namespace,
+            false, clusterName));
+        assertTrue(verifyMonExpAppAccess("wls-exporter/metrics",
+            "wls_servlet_invocation_total_count",
+            domain3Uid,
+            domain3Namespace,
+            false, clusterName));
+      });
       logger.info("checking access to wl metrics via https connection");
       //set to listen only ssl
       changeListenPort(domain3Uid, domain3Namespace,"False");
-      assertTrue(verifyMonExpAppAccess("wls-exporter/metrics",
-          "wls_servlet_invocation_total_count",
-          domain3Uid,
-          domain3Namespace,
-          true),
-          "monitoring exporter metrics page can't be accessed via https");
+      clusterNames.stream().forEach((clusterName) -> {
+        assertTrue(verifyMonExpAppAccess("wls-exporter/metrics",
+            "wls_servlet_invocation_total_count",
+            domain3Uid,
+            domain3Namespace,
+            true, clusterName),
+            "monitoring exporter metrics page can't be accessed via https");
+      });
     } finally {
       logger.info("Shutting down domain3");
       //shutdownDomain(domain3Uid, domain3Namespace);
@@ -630,9 +672,9 @@ class ItMonitoringExporter {
   private void fireAlert() throws ApiException {
     // scale domain2
     logger.info("Scaling cluster {0} of domain {1} in namespace {2} to {3} servers.",
-            clusterName, domain2Uid, domain2Namespace, 1);
+            cluster1Name, domain2Uid, domain2Namespace, 1);
     managedServersCount = 1;
-    scaleAndVerifyCluster(clusterName, domain2Uid, domain2Namespace,
+    scaleAndVerifyCluster(cluster1Name, domain2Uid, domain2Namespace,
             domain2Uid + "-" + MANAGED_SERVER_NAME_BASE, replicaCount, managedServersCount,
             null, null);
 
@@ -705,7 +747,7 @@ class ItMonitoringExporter {
                                         String domainNS,
                                         String domainUid
                                         ) throws IOException, ApiException {
-    final String prometheusRegexValue = String.format("regex: %s;%s;%s", domainNS, domainUid, clusterName);
+    final String prometheusRegexValue = String.format("regex: %s;%s", domainNS, domainUid);
     if (promHelmParams == null) {
       cleanupPromGrafanaClusterRoles();
       logger.info("create a staging location for monitoring creation scripts");
@@ -717,7 +759,7 @@ class ItMonitoringExporter {
       Path srcPromFile = Paths.get(RESOURCE_DIR, "exporter", "promvalues.yaml");
       Path targetPromFile = Paths.get(fileTemp.toString(), "promvalues.yaml");
       Files.copy(srcPromFile, targetPromFile, StandardCopyOption.REPLACE_EXISTING);
-      String oldValue = "regex: default;domain1;cluster-1";
+      String oldValue = "regex: default;domain1";
       replaceStringInFile(targetPromFile.toString(),
               oldValue,
               prometheusRegexValue);
@@ -838,11 +880,6 @@ class ItMonitoringExporter {
           .isTrue();
     }
 
-    // shutdown domain1
-    logger.info("Shutting down domain1");
-    assertTrue(shutdownDomain(domain1Uid, domain1Namespace),
-            String.format("shutdown domain %s in namespace %s failed", domain1Uid, domain1Namespace));
-
     // delete mii domain images created for parameterized test
     if (miiImage != null) {
       deleteImage(miiImage);
@@ -850,30 +887,6 @@ class ItMonitoringExporter {
     if (wdtImage != null) {
       deleteImage(miiImage);
     }
-
-    // Delete domain custom resource
-    logger.info("Delete domain custom resource in namespace {0}", domain1Namespace);
-    assertDoesNotThrow(() -> deleteDomainCustomResource(domain1Uid, domain1Namespace),
-        "deleteDomainCustomResource failed with ApiException");
-    logger.info("Deleted Domain Custom Resource " + domain1Uid + " from " + domain1Namespace);
-
-    // Delete wdt domain custom resource
-    logger.info("Delete domain custom resource in namespace {0}", domain2Namespace);
-    assertDoesNotThrow(() -> deleteDomainCustomResource(domain2Uid, domain2Namespace),
-            "deleteDomainCustomResource failed with ApiException");
-    logger.info("Deleted Domain Custom Resource " + domain2Uid + " from " + domain2Namespace);
-
-    // Delete domain custom resource
-    logger.info("Delete domain custom resource in namespace {0}", domain3Namespace);
-    assertDoesNotThrow(() -> deleteDomainCustomResource(domain3Uid, domain3Namespace),
-        "deleteDomainCustomResource failed with ApiException");
-    logger.info("Deleted Domain Custom Resource " + domain3Uid + " from " + domain3Namespace);
-
-    // Delete domain custom resource
-    logger.info("Delete domain custom resource in namespace {0}", domain1Namespace);
-    assertDoesNotThrow(() -> deleteDomainCustomResource(domain4Uid, domain4Namespace),
-        "deleteDomainCustomResource failed with ApiException");
-    logger.info("Deleted Domain Custom Resource " + domain4Uid + " from " + domain4Namespace);
 
     uninstallPrometheusGrafana();
 
@@ -891,7 +904,7 @@ class ItMonitoringExporter {
       deleteImage(webhookImage);
     }
     if (coordinatorImage != null) {
-      deleteImage(webhookImage);
+      deleteImage(coordinatorImage);
     }
     deleteMonitoringExporterTempDir();
   }
@@ -1546,7 +1559,7 @@ class ItMonitoringExporter {
     p.setProperty("DOMAIN_NAME", domain2Uid);
     p.setProperty("ADMIN_NAME", "admin-server");
     p.setProperty("PRODUCTION_MODE_ENABLED", "true");
-    p.setProperty("CLUSTER_NAME", clusterName);
+    p.setProperty("CLUSTER_NAME", cluster1Name);
     p.setProperty("CLUSTER_TYPE", "DYNAMIC");
     p.setProperty("CONFIGURED_MANAGED_SERVER_COUNT", "2");
     p.setProperty("MANAGED_SERVER_NAME_BASE", "managed-server");
@@ -1593,17 +1606,19 @@ class ItMonitoringExporter {
                                             String domainUid,
                                             String namespace,
                                             String domainHomeSource,
-                                            int replicaCount) {
-    createAndVerifyDomain(miiImage,domainUid, namespace, domainHomeSource, replicaCount, null);
+                                            int replicaCount,
+                                            boolean twoClusters) {
+    createAndVerifyDomain(miiImage,domainUid, namespace, domainHomeSource, replicaCount, twoClusters, null);
 
   }
 
-  //create domain from provided image and verify it's start
+  //create domain from provided image and monitoring exporter sidecar and verify it's start
   private static void createAndVerifyDomain(String miiImage,
                                             String domainUid,
                                             String namespace,
                                             String domainHomeSource,
                                             int replicaCount,
+                                            boolean twoClusters,
                                             String monexpConfig) {
     // create docker registry secret to pull the image from registry
     // this secret is used only for non-kind cluster
@@ -1627,38 +1642,35 @@ class ItMonitoringExporter {
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
         domainUid, namespace, miiImage);
     createDomainCrAndVerify(adminSecretName, OCIR_SECRET_NAME, encryptionSecretName, miiImage,domainUid,
-            namespace, domainHomeSource, replicaCount, monexpConfig);
+            namespace, domainHomeSource, replicaCount, twoClusters, monexpConfig);
     String adminServerPodName = domainUid + "-admin-server";
-
-    // check that admin service exists in the domain namespace
-    logger.info("Checking that admin service {0} exists in namespace {1}",
-            adminServerPodName, namespace);
-    checkServiceExists(adminServerPodName, namespace);
 
     // check that admin server pod is ready
     logger.info("Checking that admin server pod {0} is ready in namespace {1}",
         adminServerPodName, namespace);
-    checkPodReady(adminServerPodName, domainUid, namespace);
+    checkPodReadyAndServiceExists(adminServerPodName, domainUid, namespace);
 
-    String managedServerPrefix = domainUid + "-managed-server";
     // check for managed server pods existence in the domain namespace
+
     for (int i = 1; i <= replicaCount; i++) {
-      String managedServerPodName = managedServerPrefix + i;
-
-      // check that the managed server pod exists
-      logger.info("Checking that managed server pod {0} exists in namespace {1}",
-          managedServerPodName, namespace);
-      checkPodExists(managedServerPodName, domainUid, namespace);
-
-      // check that the managed server pod is ready
-      logger.info("Checking that managed server pod {0} is ready in namespace {1}",
-          managedServerPodName, namespace);
-      checkPodReady(managedServerPodName, domainUid, namespace);
-
-      // check that the managed server service exists in the domain namespace
-      logger.info("Checking that managed server service {0} exists in namespace {1}",
-          managedServerPodName, namespace);
-      checkServiceExists(managedServerPodName, namespace);
+      if (twoClusters) {
+        String managedServerCluster1PodName = domainUid
+            + "-" + cluster1Name + "-managed-server" + i;
+        String managedServerCluster2PodName = domainUid
+            + "-" + cluster2Name + "-managed-server" + i;
+        logger.info("Checking that managed server pod {0} exists and ready in namespace {1}",
+            managedServerCluster1PodName, namespace);
+        checkPodReadyAndServiceExists(managedServerCluster1PodName, domainUid, namespace);
+        logger.info("Checking that managed server pod {0} exists and ready in namespace {1}",
+            managedServerCluster2PodName, namespace);
+        checkPodReadyAndServiceExists(managedServerCluster2PodName, domainUid, namespace);
+      } else {
+        String managedServerPodName = domainUid + "-managed-server" + i;
+        // check that the managed server pod exists
+        logger.info("Checking that managed server pod {0} exists and ready in namespace {1}",
+            managedServerPodName, namespace);
+        checkPodReadyAndServiceExists(managedServerPodName, domainUid, namespace);
+      }
     }
   }
 
@@ -1670,6 +1682,7 @@ class ItMonitoringExporter {
                                               String namespace,
                                               String domainHomeSource,
                                               int replicaCount,
+                                              boolean twoClusters,
                                               String monexpConfig) {
     int t3ChannelPort = getNextFreePort(31570, 32767);
     // create the domain CR
@@ -1708,7 +1721,7 @@ class ItMonitoringExporter {
                         .channelName("T3Channel")
                         .nodePort(t3ChannelPort))))
             .addClustersItem(new Cluster()
-                .clusterName(clusterName)
+                .clusterName(cluster1Name)
                 .replicas(replicaCount)
                 .serverStartState("RUNNING"))
             .configuration(new Configuration()
@@ -1716,6 +1729,12 @@ class ItMonitoringExporter {
                     .domainType("WLS")
                     .runtimeEncryptionSecret(encryptionSecretName))
                 .introspectorJobActiveDeadlineSeconds(300L)));
+    if (twoClusters) {
+      domain.getSpec().getClusters().add(new Cluster()
+          .clusterName(cluster2Name)
+          .replicas(replicaCount)
+          .serverStartState("RUNNING"));
+    }
     setPodAntiAffinity(domain);
     // create domain using model in image
     logger.info("Create model in image domain {0} in namespace {1} using docker image {2}",
@@ -1772,7 +1791,7 @@ class ItMonitoringExporter {
    * through direct access to managed server dashboard.
    */
   private boolean verifyMonExpAppAccess(String uri, String searchKey, String domainUid,
-                                        String domainNS, boolean isHttps) {
+                                        String domainNS, boolean isHttps, String clusterName) {
     String protocol = "http";
     String port = "8001";
     if (isHttps) {
@@ -1781,11 +1800,11 @@ class ItMonitoringExporter {
     }
     // access metrics
     final String command = String.format(
-        "kubectl exec -n " + domainNS + "  " + domainUid + "-managed-server1 -- curl -k %s://"
+        "kubectl exec -n " + domainNS + "  " + domainUid + "-" + clusterName + "-managed-server1 -- curl -k %s://"
             + ADMIN_USERNAME_DEFAULT
             + ":"
             + ADMIN_PASSWORD_DEFAULT
-            + "@" + domainUid + "-managed-server1:%s/%s", protocol, port, uri);
+            + "@" + domainUid + "-" + clusterName + "-managed-server1:%s/%s", protocol, port, uri);
     logger.info("accessing managed server exporter via " + command);
 
     boolean isFound = false;
@@ -2057,16 +2076,18 @@ class ItMonitoringExporter {
   private void replaceConfiguration() throws Exception {
     HtmlPage page = submitConfigureForm(exporterUrl, "replace", RESOURCE_DIR + "/exporter/rest_jvm.yaml");
     assertNotNull(page, "Failed to replace configuration");
+    Thread.sleep(20 * 1000);
+
     assertTrue(page.asText().contains("JVMRuntime"),
-            "Page does not contain expected JVMRuntime configuration");
+        "Page does not contain expected JVMRuntime configuration");
     assertFalse(page.asText().contains("WebAppComponentRuntime"),
-            "Page contains unexpected WebAppComponentRuntime configuration");
+        "Page contains unexpected WebAppComponentRuntime configuration");
     //needs 10 secs to fetch the metrics to prometheus
-    Thread.sleep(10 * 1000);
+    Thread.sleep(20 * 1000);
     // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-    String prometheusSearchKey1 =
-            "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
-    checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
+    checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + cluster1Name + "-managed-server1%22%7D%5B15s%5D",
+        cluster1Name + "-managed-server1");
+
   }
 
   /**
@@ -2122,8 +2143,8 @@ class ItMonitoringExporter {
    */
   private void replaceWithEmptyConfiguration() throws Exception {
     submitConfigureForm(exporterUrl, "replace", RESOURCE_DIR + "/exporter/rest_empty.yaml");
-    assertFalse(verifyMonExpAppAccess("wls-exporter","values", domain4Uid, domain4Namespace,false));
-    assertTrue(verifyMonExpAppAccess("wls-exporter","queries", domain4Uid, domain4Namespace,false));
+    assertFalse(verifyMonExpAppAccess("wls-exporter","values", domain4Uid, domain4Namespace,false, cluster1Name));
+    assertTrue(verifyMonExpAppAccess("wls-exporter","queries", domain4Uid, domain4Namespace,false, cluster1Name));
   }
 
   /**
@@ -2239,10 +2260,11 @@ class ItMonitoringExporter {
     assertNotNull(page);
     assertFalse(page.asText().contains("restPort"));
     //needs 10 secs to fetch the metrics to prometheus
-    Thread.sleep(10 * 1000);
+    Thread.sleep(20 * 1000);
     // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
+
     String prometheusSearchKey1 =
-        "heap_free_current%7Bname%3D%22managed-server1%22%7D%5B15s%5D";
+        "heap_free_current";
     checkMetricsViaPrometheus(prometheusSearchKey1, "managed-server1");
   }
 
