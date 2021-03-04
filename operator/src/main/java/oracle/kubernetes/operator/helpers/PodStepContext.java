@@ -653,6 +653,10 @@ public abstract class PodStepContext extends BasePodStepContext {
     // Prometheus does not support "prometheus.io/scheme".  The scheme(http/https) can be set
     // in the Prometheus Chart values yaml under the "extraScrapeConfigs:" section.
     LOGGER.fine("YYY PodStepContext.createMetaData about to add annotation for Prometheus");
+    LOGGER.fine("YYY PodStepContext.createMetaData about to add annotation for Prometheus: listenPort = "
+        + getDefaultPort());
+    LOGGER.fine("YYY PodStepContext.createMetaData about to add annotation for Prometheus: listenPort = "
+        + getDefaultPort() + " sslPort = " + getSSLPort());
     AnnotationHelper.annotateForPrometheus(metadata, getDefaultPort() != null ? getDefaultPort() : getSSLPort());
     LOGGER.fine("YYY PodStepContext.createMetaData added annotation for Prometheus");
     return metadata;
