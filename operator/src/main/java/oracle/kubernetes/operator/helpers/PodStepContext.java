@@ -114,7 +114,9 @@ public abstract class PodStepContext extends BasePodStepContext {
   }
 
   void init() {
+    LOGGER.info("YYY PodStepContext.init()");
     podModel = createPodModel();
+    LOGGER.info("YYY PodStepContext.init() podModel created");
   }
 
   V1Pod getPodModel() {
@@ -323,6 +325,7 @@ public abstract class PodStepContext extends BasePodStepContext {
    * @return a step to be scheduled.
    */
   Step verifyPod(Step next) {
+    LOGGER.info("XXX verifyPod: podModel = " + podModel);
     return Step.chain(
         DomainValidationSteps.createAdditionalDomainValidationSteps(podModel.getSpec()),
         new VerifyPodStep(next));
