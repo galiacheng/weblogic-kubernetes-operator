@@ -107,8 +107,13 @@ public class HttpAsyncRequestStep extends Step {
     }
 
     private void resume(AsyncFiber fiber, HttpResponse<String> response, Throwable throwable) {
+      LOGGER.info("XXX resume with throwable: response = " + response + " throwable = " + throwable);
       if (throwable != null) {
-        LOGGER.fine(MessageKeys.HTTP_REQUEST_TIMED_OUT, throwable.getMessage(), throwable);
+        if (throwable instanceof HttpTimeoutException) {
+          LOGGER.fine(MessageKeys.HTTP_REQUEST_TIMED_OUT, throwable.getMessage());
+        } else if (response == null) {
+          LOGGER.warning(MessageKeys.HTTP_REQUEST_FAILED, request.method(), request.uri(), throwable.getMessage());
+        }
       }
       
       Optional.ofNullable(response).ifPresent(this::recordResponse);

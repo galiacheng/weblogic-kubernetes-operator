@@ -153,7 +153,7 @@ public final class Fiber implements Runnable, ComponentRegistry, AsyncFiber {
    */
   @Override
   public void resume(Packet resumePacket) {
-    LOGGER.info("XXX fiber resumed : name = " + getName() + " status = " + status.get());
+    LOGGER.info("XXX fiber resumed : name = " + getName() + " status = " + status.get() + "na = " + na);
     if (status.get() == NOT_COMPLETE) {
 
       if (LOGGER.isFineEnabled()) {
