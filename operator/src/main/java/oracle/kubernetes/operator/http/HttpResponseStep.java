@@ -21,7 +21,7 @@ public abstract class HttpResponseStep extends Step {
 
   @Override
   public NextAction apply(Packet packet) {
-    return Optional.ofNullable(getResponse(packet)).map(r -> doApply(packet, r)).orElse(doNext(packet));
+    return Optional.ofNullable(getResponse(packet)).map(r -> doApply(packet, r)).orElse(onFailure(packet, null));
   }
 
   private NextAction doApply(Packet packet, HttpResponse<String> response) {
