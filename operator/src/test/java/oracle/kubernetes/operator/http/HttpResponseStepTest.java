@@ -66,8 +66,8 @@ public class HttpResponseStepTest {
     assertThat(responseStep.getFailureResponse(), nullValue());
   }
 
-  //@Test
-  private void whenResponseIsFailure_invokeOnFailure() {
+  @Test
+  public void whenResponseIsFailure_invokeOnFailure() {
     Packet packet = new Packet();
     HttpResponseStep.addToPacket(packet, createStub(HttpResponseStub.class, HttpURLConnection.HTTP_FORBIDDEN));
 

@@ -147,10 +147,12 @@ public class DomainValidationSteps {
 
     @Override
     public NextAction apply(Packet packet) {
+      LOGGER.info("XXX DomainAdditionalValidationStep.apply");
       DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
       Domain domain = info.getDomain();
       List<String> validationFailures = domain.getAdditionalValidationFailures(podSpec);
 
+      LOGGER.info("XXX DomainAdditionalValidationStep.apply: validationFailures = " + validationFailures);
       if (validationFailures.isEmpty()) {
         return doNext(packet);
       }

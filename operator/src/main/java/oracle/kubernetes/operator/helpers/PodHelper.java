@@ -514,6 +514,7 @@ public class PodHelper {
 
     @Override
     public NextAction apply(Packet packet) {
+      LOGGER.info("XXX ManagedPodStep: apply: ");
       ManagedPodStepContext context = new ManagedPodStepContext(this, packet);
 
       return doNext(context.verifyPod(getNext()), packet);

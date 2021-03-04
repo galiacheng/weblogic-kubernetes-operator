@@ -933,6 +933,7 @@ public abstract class PodStepContext extends BasePodStepContext {
 
     @Override
     public NextAction apply(Packet packet) {
+      LOGGER.info("XXX VerifyPodStep.apply:");
       V1Pod currentPod = info.getServerPod(getServerName());
       // reset introspect failure job count - if any
 
