@@ -112,7 +112,7 @@ public class HttpAsyncRequestStep extends Step {
         if (throwable instanceof HttpTimeoutException) {
           LOGGER.fine(MessageKeys.HTTP_REQUEST_TIMED_OUT, throwable.getMessage());
         } else if (response == null) {
-          LOGGER.warning(MessageKeys.HTTP_REQUEST_FAILED, request.method(), request.uri(), throwable.getMessage());
+          recordThrowableResponse(throwable);
         }
       }
       
@@ -127,8 +127,13 @@ public class HttpAsyncRequestStep extends Step {
       }
       HttpResponseStep.addToPacket(packet, response);
     }
-  }
 
+    private void recordThrowableResponse(Throwable throwable) {
+      LOGGER.info("XXX recordThrowableResponse throwable = " + throwable);
+      LOGGER.warning(MessageKeys.HTTP_REQUEST_FAILED, request.method(), request.uri(), throwable.getMessage());
+      HttpResponseStep.addToPacket(packet, throwable);
+    }
+  }
 
   private static CompletableFuture<HttpResponse<String>> createFuture(HttpRequest request) {
     return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());

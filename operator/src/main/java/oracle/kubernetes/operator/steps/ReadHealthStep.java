@@ -427,7 +427,10 @@ public class ReadHealthStep extends Step {
       }
 
       private boolean isServerOverloaded() {
-        return isServerOverloaded(getResponse().statusCode());
+        return Optional.ofNullable(getResponse())
+            .map(HttpResponse::statusCode)
+            .map(this::isServerOverloaded)
+            .orElse(false);
       }
 
       private boolean isServerOverloaded(int statusCode) {
