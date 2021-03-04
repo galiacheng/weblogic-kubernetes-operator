@@ -373,7 +373,7 @@ public class WlsServerConfig {
         adminProtocolPort = listenPort;
       }
     }
-
+    LOGGER.info("YYY WlsServerConfig.getLocalAdminProtocolChannelPort: adminProtocolPort = " + adminProtocolPort);
     return adminProtocolPort;
   }
 

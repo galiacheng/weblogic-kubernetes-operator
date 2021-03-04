@@ -274,6 +274,7 @@ public abstract class PodStepContext extends BasePodStepContext {
                   .protocol("TCP"));
         }
       }
+      LOGGER.info("YYY PodStepContext: ports = " + ports);
       return ports;
     }
     return null;
@@ -624,11 +625,11 @@ public abstract class PodStepContext extends BasePodStepContext {
   protected V1ObjectMeta createMetadata() {
     final V1ObjectMeta metadata = new V1ObjectMeta().name(getPodName()).namespace(getNamespace());
 
-    LOGGER.finest("PodStepContext.createMetaData domainRestartVersion from INIT "
+    LOGGER.fine("YYY PodStepContext.createMetaData domainRestartVersion from INIT "
         + domainRestartVersion);
-    LOGGER.finest("PodStepContext.createMetaData domainRestartVersion from serverspec "
+    LOGGER.fine("PodStepContext.createMetaData domainRestartVersion from serverspec "
         + getServerSpec().getDomainRestartVersion());
-    LOGGER.finest("PodStepContext.createMetaData domainIntrospectVersion from spec "
+    LOGGER.fine("PodStepContext.createMetaData domainIntrospectVersion from spec "
         + getDomain().getIntrospectVersion());
 
     metadata
@@ -651,7 +652,9 @@ public abstract class PodStepContext extends BasePodStepContext {
     // Add prometheus annotations. This will overwrite any custom annotations with same name.
     // Prometheus does not support "prometheus.io/scheme".  The scheme(http/https) can be set
     // in the Prometheus Chart values yaml under the "extraScrapeConfigs:" section.
+    LOGGER.fine("YYY PodStepContext.createMetaData about to add annotation for Prometheus");
     AnnotationHelper.annotateForPrometheus(metadata, getDefaultPort() != null ? getDefaultPort() : getSSLPort());
+    LOGGER.fine("YYY PodStepContext.createMetaData added annotation for Prometheus");
     return metadata;
   }
 
@@ -665,6 +668,7 @@ public abstract class PodStepContext extends BasePodStepContext {
 
 
   protected V1PodSpec createSpec(TuningParameters tuningParameters) {
+    LOGGER.info("YYY PodStepContext.createSpec():");
     V1PodSpec podSpec = createPodSpec(tuningParameters)
         .readinessGates(getReadinessGates())
         .initContainers(getServerSpec().getInitContainers().stream()
@@ -818,7 +822,9 @@ public abstract class PodStepContext extends BasePodStepContext {
       }
     } catch (Exception e) {
       // do nothing
+      LOGGER.info("YYY got exception e = " + e);
     }
+    LOGGER.info("YYY readimessProbe created = " + readinessProbe);
     return readinessProbe;
   }
 

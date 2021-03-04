@@ -11,6 +11,8 @@ import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.util.Yaml;
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
 import org.apache.commons.codec.digest.DigestUtils;
 
 /** Annotates pods, services with details about the Domain instance and checks these annotations. */
@@ -20,6 +22,8 @@ public class AnnotationHelper {
   private static final String HASHED_STRING = "hashedString";
   @SuppressWarnings({"FieldMayBeFinal", "CanBeFinal"})
   private static Function<Object, String> HASH_FUNCTION = o -> DigestUtils.sha256Hex(Yaml.dump(o));
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
+
 
   /**
    * Marks metadata with annotations that let Prometheus know how to retrieve metrics from the
@@ -30,6 +34,7 @@ public class AnnotationHelper {
    * @param httpPort HTTP listen port
    */
   static void annotateForPrometheus(V1ObjectMeta meta, int httpPort) {
+    LOGGER.fine("YYY AnnotationHelper.annotateForPrometheus about to add annotation for Prometheus port = " + httpPort);
     meta.putAnnotationsItem(
         "prometheus.io/port", "" + httpPort); // should be the ListenPort of the server in the pod
     meta.putAnnotationsItem("prometheus.io/path", "/wls-exporter/metrics");
