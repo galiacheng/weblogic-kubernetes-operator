@@ -87,7 +87,6 @@ import oracle.weblogic.kubernetes.utils.ExecResult;
 import oracle.weblogic.kubernetes.utils.TestUtils;
 import org.apache.commons.io.FileUtils;
 import org.awaitility.core.ConditionFactory;
-import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -124,7 +123,6 @@ import static oracle.weblogic.kubernetes.actions.ActionConstants.WLS;
 import static oracle.weblogic.kubernetes.actions.TestActions.deleteImage;
 import static oracle.weblogic.kubernetes.actions.TestActions.deletePersistentVolume;
 import static oracle.weblogic.kubernetes.actions.TestActions.deletePersistentVolumeClaim;
-import static oracle.weblogic.kubernetes.actions.TestActions.deletePod;
 import static oracle.weblogic.kubernetes.actions.TestActions.deleteSecret;
 import static oracle.weblogic.kubernetes.actions.TestActions.getPod;
 import static oracle.weblogic.kubernetes.actions.TestActions.getServiceNodePort;
@@ -136,7 +134,6 @@ import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.exec;
 import static oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes.getDomainCustomResource;
 import static oracle.weblogic.kubernetes.assertions.impl.Kubernetes.listPods;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReadyAndServiceExists;
-import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createDockerRegistrySecret;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createDomainAndVerify;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createImageAndVerify;
@@ -418,7 +415,7 @@ class ItMonitoringExporter {
     String monexpConfig = domain.getSpec().getMonitoringExporterSpecification().toString();
     logger.info("MonitorinExporter new Configuration from crd " + monexpConfig);
     assertTrue(monexpConfig.contains("openSessionsHighCount"));
-/*
+    /*
     changeConfigInPod(domain7Uid + "-managed-server1",
         domain7Namespace,"rest_jvm.yaml");
     changeConfigInPod(domain7Uid +  "-managed-server1",
@@ -426,46 +423,6 @@ class ItMonitoringExporter {
     changeConfigInPod(domain7Uid + "-managed-server2", domain7Namespace,"rest_jvm.yaml");
     changeConfigInPod(domain7Uid + "-managed-server1", domain7Namespace,"rest_jvm.yaml");
 
-    //needs 10 secs to fetch the metrics to prometheus
-    Thread.sleep(20 * 1000);
-    // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-    checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + "managed-server1%22%7D%5B15s%5D",
-         "managed-server1");
-    checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + "managed-server1%22%7D%5B15s%5D",
-        "managed-server2");
-
-    logger.info("Testing empty configuration");
-    changeConfigInPod(domain7Uid + "-managed-server1", domain7Namespace,"rest_empty.yaml");
-    changeConfigInPod(domain7Uid + "-managed-server2", domain7Namespace,"rest_empty.yaml");
-
-    //needs 10 secs to fetch the metrics to prometheus
-    Thread.sleep(20 * 1000);
-    // "heap_free_current{name="managed-server1"}[15s]" search for results for last 15secs
-    try {
-      checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + "managed-server1%22%7D%5B15s%5D",
-          "managed-server1");
-      throw new RuntimeException("Configuration is not updated ");
-    } catch (ConditionTimeoutException ex) {
-      logger.info("Caught expected error due empty configuration");
-    }
-    //restart managed servers to check if new configuration is applied
-    // delete server pods
-    for (int i = 1; i <= replicaCount; i++) {
-      final String managedServerPodName = domain7Uid + "-managed-server" + i;
-      logger.info("Deleting managed server {0} in namespace {1}", managedServerPodName, domain7Namespace);
-      assertDoesNotThrow(() -> deletePod(managedServerPodName, domain7Namespace),
-          "Got exception while deleting server " + managedServerPodName);
-      logger.info("Waiting for restart of managed pod");
-      checkPodReadyAndServiceExists(managedServerPodName, domain7Uid, domain7Namespace);
-    }
-    logger.info("Checking metrics configuration after server restart");
-    try {
-      checkMetricsViaPrometheus("heap_free_current%7Bname%3D%22" + "managed-server1%22%7D%5B15s%5D",
-          "managed-server1");
-      throw new RuntimeException("Configuration got reverted to original, updated configuration was not saved ");
-    } catch (ConditionTimeoutException ex) {
-      logger.info("Caught expected error due empty configuration");
-    }
     */
 
   }
