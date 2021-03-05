@@ -1749,7 +1749,7 @@ def isListenPortEnabledForServer(server, domain, is_server_template=False):
   if not isSet('ListenPortEnabled') and isSecureModeEnabledForDomain(domain):
     enabled = False
   return enabled
-pick
+
 def isSSLListenPortEnabled(ssl, domain):
   enabled = False
   if ssl is not None:
