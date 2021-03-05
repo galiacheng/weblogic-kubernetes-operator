@@ -58,8 +58,8 @@ public class ReadHealthStep extends Step {
 
   private static final String HTTP_PROTOCOL = "http://";
   private static final String HTTPS_PROTOCOL = "https://";
-  public static final String OVERALL_HEALTH_NOT_AVAILABLE = "Not available";
-  public static final String OVERALL_HEALTH_FOR_SERVER_OVERLOADED =
+  static final String OVERALL_HEALTH_NOT_AVAILABLE = "Not available";
+  static final String OVERALL_HEALTH_FOR_SERVER_OVERLOADED =
       OVERALL_HEALTH_NOT_AVAILABLE + " (possibly overloaded)";
   private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
   private static final Integer HTTP_TIMEOUT_SECONDS = 60;

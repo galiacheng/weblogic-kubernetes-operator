@@ -664,16 +664,15 @@ public abstract class PodStepContext extends BasePodStepContext {
   }
 
   private int getHttpPort() {
-    Integer port = Optional.ofNullable(getDefaultPort())
+    return Optional.ofNullable(getDefaultPort())
         .orElse(Optional.ofNullable(getSSLPort()).orElseGet(this::getAdminPort));
-    return port == null ? 0 : port;
   }
 
   private Integer getAdminPort() {
     if (isLocalAdminProtocolChannelSecure()) {
       return getLocalAdminProtocolChannelPort();
     }
-    return null;
+    return 0;
   }
 
   private void addHashLabel(V1ObjectMeta metadata, String label, String hash) {
