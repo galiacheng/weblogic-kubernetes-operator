@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import javax.validation.constraints.NotNull;
 
 import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -17,8 +18,6 @@ import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
 import org.apache.commons.codec.digest.DigestUtils;
-
-import javax.validation.constraints.NotNull;
 
 /** Annotates pods, services with details about the Domain instance and checks these annotations. */
 public class AnnotationHelper {
