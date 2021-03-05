@@ -665,7 +665,7 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   private int getHttpPort() {
     return Optional.ofNullable(getDefaultPort())
-        .orElse(Optional.ofNullable(getSSLPort()).orElseGet(this::getAdminPort));
+        .orElse(Optional.ofNullable(getSSLPort()).orElse(0));
   }
 
   private Integer getAdminPort() {
