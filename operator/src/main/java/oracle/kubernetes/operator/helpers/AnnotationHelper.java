@@ -11,8 +11,10 @@ import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.util.Yaml;
+import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
+import oracle.kubernetes.operator.logging.MessageKeys;
 import org.apache.commons.codec.digest.DigestUtils;
 
 /** Annotates pods, services with details about the Domain instance and checks these annotations. */
@@ -37,6 +39,7 @@ public class AnnotationHelper {
     LOGGER.fine("YYY AnnotationHelper.annotateForPrometheus about to add annotation for Prometheus port = "
         + httpPort);
     if (httpPort == 0) {
+      LOGGER.warning(MessageKeys.NO_PROMETHEUS_PORT, meta.getLabels().get(LabelConstants.SERVERNAME_LABEL));
       return;
     }
     meta.putAnnotationsItem(

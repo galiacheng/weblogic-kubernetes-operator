@@ -131,7 +131,7 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   abstract Map<String, String> getPodAnnotations();
 
-  String getNamespace() {
+  private String getNamespace() {
     return info.getNamespace();
   }
 
@@ -153,7 +153,7 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   // ------------------------ data methods ----------------------------
 
-  String getDomainUid() {
+  private String getDomainUid() {
     return getDomain().getDomainUid();
   }
 
@@ -161,7 +161,7 @@ public abstract class PodStepContext extends BasePodStepContext {
     return info.getDomain();
   }
 
-  String getDomainName() {
+  private String getDomainName() {
     return domainTopology.getName();
   }
 
@@ -177,7 +177,7 @@ public abstract class PodStepContext extends BasePodStepContext {
     return domainTopology.getAdminServerName();
   }
 
-  Integer getAsPort() {
+  private Integer getAsPort() {
     return domainTopology
         .getServerConfig(domainTopology.getAdminServerName())
         .getLocalAdminProtocolChannelPort();
@@ -285,7 +285,7 @@ public abstract class PodStepContext extends BasePodStepContext {
    *
    * @return the non-SSL port of the WLS instance or null if not enabled
    */
-  Integer getDefaultPort() {
+  private Integer getDefaultPort() {
     return scan.getListenPort();
   }
 
@@ -294,7 +294,7 @@ public abstract class PodStepContext extends BasePodStepContext {
    *
    * @return the SSL port of the WLS instance or null if not enabled
    */
-  Integer getSSLPort() {
+  private Integer getSSLPort() {
     return scan.getSslListenPort();
   }
 
@@ -402,7 +402,7 @@ public abstract class PodStepContext extends BasePodStepContext {
     return createProgressingStep(patchPod(currentPod, updatedPod, next, addRestartRequiredLabel));
   }
 
-  protected Step patchPod(V1Pod currentPod, Step next) {
+  private Step patchPod(V1Pod currentPod, Step next) {
     JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
     KubernetesUtils.addPatches(
         patchBuilder, "/metadata/labels/", getLabels(currentPod), getNonHashedPodLabels());
@@ -414,7 +414,7 @@ public abstract class PodStepContext extends BasePodStepContext {
   }
 
   // Method for online update
-  protected Step patchPod(V1Pod currentPod, V1Pod updatedPod, Step next, boolean addRestartRequiredLabel) {
+  private Step patchPod(V1Pod currentPod, V1Pod updatedPod, Step next, boolean addRestartRequiredLabel) {
     JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
     Map<String, String> updatedLabels = Optional.ofNullable(updatedPod)
         .map(V1Pod::getMetadata)
@@ -666,7 +666,7 @@ public abstract class PodStepContext extends BasePodStepContext {
   private int getHttpPort() {
     Integer port = Optional.ofNullable(getDefaultPort())
         .orElse(Optional.ofNullable(getSSLPort()).orElseGet(this::getAdminPort));
-    return port == null ? 0 : port.intValue();
+    return port == null ? 0 : port;
   }
 
   private Integer getAdminPort() {
@@ -1193,7 +1193,7 @@ public abstract class PodStepContext extends BasePodStepContext {
       return doNext(getNext(), packet);
     }
 
-    protected V1Pod processResponse(CallResponse<V1Pod> callResponse) {
+    V1Pod processResponse(CallResponse<V1Pod> callResponse) {
       V1Pod newPod = callResponse.getResult();
       logPodChanged();
       if (newPod != null) {
