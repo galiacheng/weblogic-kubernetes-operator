@@ -34,7 +34,11 @@ public class AnnotationHelper {
    * @param httpPort HTTP listen port
    */
   static void annotateForPrometheus(V1ObjectMeta meta, int httpPort) {
-    LOGGER.fine("YYY AnnotationHelper.annotateForPrometheus about to add annotation for Prometheus port = " + httpPort);
+    LOGGER.fine("YYY AnnotationHelper.annotateForPrometheus about to add annotation for Prometheus port = "
+        + httpPort);
+    if (httpPort == 0) {
+      return;
+    }
     meta.putAnnotationsItem(
         "prometheus.io/port", "" + httpPort); // should be the ListenPort of the server in the pod
     meta.putAnnotationsItem("prometheus.io/path", "/wls-exporter/metrics");

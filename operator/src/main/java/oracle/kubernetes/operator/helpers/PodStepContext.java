@@ -657,9 +657,23 @@ public abstract class PodStepContext extends BasePodStepContext {
         + getDefaultPort());
     LOGGER.fine("YYY PodStepContext.createMetaData about to add annotation for Prometheus: listenPort = "
         + getDefaultPort() + " sslPort = " + getSSLPort());
-    AnnotationHelper.annotateForPrometheus(metadata, getDefaultPort() != null ? getDefaultPort() : getSSLPort());
+
+    AnnotationHelper.annotateForPrometheus(metadata, getHttpPort());
     LOGGER.fine("YYY PodStepContext.createMetaData added annotation for Prometheus");
     return metadata;
+  }
+
+  private int getHttpPort() {
+    Integer port = Optional.ofNullable(getDefaultPort())
+        .orElse(Optional.ofNullable(getSSLPort()).orElseGet(this::getAdminPort));
+    return port == null ? 0 : port.intValue();
+  }
+
+  private Integer getAdminPort() {
+    if (isLocalAdminProtocolChannelSecure()) {
+      return getLocalAdminProtocolChannelPort();
+    }
+    return null;
   }
 
   private void addHashLabel(V1ObjectMeta metadata, String label, String hash) {
