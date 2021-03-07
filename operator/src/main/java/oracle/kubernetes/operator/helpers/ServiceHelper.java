@@ -3,6 +3,8 @@
 
 package oracle.kubernetes.operator.helpers;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -444,6 +446,16 @@ public class ServiceHelper {
         ports = new ArrayList<>();
       }
 
+      // TEST
+      if (!testNodePort(ports, port.getPort())) {
+        String msg = "*** testNodePort stopped add of duplicate port: name="
+            + port.getName() + ", port=" + port.getPort();
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        new IllegalStateException(msg).printStackTrace(pw);
+        System.out.println(sw.toString());
+      }
+
       if (testNodePort(ports, port.getPort())) {
         ports.add(port);
       }
@@ -741,6 +753,16 @@ public class ServiceHelper {
     }
 
     void addServicePortIfNeeded(String portName, Integer port) {
+
+      // TEST
+      if (port != null && !testNodePort(ports, port)) {
+        String msg = "*** testNodePort stopped add of duplicate port: name=" + portName + ", port=" + port;
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        new IllegalStateException(msg).printStackTrace(pw);
+        System.out.println(sw.toString());
+      }
+
       if (port != null && testNodePort(ports, port)) {
         ports.putIfAbsent(portName, createServicePort(portName, port));
       }
@@ -922,6 +944,15 @@ public class ServiceHelper {
       }
       if (channel == null || internalPort == null) {
         return;
+      }
+
+      // TEST
+      if (!testNodePort(ports, internalPort)) {
+        String msg = "*** testNodePort stopped add of duplicate port: name=" + channelName + ", port=" + internalPort;
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        new IllegalStateException(msg).printStackTrace(pw);
+        System.out.println(sw.toString());
       }
 
       if (testNodePort(ports, internalPort)) {
