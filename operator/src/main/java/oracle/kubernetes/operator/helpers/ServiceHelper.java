@@ -19,6 +19,7 @@ import io.kubernetes.client.openapi.models.V1ServiceList;
 import io.kubernetes.client.openapi.models.V1ServicePort;
 import io.kubernetes.client.openapi.models.V1ServiceSpec;
 import io.kubernetes.client.openapi.models.V1Status;
+import io.kubernetes.client.util.Yaml;
 import oracle.kubernetes.operator.DomainStatusUpdater;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.ProcessingConstants;
@@ -433,6 +434,12 @@ public class ServiceHelper {
     }
 
     V1ServicePort createServicePort(String portName, Integer port) {
+
+      // TEST
+      if (portName == null || portName.isBlank()) {
+        System.out.println("*** 1 portName is empty or blank");
+      }
+
       return new V1ServicePort()
           .name(LegalNames.toDns1123LegalName(portName))
           .port(port)
@@ -440,9 +447,20 @@ public class ServiceHelper {
     }
 
     V1ServicePort createSipUdpServicePort(String portName, Integer port) {
+
+      // TEST
+      if (portName == null || portName.isBlank()) {
+        System.out.println("*** 2 portName is empty or blank");
+      }
+
       if (isIstioEnabled()) {
         // The introspector will have already prefixed the portName with either "tcp-" or "tls-". Remove the prefix.
         portName = portName.substring(4);
+      }
+
+      // TEST
+      if (portName == null || portName.isBlank()) {
+        System.out.println("*** 3 portName is empty or blank");
       }
 
       return new V1ServicePort()
@@ -564,8 +582,13 @@ public class ServiceHelper {
     protected abstract String getServiceReplaceMessageKey();
 
     private Step createService(String messageKey, Step next) {
+
+      // TEST
+      V1Service model = createModel();
+      System.out.println("**** about to createService: " + Yaml.dump(model));
+
       return new CallBuilder()
-          .createServiceAsync(getNamespace(), createModel(), new CreateResponse(messageKey, next));
+          .createServiceAsync(getNamespace(), model, new CreateResponse(messageKey, next));
     }
 
     private class ConflictStep extends Step {
