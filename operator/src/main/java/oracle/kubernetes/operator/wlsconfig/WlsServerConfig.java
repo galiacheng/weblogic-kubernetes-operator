@@ -6,6 +6,7 @@ package oracle.kubernetes.operator.wlsconfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import oracle.kubernetes.operator.helpers.LegalNames;
@@ -369,7 +370,7 @@ public class WlsServerConfig {
       }
     }
 
-    return adminProtocolPort;
+    return Optional.ofNullable(adminProtocolPort).orElse(0);
   }
 
   /**

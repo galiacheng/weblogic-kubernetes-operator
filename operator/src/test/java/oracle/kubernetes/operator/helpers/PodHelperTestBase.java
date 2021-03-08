@@ -56,6 +56,7 @@ import oracle.kubernetes.operator.OverrideDistributionStrategy;
 import oracle.kubernetes.operator.PodAwaiterStepFactory;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.calls.unprocessable.UnrecoverableErrorBuilderImpl;
+import oracle.kubernetes.operator.logging.MessageKeys;
 import oracle.kubernetes.operator.utils.InMemoryCertificates;
 import oracle.kubernetes.operator.utils.WlsDomainConfigSupport;
 import oracle.kubernetes.operator.wlsconfig.NetworkAccessPoint;
@@ -116,6 +117,7 @@ import static oracle.kubernetes.operator.helpers.TuningParametersStub.READINESS_
 import static oracle.kubernetes.operator.helpers.TuningParametersStub.READINESS_TIMEOUT;
 import static oracle.kubernetes.utils.LogMatcher.containsFine;
 import static oracle.kubernetes.utils.LogMatcher.containsInfo;
+import static oracle.kubernetes.utils.LogMatcher.containsWarning;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -152,6 +154,7 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
   private static final String NODEMGR_HOME = "/u01/nodemanager";
   private static final String CONFIGMAP_VOLUME_NAME = "weblogic-scripts-cm-volume";
   private static final int READ_AND_EXECUTE_MODE = 0555;
+  public static final Integer ZERO_LISTEN_PORT = null;
 
   final TerminalStep terminalStep = new TerminalStep();
   private final Domain domain = createDomain();
@@ -163,11 +166,12 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
   private Method getDomainSpec;
   private final DomainConfigurator configurator = DomainConfiguratorFactory.forDomain(domain);
   private final String serverName;
-  private final int listenPort;
+  private int listenPort;
   private WlsDomainConfig domainTopology;
   protected final V1PodSecurityContext podSecurityContext = createPodSecurityContext(123L);
   protected final V1SecurityContext containerSecurityContext = createSecurityContext(222L);
   protected final V1Affinity affinity = createAffinity();
+  private TestUtils.ConsoleHandlerMemento consoleMemento;
 
   PodHelperTestBase(String serverName, int listenPort) {
     this.serverName = serverName;
@@ -244,15 +248,8 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
     mementos.add(UnitTestHash.install());
     mementos.add(InMemoryCertificates.install());
 
-    WlsDomainConfigSupport configSupport = new WlsDomainConfigSupport(DOMAIN_NAME);
-    configSupport.addWlsServer(ADMIN_SERVER, ADMIN_PORT);
-    if (!ADMIN_SERVER.equals(serverName)) {
-      configSupport.addWlsServer(serverName, listenPort);
-    }
-    configSupport.setAdminServerName(ADMIN_SERVER);
-
     testSupport.defineResources(domain);
-    domainTopology = configSupport.createDomainConfig();
+    domainTopology = setupDomainConfigSupport(ADMIN_PORT, listenPort);
     testSupport
         .addToPacket(ProcessingConstants.DOMAIN_TOPOLOGY, domainTopology)
         .addToPacket(SERVER_SCAN, domainTopology.getServerConfig(serverName))
@@ -261,6 +258,16 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
         ProcessingConstants.PODWATCHER_COMPONENT_NAME,
         PodAwaiterStepFactory.class,
         new PassthroughPodAwaiterStepFactory());
+  }
+
+  private WlsDomainConfig setupDomainConfigSupport(Integer adminPort, Integer listenPort) {
+    WlsDomainConfigSupport configSupport = new WlsDomainConfigSupport(DOMAIN_NAME);
+    configSupport.addWlsServer(ADMIN_SERVER, adminPort);
+    if (!ADMIN_SERVER.equals(serverName)) {
+      configSupport.addWlsServer(serverName, listenPort);
+    }
+    configSupport.setAdminServerName(ADMIN_SERVER);
+    return configSupport.createDomainConfig();
   }
 
   abstract V1Pod createPod(Packet packet);
@@ -412,6 +419,22 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
             readOnlyVolumeMount("weblogic-scripts-cm-volume", "/weblogic-operator/scripts"),
             readOnlyVolumeMount(RUNTIME_ENCRYPTION_SECRET_VOLUME,
                 RUNTIME_ENCRYPTION_SECRET_MOUNT_PATH))); 
+  }
+
+  @Test
+  public void whenPodCreated_withZeroPort_logMessageCreated() {
+    Memento m = TestUtils.silenceOperatorLogger()
+            .collectLogMessages(logRecords, getNoPrometheusPortMessageKey())
+            .withLogLevel(Level.WARNING);
+    WlsDomainConfig domainTopology = setupDomainConfigSupport(ZERO_LISTEN_PORT, ZERO_LISTEN_PORT);
+    testSupport
+        .addToPacket(ProcessingConstants.DOMAIN_TOPOLOGY, domainTopology)
+        .addToPacket(SERVER_SCAN, domainTopology.getServerConfig(serverName))
+        .addDomainPresenceInfo(domainPresenceInfo);
+
+    testSupport.runSteps(getStepFactory(), terminalStep);
+    assertThat(logRecords, containsWarning(getNoPrometheusPortMessageKey()));
+    m.revert();
   }
 
   @Test
@@ -1099,6 +1122,10 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
   abstract String getReplacedMessageKey();
 
   abstract String getDomainValidationFailedKey();
+
+  String getNoPrometheusPortMessageKey() {
+    return MessageKeys.NO_PROMETHEUS_PORT;
+  }
 
   V1EnvVar envItem(String name, String value) {
     return new V1EnvVar().name(name).value(value);
