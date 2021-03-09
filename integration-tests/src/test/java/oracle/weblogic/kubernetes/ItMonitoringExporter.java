@@ -519,7 +519,7 @@ class ItMonitoringExporter {
    * Check basic functionality of monitoring exporter.
    */
   //ssl is not supported yet
-  //@Test
+  @Test
   @DisplayName("Test Basic Functionality of Monitoring Exporter SideCar with ssl enabled.")
   public void testSideCarBasicFunctionalityWithSSL() throws Exception {
 
