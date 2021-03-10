@@ -348,11 +348,6 @@ public class PodHelper {
     }
 
     @Override
-    protected V1PodSpec createSpec(TuningParameters tuningParameters) {
-      return super.createSpec(tuningParameters).hostname(getPodName());
-    }
-
-    @Override
     List<V1EnvVar> getConfiguredEnvVars(TuningParameters tuningParameters) {
       List<V1EnvVar> vars = createCopy(getServerSpec().getEnvironmentVariables());
       addStartupEnvVars(vars);

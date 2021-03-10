@@ -45,7 +45,6 @@ import static oracle.kubernetes.utils.LogMatcher.containsSevere;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasKey;
@@ -178,11 +177,6 @@ public class AdminPodHelperTest extends PodHelperTestBase {
 
     assertThat(getDomain(), hasStatus("ServerError",
             "testcall in namespace junit, for testName: failure reported in test"));
-  }
-
-  @Test
-  public void whenAdminPodCreated_specHasPodNameAsHostName() {
-    assertThat(getCreatedPodSpec().getHostname(), equalTo(getPodName()));
   }
 
   private V1PodSpec getCreatedPodSpec() {
