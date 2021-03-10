@@ -668,7 +668,7 @@ class TopologyGenerator(Generator):
     self.writeln("- name: " + name)
     if isListenPortEnabledForServer(server, self.env.getDomain(), is_server_template):
       self.writeln("  listenPort: " + str(server.getListenPort()))
-    self.writeln("  listenAddress: " + self.quote(self.env.toDNS1123Legal(self.env.getDomainUID() + "-" + server.getName())))
+    self.writeln("  listenAddress: " + self.quote(self.env.toDNS1123Legal(server.getName() + "." + self.env.getDomainUID())))
     if isAdministrationPortEnabledForServer(server, self.env.getDomain(), is_server_template):
       self.writeln("  adminPort: " + str(getAdministrationPort(server, self.env.getDomain())))
     self.addSSL(server)
@@ -1077,7 +1077,7 @@ class SitConfigGenerator(Generator):
 
   def customizeServer(self, server):
     name=server.getName()
-    listen_address=self.env.toDNS1123Legal(self.env.getDomainUID() + "-" + name)
+    listen_address=self.env.toDNS1123Legal(name + "." + self.env.getDomainUID())
     self.writeln("<d:server>")
     self.indent()
     self.writeln("<d:name>" + name + "</d:name>")
@@ -1098,7 +1098,7 @@ class SitConfigGenerator(Generator):
   def customizeServerTemplate(self, template):
     name=template.getName()
     server_name_prefix=template.getCluster().getDynamicServers().getServerNamePrefix()
-    listen_address=self.env.toDNS1123Legal(self.env.getDomainUID() + "-" + server_name_prefix + "${id}")
+    listen_address=self.env.toDNS1123Legal(server_name_prefix + "${id}" + "." + self.env.getDomainUID())
     self.writeln("<d:server-template>")
     self.indent()
     self.writeln("<d:name>" + name + "</d:name>")

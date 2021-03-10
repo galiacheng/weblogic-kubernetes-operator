@@ -69,6 +69,7 @@ import static oracle.kubernetes.operator.LabelConstants.INTROSPECTION_STATE_LABE
 import static oracle.kubernetes.operator.LabelConstants.MII_UPDATED_RESTART_REQUIRED_LABEL;
 import static oracle.kubernetes.operator.LabelConstants.MODEL_IN_IMAGE_DOMAINZIP_HASH;
 import static oracle.kubernetes.operator.ProcessingConstants.MII_DYNAMIC_UPDATE_SUCCESS;
+import static oracle.kubernetes.operator.helpers.LegalNames.toDns1123LegalName;
 
 public abstract class PodStepContext extends BasePodStepContext {
 
@@ -626,6 +627,8 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   protected V1PodSpec createSpec(TuningParameters tuningParameters) {
     V1PodSpec podSpec = createPodSpec(tuningParameters)
+        .hostname(toDns1123LegalName(getServerName()))
+        .subdomain(toDns1123LegalName(getDomainUid()))
         .readinessGates(getReadinessGates())
         .initContainers(getServerSpec().getInitContainers().stream()
                 .map(c -> c.env(createEnv(c, tuningParameters))).collect(Collectors.toList()));
