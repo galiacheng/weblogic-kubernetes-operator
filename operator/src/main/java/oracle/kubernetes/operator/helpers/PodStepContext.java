@@ -388,8 +388,11 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   private Map<String, String> getNonHashedPodLabels() {
     Map<String,String> result = new HashMap<>(getPodLabels());
-    Optional.ofNullable(miiDomainZipHash)
+
+    if (getDomain().isUseOnlineUpdate()) {
+      Optional.ofNullable(miiDomainZipHash)
           .ifPresent(h -> result.put(MODEL_IN_IMAGE_DOMAINZIP_HASH, formatHashLabel(h)));
+    }
 
     Optional.ofNullable(getDomain().getSpec().getIntrospectVersion())
         .ifPresent(version -> result.put(INTROSPECTION_STATE_LABEL, version));
@@ -610,6 +613,10 @@ public abstract class PodStepContext extends BasePodStepContext {
         .putLabelsItem(
             LabelConstants.SERVERRESTARTVERSION_LABEL, getServerSpec().getServerRestartVersion());
 
+    if (!getDomain().isUseOnlineUpdate()) {
+      Optional.ofNullable(miiDomainZipHash)
+          .ifPresent(hash -> addHashLabel(metadata, MODEL_IN_IMAGE_DOMAINZIP_HASH, hash));
+    }
     Optional.ofNullable(miiModelSecretsHash)
           .ifPresent(hash -> addHashLabel(metadata, LabelConstants.MODEL_IN_IMAGE_MODEL_SECRETS_HASH, hash));
     return metadata;

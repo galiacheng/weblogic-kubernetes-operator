@@ -1100,6 +1100,7 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
 
   @Test
   public void whenMiiDynamicUpdateDynamicChangesOnly_dontReplacePod() {
+    configureDomain().withMIIOnlineUpdate();
     initializeMiiUpdateTest(MII_DYNAMIC_UPDATE_SUCCESS);
 
     verifyPodPatched();
@@ -1122,6 +1123,8 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
 
   @Test
   public void whenMiiDynamicUpdateDynamicChangesOnly_updateDomainZipHash() {
+    configureDomain().withMIIOnlineUpdate();
+
     initializeMiiUpdateTest(MII_DYNAMIC_UPDATE_SUCCESS);
 
     verifyPodPatched();
