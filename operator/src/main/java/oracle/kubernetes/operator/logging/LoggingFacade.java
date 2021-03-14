@@ -45,7 +45,7 @@ public class LoggingFacade {
   public void config(String msg) {
     if (isConfigEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.CONFIG, details.clazz, details.method, msg);
+      logger.logp(Level.CONFIG, details.clazz, details.method, sanitize(msg));
     }
   }
 
@@ -58,7 +58,7 @@ public class LoggingFacade {
   public void config(String msg, Object... params) {
     if (isConfigEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.CONFIG, details.clazz, details.method, msg, params);
+      logger.logp(Level.CONFIG, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -71,7 +71,7 @@ public class LoggingFacade {
   public void config(String msg, Throwable thrown) {
     if (isConfigEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.CONFIG, details.clazz, details.method, msg, thrown);
+      logger.logp(Level.CONFIG, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -126,7 +126,7 @@ public class LoggingFacade {
   public void fine(String msg) {
     if (isFineEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINE, details.clazz, details.method, msg);
+      logger.logp(Level.FINE, details.clazz, details.method, sanitize(msg));
     }
   }
 
@@ -139,7 +139,7 @@ public class LoggingFacade {
   public void fine(String msg, Object... params) {
     if (isFineEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINE, details.clazz, details.method, msg, params);
+      logger.logp(Level.FINE, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -152,7 +152,7 @@ public class LoggingFacade {
   public void fine(String msg, Throwable thrown) {
     if (isFineEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINE, details.clazz, details.method, msg, thrown);
+      logger.logp(Level.FINE, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -164,7 +164,7 @@ public class LoggingFacade {
   public void finer(String msg) {
     if (isFinerEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINER, details.clazz, details.method, msg);
+      logger.logp(Level.FINER, details.clazz, details.method, sanitize(msg));
     }
   }
 
@@ -177,7 +177,7 @@ public class LoggingFacade {
   public void finer(String msg, Object... params) {
     if (isFinerEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINER, details.clazz, details.method, msg, params);
+      logger.logp(Level.FINER, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -190,7 +190,7 @@ public class LoggingFacade {
   public void finer(String msg, Throwable thrown) {
     if (isFinerEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINER, details.clazz, details.method, msg, thrown);
+      logger.logp(Level.FINER, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -202,7 +202,7 @@ public class LoggingFacade {
   public void finest(String msg) {
     if (isFinestEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINEST, details.clazz, details.method, msg);
+      logger.logp(Level.FINEST, details.clazz, details.method, sanitize(msg));
     }
   }
 
@@ -215,7 +215,7 @@ public class LoggingFacade {
   public void finest(String msg, Object... params) {
     if (isFinestEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINEST, details.clazz, details.method, msg, params);
+      logger.logp(Level.FINEST, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -228,7 +228,7 @@ public class LoggingFacade {
   public void finest(String msg, Throwable thrown) {
     if (isFinestEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.FINEST, details.clazz, details.method, msg, thrown);
+      logger.logp(Level.FINEST, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -279,7 +279,7 @@ public class LoggingFacade {
   public void info(String msg) {
     if (isInfoEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.INFO, details.clazz, details.method, msg);
+      logger.logp(Level.INFO, details.clazz, details.method, sanitize(msg));
     }
   }
 
@@ -292,7 +292,7 @@ public class LoggingFacade {
   public void info(String msg, Object... params) {
     if (isInfoEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.INFO, details.clazz, details.method, msg, params);
+      logger.logp(Level.INFO, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -306,7 +306,7 @@ public class LoggingFacade {
   public void info(LoggingFilter loggingFilter, String msg, Object... params) {
     if (isInfoEnabled() && LoggingFilter.canLog(loggingFilter, msg)) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.INFO, details.clazz, details.method, msg, params);
+      logger.logp(Level.INFO, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -319,7 +319,7 @@ public class LoggingFacade {
   public void info(String msg, Throwable thrown) {
     if (isInfoEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.INFO, details.clazz, details.method, msg, thrown);
+      logger.logp(Level.INFO, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -406,7 +406,7 @@ public class LoggingFacade {
   public void log(Level level, String msg) {
     if (isLoggable(level)) {
       CallerDetails details = inferCaller();
-      logger.logp(level, details.clazz, details.method, msg);
+      logger.logp(level, details.clazz, details.method, sanitize(msg));
     }
   }
 
@@ -423,7 +423,7 @@ public class LoggingFacade {
   public void log(Level level, String msg, Object... params) {
     if (isLoggable(level)) {
       CallerDetails details = inferCaller();
-      logger.logp(level, details.clazz, details.method, msg, params);
+      logger.logp(level, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -438,7 +438,7 @@ public class LoggingFacade {
   public void log(Level level, String msg, Throwable thrown) {
     if (isLoggable(level)) {
       CallerDetails details = inferCaller();
-      logger.logp(level, details.clazz, details.method, msg, thrown);
+      logger.logp(level, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -450,7 +450,7 @@ public class LoggingFacade {
   public void severe(String msg) {
     if (isSevereEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.SEVERE, details.clazz, details.method, msg);
+      logger.logp(Level.SEVERE, details.clazz, details.method, sanitize(msg));
     }
   }
 
@@ -463,7 +463,7 @@ public class LoggingFacade {
   public void severe(String msg, Object... params) {
     if (isSevereEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.SEVERE, details.clazz, details.method, msg, params);
+      logger.logp(Level.SEVERE, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -477,7 +477,7 @@ public class LoggingFacade {
   public void severe(LoggingFilter loggingFilter, String msg, Object... params) {
     if (isSevereEnabled() && LoggingFilter.canLog(loggingFilter, msg)) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.SEVERE, details.clazz, details.method, msg, params);
+      logger.logp(Level.SEVERE, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -490,7 +490,7 @@ public class LoggingFacade {
   public void severe(String msg, Throwable thrown) {
     if (isSevereEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.SEVERE, details.clazz, details.method, msg, thrown);
+      logger.logp(Level.SEVERE, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -504,7 +504,7 @@ public class LoggingFacade {
   public void severe(LoggingFilter loggingFilter, String msg, Throwable thrown) {
     if (isSevereEnabled() && LoggingFilter.canLog(loggingFilter, msg)) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.SEVERE, details.clazz, details.method, msg, thrown);
+      logger.logp(Level.SEVERE, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -528,7 +528,7 @@ public class LoggingFacade {
   public void warning(String msg) {
     if (isWarningEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.WARNING, details.clazz, details.method, msg);
+      logger.logp(Level.WARNING, details.clazz, details.method, sanitize(msg));
     }
   }
 
@@ -541,7 +541,7 @@ public class LoggingFacade {
   public void warning(String msg, Object... params) {
     if (isWarningEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.WARNING, details.clazz, details.method, msg, params);
+      logger.logp(Level.WARNING, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -555,7 +555,7 @@ public class LoggingFacade {
   public void warning(LoggingFilter loggingFilter, String msg, Object... params) {
     if (isWarningEnabled() && LoggingFilter.canLog(loggingFilter, msg)) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.WARNING, details.clazz, details.method, msg, params);
+      logger.logp(Level.WARNING, details.clazz, details.method, sanitize(msg), params);
     }
   }
 
@@ -568,7 +568,7 @@ public class LoggingFacade {
   public void warning(String msg, Throwable thrown) {
     if (isWarningEnabled()) {
       CallerDetails details = inferCaller();
-      logger.logp(Level.WARNING, details.clazz, details.method, msg, thrown);
+      logger.logp(Level.WARNING, details.clazz, details.method, sanitize(msg), thrown);
     }
   }
 
@@ -619,6 +619,10 @@ public class LoggingFacade {
     String msg = getResourceBundle().getString(msgId);
     MessageFormat formatter = new MessageFormat(msg);
     return formatter.format(params);
+  }
+
+  private String sanitize(String msg) {
+    return msg.replaceAll("[\n\r]", "_");
   }
 
   /**

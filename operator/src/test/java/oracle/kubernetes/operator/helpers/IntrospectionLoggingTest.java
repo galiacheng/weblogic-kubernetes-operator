@@ -83,7 +83,9 @@ public class IntrospectionLoggingTest {
 
     testSupport.runSteps(JobHelper.readDomainIntrospectorPodLog(terminalStep));
 
-    assertThat(logRecords, containsInfo(INTROSPECTOR_LOG_PREFIX + extendedInfoMessage));
+    String sanitizedMessage = extendedInfoMessage.replaceAll("[\r\n]", "_");
+
+    assertThat(logRecords, containsInfo(INTROSPECTOR_LOG_PREFIX + sanitizedMessage));
     logRecords.clear();
   }
 
