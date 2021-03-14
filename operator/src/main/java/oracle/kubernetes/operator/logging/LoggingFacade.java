@@ -622,7 +622,7 @@ public class LoggingFacade {
   }
 
   private String sanitize(String msg) {
-    return msg.replaceAll("[\n\r]", "_");
+    return msg.replace('\r', '_').replace('\n', '_');
   }
 
   /**
