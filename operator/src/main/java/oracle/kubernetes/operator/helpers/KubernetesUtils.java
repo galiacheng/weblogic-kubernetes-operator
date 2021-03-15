@@ -3,7 +3,6 @@
 
 package oracle.kubernetes.operator.helpers;
 
-import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.Objects;
@@ -11,6 +10,7 @@ import java.util.Optional;
 import javax.json.JsonPatchBuilder;
 
 import io.kubernetes.client.common.KubernetesListObject;
+import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.openapi.models.V1ListMeta;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import oracle.kubernetes.operator.KubernetesConstants;
@@ -107,16 +107,10 @@ public class KubernetesUtils {
    * @return the metadata, if found; otherwise a newly created one.
    */
   static V1ObjectMeta getResourceMetadata(Object resource) {
-    try {
-      Field metadataField = resource.getClass().getDeclaredField("metadata");
-      metadataField.setAccessible(true);
-      return (V1ObjectMeta) metadataField.get(resource);
-    } catch (NoSuchFieldException
-          | SecurityException
-          | IllegalArgumentException
-          | IllegalAccessException e) {
-      return new V1ObjectMeta();
+    if (resource instanceof KubernetesObject) {
+      return ((KubernetesObject) resource).getMetadata();
     }
+    return new V1ObjectMeta();
   }
 
   /**
