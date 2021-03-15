@@ -267,7 +267,7 @@ public class JobHelperTest extends DomainValidationBaseTest {
   }
 
   @Test
-  public void whenDomainisOnlineUpdate_introspectorPodStartupWithThem() {
+  public void whenDomainIsOnlineUpdate_introspectorPodStartupWithThem() {
     configureDomain()
         .withMIIOnlineUpdate();
 
@@ -289,7 +289,7 @@ public class JobHelperTest extends DomainValidationBaseTest {
   }
 
   @Test
-  public void whenDomainisNotOnlineUpdate_introspectorPodStartupWithoutThem() {
+  public void whenDomainIsNotOnlineUpdate_introspectorPodStartupWithoutThem() {
 
     V1JobSpec jobSpec = createJobSpec();
 
