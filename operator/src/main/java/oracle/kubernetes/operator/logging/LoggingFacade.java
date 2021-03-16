@@ -622,7 +622,7 @@ public class LoggingFacade {
   }
 
   private String sanitize(String msg) {
-    return msg.replaceAll("[^A-Za-z0-9_':/,.@<>(){}\\[\\]=+ -]", "_");
+    return msg.replaceAll("[^A-Za-z0-9_':/\\\\,.$@\"<>(){}\\[\\]=+ -]", "_");
   }
 
   /**
