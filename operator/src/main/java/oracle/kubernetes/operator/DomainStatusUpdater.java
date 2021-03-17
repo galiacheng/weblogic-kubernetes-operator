@@ -414,7 +414,7 @@ public class DomainStatusUpdater {
 
 
       if (newStatus.getMessage() == null) {
-        newStatus.setMessage(Optional.ofNullable(info).map(i -> i.getValidationWarningsAsString()).orElse(""));
+        newStatus.setMessage(info.getValidationWarningsAsString());
         if (existingError != null) {
           if (hasBackOffLimitCondition()) {
             newStatus.incrementIntrospectJobFailureCount();
