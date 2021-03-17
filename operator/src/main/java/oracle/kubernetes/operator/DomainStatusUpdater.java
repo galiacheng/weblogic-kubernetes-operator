@@ -31,7 +31,6 @@ import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo.ServerStartupInfo;
 import oracle.kubernetes.operator.helpers.EventHelper;
 import oracle.kubernetes.operator.helpers.EventHelper.EventData;
-import oracle.kubernetes.operator.helpers.LegalNames;
 import oracle.kubernetes.operator.helpers.PodHelper;
 import oracle.kubernetes.operator.helpers.ResponseStep;
 import oracle.kubernetes.operator.logging.LoggingFacade;
@@ -198,7 +197,7 @@ public class DomainStatusUpdater {
     LOGGER.severe(MessageKeys.CALL_FAILED, failure.getMessage(), failure.getReason());
     ApiException apiException = callResponse.getE();
     if (apiException != null) {
-      LOGGER.info(MessageKeys.EXCEPTION, apiException);
+      LOGGER.fine(MessageKeys.EXCEPTION, apiException);
     }
 
     return createFailureRelatedSteps(failure.getReason(), failure.getMessage(), next);
