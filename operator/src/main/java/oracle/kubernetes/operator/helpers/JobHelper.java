@@ -421,13 +421,36 @@ public class JobHelper {
                   namespace,
                   domainUid,
                   new V1DeleteOptions().propagationPolicy("Foreground"),
-                  new DefaultResponseStep<>(next));
+                  new DeleteJobResponseStep<>(next));
+    }
+
+    private class DeleteJobResponseStep<T> extends DefaultResponseStep<T> {
+      public DeleteJobResponseStep(Step nextStep) {
+        super(nextStep);
+      }
+
+      @Override
+      public NextAction onFailure(Packet packet, CallResponse<T> callResponse) {
+        LOGGER.info("XXX DeleteJobResponse.onFailure: T = " + callResponse.getResult()
+            + " status = " + callResponse.getStatusCode());
+        return callResponse.getStatusCode() == CallBuilder.NOT_FOUND
+            ? onSuccess(packet, callResponse)
+            : super.onFailure(packet, callResponse);
+      }
+
+      @Override
+      public NextAction onSuccess(Packet packet, CallResponse<T> callResponse) {
+        LOGGER.info("XXX DeleteJobResponse.onSuccess: T = " + callResponse.getResult()
+            + " status = " + callResponse.getStatusCode());
+        return doNext(packet);
+      }
     }
   }
 
   static ReadDomainIntrospectorPodLogStep readDomainIntrospectorPodLog(Step next) {
     return new ReadDomainIntrospectorPodLogStep(next);
   }
+
 
   private static class ReadDomainIntrospectorPodLogStep extends Step {
 
