@@ -4,6 +4,7 @@
 package oracle.kubernetes.operator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -237,9 +238,8 @@ public class DomainStatusUpdater {
    * @return Step
    */
   public static Step createFailureRelatedSteps(DomainPresenceInfo info, String reason, String message, Step next) {
-    Exception e = new Exception("XXX createFailureRelatedSteps reason = " + reason
-        + " message = " + message + " info = " + info);
-    LOGGER.info("XXX createFailureRelatedSteps" + e.getStackTrace());
+    LOGGER.info("XXX createFailureRelatedSteps info =" + info + " reason = "
+        + reason + " message = " + message + " stacktrace = " + getCurrentStackTraceString());
     return Step.chain(
         new FailedStep(info, reason, message, null),
         EventHelper.createEventStep(
@@ -247,7 +247,13 @@ public class DomainStatusUpdater {
         next);
   }
 
-  private static String getEventMessage(String reason, String message) {
+  private static String getCurrentStackTraceString() {
+    StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+    return Arrays.stream(stackTrace).map(StackTraceElement::toString)
+        .collect(Collectors.joining("\n"));
+  }
+
+  static String getEventMessage(String reason, String message) {
     if (message != null && message.length() > 0) {
       return message;
     }
