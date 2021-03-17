@@ -31,6 +31,7 @@ import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo.ServerStartupInfo;
 import oracle.kubernetes.operator.helpers.EventHelper;
 import oracle.kubernetes.operator.helpers.EventHelper.EventData;
+import oracle.kubernetes.operator.helpers.LegalNames;
 import oracle.kubernetes.operator.helpers.PodHelper;
 import oracle.kubernetes.operator.helpers.ResponseStep;
 import oracle.kubernetes.operator.logging.LoggingFacade;
@@ -197,7 +198,7 @@ public class DomainStatusUpdater {
     LOGGER.severe(MessageKeys.CALL_FAILED, failure.getMessage(), failure.getReason());
     ApiException apiException = callResponse.getE();
     if (apiException != null) {
-      LOGGER.fine(MessageKeys.EXCEPTION, apiException);
+      LOGGER.info(MessageKeys.EXCEPTION, apiException);
     }
 
     return createFailureRelatedSteps(failure.getReason(), failure.getMessage(), next);
@@ -237,6 +238,9 @@ public class DomainStatusUpdater {
    * @return Step
    */
   public static Step createFailureRelatedSteps(DomainPresenceInfo info, String reason, String message, Step next) {
+    Exception e = new Exception("XXX createFailureRelatedSteps reason = " + reason
+        + " message = " + message + " info = " + info);
+    LOGGER.info("XXX createFailureRelatedSteps" + e.getStackTrace());
     return Step.chain(
         new FailedStep(info, reason, message, null),
         EventHelper.createEventStep(
@@ -411,7 +415,7 @@ public class DomainStatusUpdater {
 
 
       if (newStatus.getMessage() == null) {
-        newStatus.setMessage(info.getValidationWarningsAsString());
+        newStatus.setMessage(Optional.ofNullable(info).map(i -> i.getValidationWarningsAsString()).orElse(""));
         if (existingError != null) {
           if (hasBackOffLimitCondition()) {
             newStatus.incrementIntrospectJobFailureCount();
@@ -846,6 +850,7 @@ public class DomainStatusUpdater {
 
     @Override
     void modifyStatus(DomainStatus s) {
+      LOGGER.info("XXX modifyStatus: info = " + super.info + " reason = " + reason + " message = " + message);
       s.addCondition(new DomainCondition(Failed).withStatus(TRUE).withReason(reason).withMessage(message));
       if (s.hasConditionWith(c -> c.hasType(Progressing))) {
         s.addCondition(new DomainCondition(Progressing).withStatus(FALSE));
