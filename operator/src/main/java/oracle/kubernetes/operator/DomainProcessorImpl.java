@@ -1306,11 +1306,11 @@ public class DomainProcessorImpl implements DomainProcessor {
         case PHASE_FAILED:
           LOGGER.info("XXX DomainStatusD]Update.invoke is called: status = "
               + podStatus + " status = " + introspectorJobPod.getStatus());
-          if (isNotEmptyJobPodFailedNotification()) {
-            delegate.runSteps(
-                DomainStatusUpdater.createFailureRelatedSteps(
-                    info, getPodStatusReason(), getPodStatusMessage(), null));
-          }
+          //if (isNotEmptyJobPodFailedNotification()) {
+          delegate.runSteps(
+              DomainStatusUpdater.createFailureRelatedSteps(
+                  info, getPodStatusReason(), getPodStatusMessage(), null));
+          //}
           break;
         case WAITING_NON_NULL_MESSAGE:
           Optional.ofNullable(getMatchingContainerStatus())

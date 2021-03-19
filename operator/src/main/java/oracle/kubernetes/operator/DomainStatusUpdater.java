@@ -240,14 +240,14 @@ public class DomainStatusUpdater {
   public static Step createFailureRelatedSteps(DomainPresenceInfo info, String reason, String message, Step next) {
     LOGGER.info("XXX createFailureRelatedSteps info =" + info + " reason = "
         + reason + " message = " + message + " stacktrace = " + getCurrentStackTraceString());
-    if (hasReasonOrMessage(reason, message)) {
-      return Step.chain(
-          new FailedStep(info, reason, message, null),
-          EventHelper.createEventStep(
-              new EventData(EventHelper.EventItem.DOMAIN_PROCESSING_FAILED, getEventMessage(reason, message))),
-          next);
-    }
-    return next;
+    //if (hasReasonOrMessage(reason, message)) {
+    return Step.chain(
+        new FailedStep(info, reason, message, null),
+        EventHelper.createEventStep(
+            new EventData(EventHelper.EventItem.DOMAIN_PROCESSING_FAILED, getEventMessage(reason, message))),
+        next);
+    //}
+    //return next;
   }
 
   private static boolean hasReasonOrMessage(String reason, String message) {
