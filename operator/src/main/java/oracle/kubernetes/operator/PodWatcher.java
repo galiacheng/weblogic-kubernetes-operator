@@ -205,7 +205,7 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod>, 
     String phase = Optional.ofNullable(pod.getStatus()).map(V1PodStatus::getPhase).orElse("");
     LOGGER.info("XXX getPodStatus phase = " + phase + "is terminated = "
         + (notReady(conStatus) && getContainerStateTerminatedReason(conStatus).contains("Error"))
-        + " status = " + conStatus);
+        + " status = " + pod.getStatus());
     if (phase.equals("Failed")) {
       return PodStatus.PHASE_FAILED;
     } else if (notReady(conStatus) && getContainerStateWaitingMessage(conStatus) != null) {

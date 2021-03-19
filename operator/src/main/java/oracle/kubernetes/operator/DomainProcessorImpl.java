@@ -1302,10 +1302,12 @@ public class DomainProcessorImpl implements DomainProcessor {
     }
 
     private void invoke() {
+      LOGGER.info("XXX DomainStatusD]Update.invoke is called: status = "
+          + podStatus + "podStatusReason =" + getPodStatusReason() + "podStatusMessage = " + getPodStatusMessage()
+          + " status = " + introspectorJobPod.getStatus());
+
       switch (podStatus) {
         case PHASE_FAILED:
-          LOGGER.info("XXX DomainStatusD]Update.invoke is called: status = "
-              + podStatus + " status = " + introspectorJobPod.getStatus());
           //if (isNotEmptyJobPodFailedNotification()) {
           delegate.runSteps(
               DomainStatusUpdater.createFailureRelatedSteps(

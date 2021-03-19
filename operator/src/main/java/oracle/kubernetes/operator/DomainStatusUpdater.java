@@ -426,7 +426,7 @@ public class DomainStatusUpdater {
           .map(DomainStatus::getMessage)
           .orElse(null);
 
-
+      LOGGER.info("XXX getNewStatus: newStatus message = " + newStatus.getMessage());
       if (newStatus.getMessage() == null) {
         newStatus.setMessage(info.getValidationWarningsAsString());
         if (existingError != null) {
