@@ -322,6 +322,7 @@ public class DomainStatusUpdater {
     }
 
     private boolean hasJustExceededMaxRetryCount(DomainStatus newStatus, DomainStatus oldStatus) {
+      LOGGER.info("XXX hasJustExceededMaxRetryCount: oldStatus = " + oldStatus + "newStatus = " + newStatus);
       return oldStatus != null
           && newStatus.getIntrospectJobFailureCount() == (oldStatus.getIntrospectJobFailureCount() + 1)
           && newStatus.getIntrospectJobFailureCount() >= DomainPresence.getDomainPresenceFailureRetryMaxCount();
@@ -429,10 +430,10 @@ public class DomainStatusUpdater {
       LOGGER.info("XXX getNewStatus: newStatus message = " + newStatus.getMessage());
       if (newStatus.getMessage() == null) {
         newStatus.setMessage(info.getValidationWarningsAsString());
-        if (existingError != null) {
-          if (hasBackOffLimitCondition()) {
-            newStatus.incrementIntrospectJobFailureCount();
-          }
+      }
+      if (existingError != null) {
+        if (hasBackOffLimitCondition()) {
+          newStatus.incrementIntrospectJobFailureCount();
         }
       }
       return newStatus;
@@ -863,7 +864,7 @@ public class DomainStatusUpdater {
 
     @Override
     void modifyStatus(DomainStatus s) {
-      LOGGER.info("XXX modifyStatus: info = " + super.info + " reason = " + reason + " message = " + message);
+      LOGGER.info("XXX FailedStep.modifyStatus: info = " + super.info + " reason = " + reason + " message = " + message);
       s.addCondition(new DomainCondition(Failed).withStatus(TRUE).withReason(reason).withMessage(message));
       if (s.hasConditionWith(c -> c.hasType(Progressing))) {
         s.addCondition(new DomainCondition(Progressing).withStatus(FALSE));
