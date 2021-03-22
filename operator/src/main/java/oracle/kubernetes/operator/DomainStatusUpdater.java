@@ -864,7 +864,8 @@ public class DomainStatusUpdater {
 
     @Override
     void modifyStatus(DomainStatus s) {
-      LOGGER.info("XXX FailedStep.modifyStatus: info = " + super.info + " reason = " + reason + " message = " + message);
+      LOGGER.info("XXX FailedStep.modifyStatus: info = " + super.info + " reason = " + reason
+          + " message = " + message);
       s.addCondition(new DomainCondition(Failed).withStatus(TRUE).withReason(reason).withMessage(message));
       if (s.hasConditionWith(c -> c.hasType(Progressing))) {
         s.addCondition(new DomainCondition(Progressing).withStatus(FALSE));
