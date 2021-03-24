@@ -65,6 +65,9 @@ public class DomainStatusPatch {
       /* extraneous comment to fool checkstyle into thinking that this is not an empty catch block. */
       LOGGER.info("XXX DomainStatusPatch update call failed with APIException:" + ignored.getMessage()
           + " exception = " + ignored);
+    } catch (Throwable t) {
+      LOGGER.info("XXX DomainStatusPatch update call failed with Throwable:" + t.getMessage()
+          + " throwable = " + t);
     }
   }
 

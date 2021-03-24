@@ -19,6 +19,8 @@ import jakarta.json.JsonPatchBuilder;
 import jakarta.validation.Valid;
 import oracle.kubernetes.json.Description;
 import oracle.kubernetes.json.Range;
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.utils.SystemClock;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -33,6 +35,7 @@ import static oracle.kubernetes.weblogic.domain.model.ObjectPatch.createObjectPa
  */
 @Description("The current status of the operation of the WebLogic domain. Updated automatically by the operator.")
 public class DomainStatus {
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
 
   @Description("Current service state of the domain.")
   @Valid
@@ -116,6 +119,7 @@ public class DomainStatus {
    */
   public DomainStatus addCondition(DomainCondition newCondition) {
     if (conditions.contains(newCondition)) {
+      LOGGER.info("XXX addCondition: newCondition = " + newCondition + " conditions = " + conditions);
       conditions = conditions.stream()
           .filter(c -> preserve(c, newCondition.getType().typesToRemoveAlways())).collect(Collectors.toList());
       return this;
