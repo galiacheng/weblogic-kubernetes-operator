@@ -7,10 +7,33 @@ domainInfo:
     ServerStartMode: 'prod'
 
 topology:
+    Name: "wls-domain1"
+    AdminServerName: "admin-server"
     Cluster:
         "cluster-1":
-           DataSourceForAutomaticMigration:  LeasingDataSource
-           AutoMigrationTableName: ACTIVE
+            DataSourceForAutomaticMigration:  LeasingDataSource
+            AutoMigrationTableName: ACTIVE
+            DynamicServers:
+                ServerTemplate:  "cluster-1-template"
+                ServerNamePrefix: "managed-server"
+                DynamicClusterSize: 5
+                MaxDynamicClusterSize: 5
+                CalculatedListenPorts: false
+    Server:
+        "admin-server":
+            ListenPort: 7001
+    ServerTemplate:
+        "cluster-1-template":
+            Cluster: "cluster-1"
+            ListenPort : 8001
+
+appDeployments:
+    Application:
+        myear:
+            SourcePath: "wlsdeploy/applications/sample-app.ear"
+            ModuleType: ear
+            Target: 'cluster-1'
+           
 resources:
     JDBCStore:
         JdbcFileStore:
