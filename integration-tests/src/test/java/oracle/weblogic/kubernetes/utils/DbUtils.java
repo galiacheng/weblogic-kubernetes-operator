@@ -35,6 +35,7 @@ import io.kubernetes.client.openapi.models.V1RollingUpdateDeployment;
 import io.kubernetes.client.openapi.models.V1Service;
 import io.kubernetes.client.openapi.models.V1ServicePort;
 import io.kubernetes.client.openapi.models.V1ServiceSpec;
+import io.kubernetes.client.util.Yaml;
 import oracle.weblogic.kubernetes.actions.impl.primitive.Command;
 import oracle.weblogic.kubernetes.actions.impl.primitive.CommandParams;
 import oracle.weblogic.kubernetes.actions.impl.primitive.Kubernetes;
@@ -153,6 +154,7 @@ public class DbUtils {
             dbNamespace));
     assertTrue(serviceCreated, String.format(
         "Create service failed for OracleDbService in namespace %s ", dbNamespace));
+    logger.info(Yaml.dump(oracleDBService));
 
     //create V1Deployment for Oracle DB
     logger.info("Configure V1Deployment in namespace {0} using image {1}", dbNamespace,  dbBaseImageName);
@@ -212,6 +214,7 @@ public class DbUtils {
     assertTrue(deploymentCreated, String.format(
         "Create deployment failed for oracleDbDepl in namespace %s ",
         dbNamespace));
+    logger.info(Yaml.dump(oracleDbDepl));
 
     // sleep for a while to make sure the DB pod is created
     try {
@@ -530,7 +533,7 @@ public class DbUtils {
 
   /**
    * Create leasing Table (ACTIVE) on an Oracle DB Instance.
-   * Uses the WebLogic utility utils.Schema to add the table 
+   * Uses the WebLogic utility utils.Schema to add the table
    * So the command MUST be run inside a Weblogic Server pod
    *
    * @param podName the pod name
@@ -540,13 +543,13 @@ public class DbUtils {
   public static void createLeasingTable(String podName, String namespace, int dbNodePort) {
     Path ddlFile = Paths.get(WORK_DIR + "/leasing.ddl");
     String ddlString = "DROP TABLE ACTIVE;\n"
-        + "CREATE TABLE ACTIVE (\n" 
-        + "  SERVER VARCHAR2(255) NOT NULL,\n" 
-        + "  INSTANCE VARCHAR2(255) NOT NULL,\n" 
-        + "  DOMAINNAME VARCHAR2(255) NOT NULL,\n" 
-        + "  CLUSTERNAME VARCHAR2(255) NOT NULL,\n" 
-        + "  TIMEOUT DATE,\n" 
-        + "  PRIMARY KEY (SERVER, DOMAINNAME, CLUSTERNAME)\n" 
+        + "CREATE TABLE ACTIVE (\n"
+        + "  SERVER VARCHAR2(255) NOT NULL,\n"
+        + "  INSTANCE VARCHAR2(255) NOT NULL,\n"
+        + "  DOMAINNAME VARCHAR2(255) NOT NULL,\n"
+        + "  CLUSTERNAME VARCHAR2(255) NOT NULL,\n"
+        + "  TIMEOUT DATE,\n"
+        + "  PRIMARY KEY (SERVER, DOMAINNAME, CLUSTERNAME)\n"
         + ");\n";
 
     assertDoesNotThrow(() -> Files.write(ddlFile, ddlString.getBytes()));

@@ -6,12 +6,6 @@ topology:
            DataSourceForAutomaticMigration:  LeasingDataSource
            AutoMigrationTableName: ACTIVE
 resources:
-    FileStore:
-        ClusterFileStore:
-           DistributionPolicy: Distributed
-           MigrationPolicy: Always
-           Directory: '/shared/data/ClusterFileStore'
-           Target: 'cluster-1'
     JDBCStore:
         JdbcFileStore:
            DistributionPolicy: Distributed
@@ -19,9 +13,6 @@ resources:
            DataSource: StoreDataSource
            Target: 'cluster-1'
     JMSServer:
-        ClusterJmsServer:
-            Target: 'cluster-1'
-            PersistentStore: 'ClusterFileStore'
         JdbcJmsServer:
             Target: 'cluster-1'
             PersistentStore: 'JdbcFileStore'

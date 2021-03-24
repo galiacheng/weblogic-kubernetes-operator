@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import oracle.weblogic.kubernetes.actions.impl.primitive.Command;
 import oracle.weblogic.kubernetes.actions.impl.primitive.CommandParams;
@@ -65,22 +67,22 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * This test class verifies JMS Service migration with JMS messages stored in 
+ * This test class verifies JMS Service migration with JMS messages stored in
  * (a) Persistent FileStore (b) Persistent JDBC Store accessible from all pods.
- * The dynamic cluster is scaled down to trigger the Service migration from 
+ * The dynamic cluster is scaled down to trigger the Service migration from
  * a stopped pod/managed server to a live pod/managed server.
- * Configuration : 
+ * Configuration :
  *   MII cluster domain with 2 managed servers
  *   Two set of JMS Resources with FileStore and JDBC Store
  *   All resources are targeted to cluster with enabled JMS service migration
  *   Two Distributed Queue(s) one with FileStore and the other with JDBC Store
  *   Separate ORACLE Datasource for cluster leasing
- * UseCase :  
+ * UseCase :
  * (a) Test client sends 100 messages to member queue@managed-server2
  * (b) Scale down the cluster with replica count 1 to shutdown managed-server2
  * (c) Make sure the JMS Service@managed-server2 is migrated to managed-server1
- * (d) Make sure all 100 messages got recovered once the 
- *     JMS Service@managed-server2 is migrated to managed-server1 
+ * (d) Make sure all 100 messages got recovered once the
+ *     JMS Service@managed-server2 is migrated to managed-server1
  * Above steps are repeated for both FileStore and JDBCStore based Distributed Queue.
  */
 
@@ -94,8 +96,8 @@ class ItMiiJmsRecovery {
   private static ConditionFactory withStandardRetryPolicy = null;
   private static int replicaCount = 2;
   private static final String domainUid = "mii-jms-recovery";
-  private static String pvName = domainUid + "-pv"; 
-  private static String pvcName = domainUid + "-pvc"; 
+  private static String pvName = domainUid + "-pv";
+  private static String pvcName = domainUid + "-pvc";
   private static final String adminServerPodName = domainUid + "-admin-server";
   private static final String managedServerPrefix = domainUid + "-managed-server";
   private static LoggingFacade logger = null;
@@ -108,7 +110,7 @@ class ItMiiJmsRecovery {
   /**
    * Install Operator.
    * Create domain resource definition.
-   * @param namespaces list of namespaces created by the IntegrationTestWatcher by the 
+   * @param namespaces list of namespaces created by the IntegrationTestWatcher by the
    *     JUnit engine parameter resolution mechanism
    */
   @BeforeAll
@@ -127,7 +129,7 @@ class ItMiiJmsRecovery {
     logger.info("Creating unique namespace for Domain");
     assertNotNull(namespaces.get(1), "Namespace list is null");
     domainNamespace = namespaces.get(1);
- 
+
     // Create the repo secret to pull the image
     // this secret is used only for non-kind cluster
     createOcirRepoSecret(domainNamespace);
@@ -146,7 +148,7 @@ class ItMiiJmsRecovery {
     // create secret for admin credentials
     logger.info("Create secret for admin credentials");
     String adminSecretName = "weblogic-credentials";
-    assertDoesNotThrow(() -> createDomainSecret(adminSecretName, 
+    assertDoesNotThrow(() -> createDomainSecret(adminSecretName,
             ADMIN_USERNAME_DEFAULT, ADMIN_PASSWORD_DEFAULT, domainNamespace),
             String.format("createSecret failed for %s", adminSecretName));
 
@@ -162,7 +164,7 @@ class ItMiiJmsRecovery {
     cpUrl = "jdbc:oracle:thin:@//" + K8S_NODEPORT_HOST + ":"
                          + dbNodePort + "/devpdb.k8s";
     logger.info("ConnectionPool URL = {0}", cpUrl);
-    assertDoesNotThrow(() -> createDatabaseSecret(dbSecretName, 
+    assertDoesNotThrow(() -> createDatabaseSecret(dbSecretName,
             "sys as sysdba", "Oradoc_db1", cpUrl, domainNamespace),
             String.format("createSecret failed for %s", dbSecretName));
     String configMapName = "jdbc-jms-recovery-configmap";
@@ -204,12 +206,17 @@ class ItMiiJmsRecovery {
         adminServerPodName, domainNamespace);
     checkPodReadyAndServiceExists(adminServerPodName, domainUid, domainNamespace);
     // create the required leasing table 'ACTIVE' before we start the cluster
-    createLeasingTable(adminServerPodName, domainNamespace, dbNodePort); 
+    createLeasingTable(adminServerPodName, domainNamespace, dbNodePort);
     // check managed server services and pods are ready
     for (int i = 1; i <= replicaCount; i++) {
       logger.info("Wait for managed server services and pods are created in namespace {0}",
           domainNamespace);
       checkPodReadyAndServiceExists(managedServerPrefix + i, domainUid, domainNamespace);
+    }
+    try {
+      Thread.sleep(600000);
+    } catch (InterruptedException ex) {
+      Logger.getLogger(ItMiiJmsRecovery.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 
@@ -221,7 +228,7 @@ class ItMiiJmsRecovery {
   @Order(1)
   @DisplayName("Verify JMS Service migration with FileStore")
   public void testMiiJmsServiceMigrationWithFileStore() {
-   
+
     // build the standalone JMS Client on Admin pod after rolling restart
     String destLocation = "/u01/JmsSendReceiveClient.java";
     assertDoesNotThrow(() -> copyFileToPod(domainNamespace,
@@ -229,11 +236,11 @@ class ItMiiJmsRecovery {
         Paths.get(RESOURCE_DIR, "jms", "JmsSendReceiveClient.java"),
         Paths.get(destLocation)));
     runJavacInsidePod(adminServerPodName, domainNamespace, destLocation);
-    
-    assertTrue(checkJmsServerRuntime("managed-server2"), 
+
+    assertTrue(checkJmsServerRuntime("managed-server2"),
          "JMSService@managed-server2 is on managed-server2 before migration");
 
-    runJmsClientOnAdminPod("send", 
+    runJmsClientOnAdminPod("send",
             "ClusterJmsServer@managed-server2@jms.testUniformQueue");
 
     boolean psuccess = assertDoesNotThrow(() ->
@@ -243,9 +250,9 @@ class ItMiiJmsRecovery {
         String.format("Cluster replica patching failed for domain %s in namespace %s", domainUid, domainNamespace));
     checkPodDoesNotExist(managedServerPrefix + "2", domainUid, domainNamespace);
     // Make sure the JMSService@managed-server2 is migrated to managed-server1
-    assertTrue(checkJmsServerRuntime("managed-server1"), 
+    assertTrue(checkJmsServerRuntime("managed-server1"),
             "JMSService@managed-server2 is NOT migrated to managed-server1");
-    runJmsClientOnAdminPod("receive", 
+    runJmsClientOnAdminPod("receive",
             "ClusterJmsServer@managed-server2@jms.testUniformQueue");
   }
 
@@ -258,11 +265,11 @@ class ItMiiJmsRecovery {
   @DisplayName("Verify JMS Service migration with JDBCStore")
   public void testMiiJmsServiceMigrationWithJdbcStore() {
 
-    // Restart the managed server(2) if shutdown by previous test method 
-    // Make sure that JMS server runtime JMSService@managed-server2 is 
+    // Restart the managed server(2) if shutdown by previous test method
+    // Make sure that JMS server runtime JMSService@managed-server2 is
     // hosted on managed server 'managed-server2'
     restartManagedServer("managed-server2");
-    assertTrue(checkJmsServerRuntime("managed-server2"), 
+    assertTrue(checkJmsServerRuntime("managed-server2"),
          "JMSService@managed-server2 is on managed-server2 before migration");
 
     // build the standalone JMS Client on Admin pod after rolling restart
@@ -272,8 +279,8 @@ class ItMiiJmsRecovery {
         Paths.get(RESOURCE_DIR, "jms", "JmsSendReceiveClient.java"),
         Paths.get(destLocation)));
     runJavacInsidePod(adminServerPodName, domainNamespace, destLocation);
-    
-    runJmsClientOnAdminPod("send", 
+
+    runJmsClientOnAdminPod("send",
             "JdbcJmsServer@managed-server2@jms.jdbcUniformQueue");
     boolean psuccess3 = assertDoesNotThrow(() ->
             scaleCluster(domainUid, domainNamespace, "cluster-1", 1),
@@ -282,9 +289,9 @@ class ItMiiJmsRecovery {
         String.format("Cluster replica patching failed for domain %s in namespace %s", domainUid, domainNamespace));
     checkPodDoesNotExist(managedServerPrefix + "2", domainUid, domainNamespace);
 
-    assertTrue(checkJmsServerRuntime("managed-server1"), 
+    assertTrue(checkJmsServerRuntime("managed-server1"),
            "JMSService@managed-server2 is NOT migrated to managed-server1");
-    runJmsClientOnAdminPod("receive", 
+    runJmsClientOnAdminPod("receive",
             "JdbcJmsServer@managed-server2@jms.jdbcUniformQueue");
   }
 
@@ -295,14 +302,14 @@ class ItMiiJmsRecovery {
     CommandParams params = new CommandParams().defaults();
     String script = "startServer.sh";
     params.command("sh "
-        + Paths.get(domainLifecycleSamplePath.toString(), "/" + script).toString() 
+        + Paths.get(domainLifecycleSamplePath.toString(), "/" + script).toString()
         + commonParameters + " -s " + serverName);
     result = Command.withParams(params).execute();
     assertTrue(result, "Failed to execute script " + script);
     checkPodReadyAndServiceExists(managedServerPrefix + "2", domainUid, domainNamespace);
   }
 
-  // Run standalone JMS Client to send/receive message from 
+  // Run standalone JMS Client to send/receive message from
   // Distributed Destination Member
   private void runJmsClientOnAdminPod(String action, String queue) {
     withStandardRetryPolicy
@@ -317,7 +324,7 @@ class ItMiiJmsRecovery {
 
   /*
    * Verify the JMS Server Runtime through rest API.
-   * Get the JMSServer Runtime ClusterJmsServer@managed-server2 found on 
+   * Get the JMSServer Runtime ClusterJmsServer@managed-server2 found on
    * specified managed server.
    * @param managedServer name of managed server to look for JMSServerRuntime
    * @returns true if MBEAN is found otherwise false
@@ -336,7 +343,7 @@ class ItMiiJmsRecovery {
           .append(" -w %{http_code});")
           .append("echo ${status}");
     logger.info("checkJmsServerRuntime: curl command {0}", new String(curlString));
-    withStandardRetryPolicy 
+    withStandardRetryPolicy
         .conditionEvaluationListener(
             condition -> logger.info("Waiting for JMS Service to migrate "
                 + "(elapsed time {0} ms, remaining time {1} ms)",
