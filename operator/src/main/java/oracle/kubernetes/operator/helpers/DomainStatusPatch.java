@@ -11,6 +11,7 @@ import jakarta.json.JsonValue;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.weblogic.domain.model.Domain;
+import oracle.kubernetes.weblogic.domain.model.DomainStatus;
 
 public class DomainStatusPatch {
 
@@ -28,6 +29,7 @@ public class DomainStatusPatch {
    */
   public static void updateSynchronously(Domain domain, String reason, String message) {
     new DomainStatusPatch(domain, reason, message).update();
+    updateDomain(domain, reason, message);
   }
 
   private DomainStatusPatch(Domain domain, String reason, String message) {
@@ -47,6 +49,14 @@ public class DomainStatusPatch {
       setSubField(patchBuilder, "/status/message", domain.getStatus().getMessage(), message);
     }
     return patchBuilder;
+  }
+
+  private static void updateDomain(Domain domain, String reason, String message) {
+    if (domain.getStatus() == null) {
+      domain.setStatus(new DomainStatus());
+    }
+    domain.getStatus().setReason(reason);
+    domain.getStatus().setMessage(message);
   }
 
   private static void setSubField(JsonPatchBuilder patchBuilder, String path, String oldValue, String newValue) {
