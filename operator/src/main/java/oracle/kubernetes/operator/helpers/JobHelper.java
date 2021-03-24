@@ -466,11 +466,12 @@ public class JobHelper {
     @Override
     public NextAction onSuccess(Packet packet, CallResponse<String> callResponse) {
       String result = callResponse.getResult();
-      LOGGER.fine("+++++ ReadDomainIntrospectorPodLogResponseStep: \n"
-          + result + "XXX severeStatuses = " + severeStatuses);
+      LOGGER.fine("+++++ ReadDomainIntrospectorPodLogResponseStep: \n" + result);
 
       if (result != null) {
         convertJobLogsToOperatorLogs(result);
+        LOGGER.fine("+++++ ReadDomainIntrospectorPodLogResponseStep: \n"
+            + "XXX severeStatuses = " + severeStatuses);
         if (!severeStatuses.isEmpty()) {
           updateStatus(packet.getSpi(DomainPresenceInfo.class));
         }
@@ -518,6 +519,7 @@ public class JobHelper {
     //  - ignores all lines in the log up to the first line that starts with '@['
     private void convertJobLogsToOperatorLogs(String jobLogs) {
       for (String line : jobLogs.split(EOL_PATTERN)) {
+        LOGGER.info("XXXX line = " + line);
         if (line.startsWith("@[")) {
           logToOperator();
           logMessage = new StringBuilder(INTROSPECTOR_LOG_PREFIX).append(line.trim());
@@ -529,11 +531,13 @@ public class JobHelper {
     }
 
     private void logToOperator() {
+      LOGGER.info("XXX logToOperator: logMessage = " + logMessage);
       if (logMessage.length() == 0) {
         return;
       }
 
       String logMsg = logMessage.toString();
+      LOGGER.info("XXX logToOperator: level = " + getLogLevel(logMsg));
       switch (getLogLevel(logMsg)) {
         case "SEVERE":
           addSevereStatus(logMsg); // fall through
@@ -561,6 +565,7 @@ public class JobHelper {
 
     private void addSevereStatus(String logMsg) {
       int index = logMsg.toUpperCase().lastIndexOf("[SEVERE]") + "[SEVERE]".length();
+      LOGGER.info("XXX addServerStatus: msg = " + logMsg.substring(index).trim());
       severeStatuses.add(logMsg.substring(index).trim());
     }
 

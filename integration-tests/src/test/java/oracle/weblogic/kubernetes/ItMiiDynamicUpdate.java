@@ -276,7 +276,7 @@ class ItMiiDynamicUpdate {
    * before and after rolling restart.
    * Verify new work manager is configured.
    */
-  @Test
+  //@Test
   @Order(1)
   @DisplayName("Add a work manager to a model-in-image domain using dynamic update")
   public void testMiiAddWorkManager() {
@@ -324,7 +324,7 @@ class ItMiiDynamicUpdate {
    * Wait for introspector to complete
    * Verify work manager configuration is updated.
    */
-  @Test
+  //@Test
   @Order(2)
   @DisplayName("Update work manager min/max threads constraints config to a model-in-image domain using dynamic update")
   public void testMiiUpdateWorkManager() {
@@ -370,7 +370,7 @@ class ItMiiDynamicUpdate {
    * Verify application target is changed by accessing the application runtime using REST API.
    * Verify the application can be accessed on both admin server and from all servers in cluster.
    */
-  @Test
+  //@Test
   @Order(3)
   @DisplayName("Change target for the application deployment using mii dynamic update")
   public void testMiiChangeTarget() {
@@ -430,7 +430,7 @@ class ItMiiDynamicUpdate {
    * Wait for introspector to complete
    * Verify servers in the newly added cluster are started and other servers are not rolled.
    */
-  @Test
+  //@Test
   @Order(4)
   @DisplayName("Add cluster in MII domain using mii dynamic update")
   public void testMiiAddCluster() {
@@ -483,7 +483,7 @@ class ItMiiDynamicUpdate {
    * Wait for introspector to complete
    * Verify the datasource is added by checking the MBean using REST api.
    */
-  @Test
+  //@Test
   @Order(5)
   @DisplayName("Add datasource in MII domain using mii dynamic update")
   public void testMiiAddDataSource() {
@@ -500,7 +500,7 @@ class ItMiiDynamicUpdate {
    * Verify the datasource parameter is updated by checking the MBean using REST api.
    * Verify domain status should have a condition type as "Available" and condition reason as "ServersReady".
    */
-  @Test
+  //@Test
   @Order(6)
   @DisplayName("Changing datasource parameters with CommitUpdateAndRoll using mii dynamic update")
   public void testMiiChangeDataSourceParameterWithCommitUpdateAndRoll() {
@@ -573,7 +573,7 @@ class ItMiiDynamicUpdate {
    * Verify the application is undeployed.
    * Verify domain status should have a condition type as "Available" and condition reason as "ServersReady".
    */
-  @Test
+  //@Test
   @Order(7)
   @DisplayName("Changing Weblogic datasource URL and deleting application with CommitUpdateAndRoll "
       + "using mii dynamic update")
@@ -651,7 +651,7 @@ class ItMiiDynamicUpdate {
    * Verify the datasource is deleted.
    * Verify the domain status condition contains the correct type and expected reason.
    */
-  @Test
+  //@Test
   @Order(8)
   @DisplayName("Deleting Datasource")
   public void testMiiDeleteDatasource() {
@@ -704,7 +704,7 @@ class ItMiiDynamicUpdate {
    * Check the domain status message contains the expected error msg
    * Check the domain status condition type is "Failed" and message contains the expected error msg
    */
-  @Test
+  //@Test
   @Order(9)
   @DisplayName("Negative test changing domain name using mii dynamic update")
   public void testMiiChangeDomainName() {
@@ -799,7 +799,7 @@ class ItMiiDynamicUpdate {
    * Check the domain status message contains the expected error msg
    * Check the domain status condition type is "Failed" and message contains the expected error msg
    */
-  @Test
+  //@Test
   @Order(11)
   @DisplayName("Negative test changing listen address of a server using mii dynamic update")
   public void testMiiChangeListenAddress() {
@@ -844,7 +844,7 @@ class ItMiiDynamicUpdate {
    * Check the domain status message contains the expected error msg
    * Check the domain status condition type is "Failed" and message contains the expected error msg
    */
-  @Test
+  //@Test
   @Order(12)
   @DisplayName("Negative test changing SSL setting of a server using mii dynamic update")
   public void testMiiChangeSSL() {
@@ -897,7 +897,7 @@ class ItMiiDynamicUpdate {
    * Verify the domain status is updated, domain is not restarted and the change is commited.
    * Restart the domain and verify both the changes are effective using REST Api.
    */
-  @Test
+  //@Test
   @Order(14)
   @DisplayName("Test non-dynamic changes with onNonDynamicChanges default value CommitUpdateOnly")
   public void testOnNonDynamicChangesCommitUpdateOnly() {
@@ -999,7 +999,7 @@ class ItMiiDynamicUpdate {
    * and cannot be scaled below MinDynamicClusterSize when allowReplicasBelowMinDynClusterSize is set false.
    * Verify JMS message and connection distribution/load balance after scaling the cluster.
    */
-  @Test
+  //@Test
   @Order(15)
   @DisplayName("Test modification to Dynamic cluster size parameters")
   public void testMiiUpdateDynamicClusterSize() {
@@ -1125,7 +1125,7 @@ class ItMiiDynamicUpdate {
    * Wait for introspector to complete
    * Verify application target is changed by accessing the application runtime using REST API.
    */
-  @Test
+  //@Test
   @Order(16)
   @DisplayName("Remove all targets for the application deployment in MII domain using mii dynamic update")
   public void testMiiRemoveTarget() {

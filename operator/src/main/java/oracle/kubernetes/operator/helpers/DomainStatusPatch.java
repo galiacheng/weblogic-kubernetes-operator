@@ -59,7 +59,7 @@ public class DomainStatusPatch {
 
   private void update() {
     try {
-      LOGGER.info("XXX patchBody = " + getPatchBody());
+      LOGGER.info("XXX patchBody = " + patchBuilder.toString());
       new CallBuilder().patchDomain(name, namespace, getPatchBody());
     } catch (ApiException ignored) {
       /* extraneous comment to fool checkstyle into thinking that this is not an empty catch block. */
