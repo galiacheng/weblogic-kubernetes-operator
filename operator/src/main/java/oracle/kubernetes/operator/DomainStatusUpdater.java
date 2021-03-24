@@ -315,6 +315,7 @@ public class DomainStatusUpdater {
 
     private Step createDomainStatusReplaceStep(DomainStatusUpdaterContext context, DomainStatus newStatus) {
       LOGGER.fine(MessageKeys.DOMAIN_STATUS, context.getDomainUid(), newStatus);
+      LOGGER.fine("status change: " + createPatchString(context, newStatus));
       if (LOGGER.isFinerEnabled()) {
         LOGGER.finer("status change: " + createPatchString(context, newStatus));
       }
@@ -357,6 +358,7 @@ public class DomainStatusUpdater {
 
     @Override
     public NextAction onSuccess(Packet packet, CallResponse<Domain> callResponse) {
+      LOGGER.info("XXX statusReplaceResponse step succeeded result = " + callResponse.getResult());
       if (callResponse.getResult() != null) {
         packet.getSpi(DomainPresenceInfo.class).setDomain(callResponse.getResult());
       }
@@ -365,6 +367,7 @@ public class DomainStatusUpdater {
 
     @Override
     public NextAction onFailure(Packet packet, CallResponse<Domain> callResponse) {
+      LOGGER.info("XXX statusReplaceResponse step failed callResponse = " + callResponse);
       if (UnrecoverableErrorBuilder.isAsyncCallUnrecoverableFailure(callResponse)) {
         return super.onFailure(packet, callResponse);
       } else {
