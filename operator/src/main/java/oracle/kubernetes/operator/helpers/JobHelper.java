@@ -466,7 +466,8 @@ public class JobHelper {
     @Override
     public NextAction onSuccess(Packet packet, CallResponse<String> callResponse) {
       String result = callResponse.getResult();
-      LOGGER.fine("+++++ ReadDomainIntrospectorPodLogResponseStep: \n" + result);
+      LOGGER.fine("+++++ ReadDomainIntrospectorPodLogResponseStep: \n"
+          + result + "XXX severeStatuses = " + severeStatuses);
 
       if (result != null) {
         convertJobLogsToOperatorLogs(result);

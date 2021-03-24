@@ -8,6 +8,8 @@ import io.kubernetes.client.openapi.ApiException;
 import jakarta.json.Json;
 import jakarta.json.JsonPatchBuilder;
 import jakarta.json.JsonValue;
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.weblogic.domain.model.Domain;
 
 public class DomainStatusPatch {
@@ -15,6 +17,8 @@ public class DomainStatusPatch {
   private final String name;
   private final String namespace;
   private final JsonPatchBuilder patchBuilder;
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
+
 
   /**
    * Update the domain status synchronously. This may involve either replacing the current status or adding to it.
@@ -58,6 +62,8 @@ public class DomainStatusPatch {
       new CallBuilder().patchDomain(name, namespace, getPatchBody());
     } catch (ApiException ignored) {
       /* extraneous comment to fool checkstyle into thinking that this is not an empty catch block. */
+      LOGGER.info("XXX DomainStatusPatch update call failed with APIException:" + ignored.getMessage()
+          + " exception = " + ignored);
     }
   }
 
