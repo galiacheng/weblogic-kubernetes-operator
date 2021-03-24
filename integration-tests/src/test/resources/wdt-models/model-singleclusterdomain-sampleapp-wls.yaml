@@ -24,16 +24,6 @@ resources:
             PersistentStore: 'JdbcFileStore'
 
     JMSSystemResource:
-        ClusterJmsModule:
-            Target: 'cluster-1'
-            SubDeployment:
-                ClusterSubDeployment:
-                    Target: ClusterJmsServer
-            JmsResource:
-              UniformDistributedQueue:
-                testUniformQueue:
-                   SubDeploymentName: ClusterSubDeployment
-                   JNDIName: jms/testUniformQueue
         JdbcJmsModule:
             Target: 'cluster-1'
             SubDeployment:
