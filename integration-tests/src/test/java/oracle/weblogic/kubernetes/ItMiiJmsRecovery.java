@@ -43,7 +43,6 @@ import static oracle.weblogic.kubernetes.assertions.TestAssertions.domainExists;
 import static oracle.weblogic.kubernetes.utils.CommonMiiTestUtils.createDatabaseSecret;
 import static oracle.weblogic.kubernetes.utils.CommonMiiTestUtils.createDomainResourceWithLogHome;
 import static oracle.weblogic.kubernetes.utils.CommonMiiTestUtils.createDomainSecret;
-import static oracle.weblogic.kubernetes.utils.CommonMiiTestUtils.createJobToChangePermissionsOnPvHostPath;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodDoesNotExist;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReadyAndServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.createConfigMapAndVerify;
@@ -159,11 +158,13 @@ class ItMiiJmsRecovery {
             "weblogicenc", domainNamespace),
              String.format("createSecret failed for %s", encryptionSecretName));
 
-    logger.info("Create database secret");
-    final String dbSecretName = domainUid  + "-db-secret";
     cpUrl = "jdbc:oracle:thin:@//" + K8S_NODEPORT_HOST + ":"
                          + dbNodePort + "/devpdb.k8s";
+    cpUrl = "jdbc:oracle:thin:@//10.97.12.16:1521/devpdb.k8s";
     logger.info("ConnectionPool URL = {0}", cpUrl);
+
+    logger.info("Create database secret");
+    final String dbSecretName = domainUid  + "-db-secret";
     assertDoesNotThrow(() -> createDatabaseSecret(dbSecretName,
             "sys as sysdba", "Oradoc_db1", cpUrl, domainNamespace),
             String.format("createSecret failed for %s", dbSecretName));
@@ -179,9 +180,6 @@ class ItMiiJmsRecovery {
     // create PV, PVC for logs/data
     createPV(pvName, domainUid, ItMiiJmsRecovery.class.getSimpleName());
     createPVC(pvName, pvcName, domainUid, domainNamespace);
-
-    // create job to change permissions on PV hostPath
-    createJobToChangePermissionsOnPvHostPath(pvName, pvcName, domainNamespace);
 
     // create the domain CR with a pre-defined configmap
 
