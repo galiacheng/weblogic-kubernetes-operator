@@ -498,7 +498,7 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   private String adjustedHash(V1Pod currentPod) {
     V1Pod recipe = createPodRecipe();
-    addLegacyPrometheusAnnotations(recipe);
+    copyPrometheusAnnotations(recipe, currentPod);
 
     if (isLegacyMiiPod(currentPod)) {
       copyLabel(currentPod, recipe, MODEL_IN_IMAGE_DOMAINZIP_HASH);
@@ -507,12 +507,8 @@ public abstract class PodStepContext extends BasePodStepContext {
     return AnnotationHelper.createHash(recipe);
   }
 
-  private void addLegacyPrometheusAnnotations(V1Pod pod) {
-    AnnotationHelper.annotateForPrometheus(pod.getMetadata(), "/wls-exporter", getMetricsPort());
-  }
-
-  private Integer getMetricsPort() {
-    return getListenPort() != null ? getListenPort() : getSslListenPort();
+  private void copyPrometheusAnnotations(V1Pod pod, V1Pod currentPod) {
+    AnnotationHelper.copyPrometheusAnnotations(currentPod.getMetadata(), pod.getMetadata());
   }
 
   private boolean isLegacyMiiPod(V1Pod currentPod) {

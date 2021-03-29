@@ -7,11 +7,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.util.Yaml;
+import jakarta.validation.constraints.NotNull;
 import org.apache.commons.codec.digest.DigestUtils;
 
 /** Annotates pods, services with details about the Domain instance and checks these annotations. */
@@ -35,6 +37,12 @@ public class AnnotationHelper {
         "prometheus.io/port", "" + httpPort); // should be the ListenPort of the server in the pod
     meta.putAnnotationsItem("prometheus.io/path", applicationContext + "/metrics");
     meta.putAnnotationsItem("prometheus.io/scrape", "true");
+  }
+
+  static void copyPrometheusAnnotations(@NotNull V1ObjectMeta metaFrom, @NotNull V1ObjectMeta metaTo) {
+    Objects.requireNonNull(metaFrom.getAnnotations()).entrySet()
+        .stream().filter(entry -> entry.getKey().startsWith("prometheus.io/"))
+        .forEach(entry -> metaTo.putAnnotationsItem(entry.getKey(), entry.getValue()));
   }
 
   static V1Pod withSha256Hash(V1Pod pod) {
