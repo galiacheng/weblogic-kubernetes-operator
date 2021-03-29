@@ -25,6 +25,7 @@ import oracle.weblogic.kubernetes.utils.ExecResult;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -1000,6 +1001,7 @@ class ItMiiDynamicUpdate {
    * Verify JMS message and connection distribution/load balance after scaling the cluster.
    */
   @Test
+  @Disabled("Disabling to see if it affects the results of testMiiRemoveTarget()")
   @Order(15)
   @DisplayName("Test modification to Dynamic cluster size parameters")
   public void testMiiUpdateDynamicClusterSize() {
