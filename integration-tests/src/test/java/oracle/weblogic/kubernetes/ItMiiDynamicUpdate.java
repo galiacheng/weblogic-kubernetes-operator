@@ -25,6 +25,7 @@ import org.awaitility.core.ConditionFactory;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -72,7 +73,6 @@ import static oracle.weblogic.kubernetes.utils.CommonMiiTestUtils.verifyPodsNotR
 import static oracle.weblogic.kubernetes.utils.CommonPatchTestUtils.patchDomainResourceWithNewReplicaCountAtSpecLevel;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkAppIsRunning;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodDeleted;
-import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodDoesNotExist;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkPodReadyAndServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkServiceExists;
 import static oracle.weblogic.kubernetes.utils.CommonTestUtils.checkSystemResourceConfig;
@@ -205,7 +205,7 @@ class ItMiiDynamicUpdate {
     createDomainResourceWithLogHome(domainUid, domainNamespace,
         MII_BASIC_IMAGE_NAME + ":" + MII_BASIC_IMAGE_TAG,
         adminSecretName, OCIR_SECRET_NAME, encryptionSecretName,
-        replicaCount, pvName, pvcName, "cluster-1", configMapName, dbSecretName, false, true);
+        replicaCount, pvName, pvcName, "cluster-1", configMapName, dbSecretName, true, true);
 
     // wait for the domain to exist
     logger.info("Check for domain custom resource in namespace {0}", domainNamespace);
@@ -995,47 +995,11 @@ class ItMiiDynamicUpdate {
    * and cannot be scaled below MinDynamicClusterSize when allowReplicasBelowMinDynClusterSize is set false.
    * Verify JMS message and connection distribution/load balance after scaling the cluster.
    */
+  @Disabled
   @Test
   @Order(15)
   @DisplayName("Test modification to Dynamic cluster size parameters")
   public void testMiiUpdateDynamicClusterSize() {
-
-    // Scale the cluster by updating the replica count to 5
-    logger.info("[Before Patching] updating the replica count to 5");
-    boolean p1Success = assertDoesNotThrow(() ->
-            scaleCluster(domainUid, domainNamespace, "cluster-1", 5),
-        String.format("Patching replica to 5 failed for domain %s in namespace %s", domainUid, domainNamespace));
-    assertTrue(p1Success,
-        String.format("Patching replica to 5 failed for domain %s in namespace %s", domainUid, domainNamespace));
-
-    // Make sure the cluster can be scaled to replica count 5 as MaxDynamicClusterSize is set to 5
-    checkPodReadyAndServiceExists(managedServerPrefix + "2", domainUid, domainNamespace);
-    checkPodReadyAndServiceExists(managedServerPrefix + "3", domainUid, domainNamespace);
-    checkPodReadyAndServiceExists(managedServerPrefix + "4", domainUid, domainNamespace);
-    checkPodReadyAndServiceExists(managedServerPrefix + "5", domainUid, domainNamespace);
-
-    // Make sure the cluster can be scaled to replica count 1 as MinDynamicClusterSize is set to 1
-    logger.info("[Before Patching] updating the replica count to 1");
-    boolean p11Success = assertDoesNotThrow(() ->
-            scaleCluster(domainUid, domainNamespace, "cluster-1", 1),
-        String.format("replica patching to 1 failed for domain %s in namespace %s", domainUid, domainNamespace));
-    assertTrue(p11Success,
-        String.format("replica patching to 1 failed for domain %s in namespace %s", domainUid, domainNamespace));
-
-    checkPodDeleted(managedServerPrefix + "2", domainUid, domainNamespace);
-    checkPodDeleted(managedServerPrefix + "3", domainUid, domainNamespace);
-    checkPodDeleted(managedServerPrefix + "4", domainUid, domainNamespace);
-    checkPodDeleted(managedServerPrefix + "5", domainUid, domainNamespace);
-
-    // Bring back the cluster to originally configured replica count
-    logger.info("[Before Patching] updating the replica count to 1");
-    boolean p2Success = assertDoesNotThrow(() ->
-            scaleCluster(domainUid, domainNamespace, "cluster-1", replicaCount),
-        String.format("replica pacthing to 1 failed for domain %s in namespace %s", domainUid, domainNamespace));
-    assertTrue(p2Success,
-        String.format("replica patching to 1 failed for domain %s in namespace %s", domainUid, domainNamespace));
-    checkPodReadyAndServiceExists(managedServerPrefix + "1", domainUid, domainNamespace);
-
     // get the creation time of the server pods before patching
     LinkedHashMap<String, DateTime> pods = new LinkedHashMap<>();
     DateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
@@ -1094,24 +1058,6 @@ class ItMiiDynamicUpdate {
         .until(runClientInsidePod(adminServerPodName, domainNamespace,
             "/u01", "JmsTestClient", "t3://" + domainUid + "-cluster-cluster-1:8001", "4", "true"));
 
-    // Since the MinDynamicClusterSize is set to 2 in the config map and allowReplicasBelowMinDynClusterSize is set
-    // false, the replica count cannot go below 2. So during the following scale down operation
-    // only managed-server3 and managed-server4 pod should be removed.
-    logger.info("[After Patching] updating the replica count to 1");
-    boolean p4Success = assertDoesNotThrow(() ->
-            scaleCluster(domainUid, domainNamespace, "cluster-1", 1),
-        String.format("replica patching to 1 failed for domain %s in namespace %s", domainUid, domainNamespace));
-    assertTrue(p4Success,
-        String.format("Cluster replica patching failed for domain %s in namespace %s", domainUid, domainNamespace));
-
-    checkPodReadyAndServiceExists(managedServerPrefix + "2", domainUid, domainNamespace);
-    checkPodDoesNotExist(managedServerPrefix + "3", domainUid, domainNamespace);
-    checkPodDoesNotExist(managedServerPrefix + "4", domainUid, domainNamespace);
-    for (int i = 1; i <= replicaCount; i++) {
-      logger.info("Check managed server service {0} available in namespace {1}",
-          managedServerPrefix + i, domainNamespace);
-      checkServiceExists(managedServerPrefix + i, domainNamespace);
-    }
   }
 
   /**

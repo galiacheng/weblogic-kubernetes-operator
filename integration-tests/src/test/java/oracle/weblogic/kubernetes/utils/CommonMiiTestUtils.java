@@ -57,6 +57,7 @@ import static oracle.weblogic.kubernetes.actions.TestActions.createDomainCustomR
 import static oracle.weblogic.kubernetes.actions.TestActions.createSecret;
 import static oracle.weblogic.kubernetes.actions.TestActions.deleteConfigMap;
 import static oracle.weblogic.kubernetes.actions.TestActions.getJob;
+import static oracle.weblogic.kubernetes.actions.TestActions.getPod;
 import static oracle.weblogic.kubernetes.actions.TestActions.getPodLog;
 import static oracle.weblogic.kubernetes.actions.TestActions.getServiceNodePort;
 import static oracle.weblogic.kubernetes.actions.TestActions.listPods;
@@ -547,7 +548,6 @@ public class CommonMiiTestUtils {
                                            boolean isSecureMode,
                                            String sslChannelName) {
     LoggingFacade logger = getLogger();
-
     int adminServiceNodePort;
     if (isSecureMode) {
       adminServiceNodePort =
@@ -749,6 +749,17 @@ public class CommonMiiTestUtils {
     logger.info("Verifying introspector pod is created, runs and deleted");
     String introspectJobName = getIntrospectJobName(domainUid);
     checkPodExists(introspectJobName, domainUid, domainNamespace);
+
+    String labelSelector = String.format("weblogic.domainUID in (%s)", domainUid);
+    V1Pod introspectorPod = assertDoesNotThrow(() -> getPod(domainNamespace, labelSelector, introspectJobName),
+        "Could not get introspector pod");
+    assertTrue(introspectorPod != null && introspectorPod.getMetadata() != null,
+        "introspector pod or metadata is null");
+    String introspectorLog =  assertDoesNotThrow(() -> getPodLog(introspectorPod.getMetadata().getName(),
+        domainNamespace), "Failed to get introspector pod log");
+    logger.info("Introspector pod log START***********************************");
+    logger.info(introspectorLog);
+    logger.info("Introspector pod log END***********************************");
     checkPodDoesNotExist(introspectJobName, domainUid, domainNamespace);
   }
 
