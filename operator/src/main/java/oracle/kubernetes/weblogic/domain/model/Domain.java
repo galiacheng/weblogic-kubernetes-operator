@@ -6,6 +6,7 @@ package oracle.kubernetes.weblogic.domain.model;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -15,7 +16,6 @@ import java.util.StringTokenizer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
-import javax.validation.Valid;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
@@ -26,8 +26,10 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1SecretReference;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
+import jakarta.validation.Valid;
 import oracle.kubernetes.json.Description;
 import oracle.kubernetes.operator.DomainSourceType;
+import oracle.kubernetes.operator.MIINonDynamicChangesMethod;
 import oracle.kubernetes.operator.ModelInImageDomainType;
 import oracle.kubernetes.operator.OverrideDistributionStrategy;
 import oracle.kubernetes.operator.ProcessingConstants;
@@ -59,7 +61,7 @@ public class Domain implements KubernetesObject {
    */
   public static final String TOKEN_END_MARKER = ")";
 
-  public static final String CLUSTER_SIZE_PADDING_VALIDATION_ENABLED_PARAM = "clusterSizePaddingValidationEnabled";
+  static final String CLUSTER_SIZE_PADDING_VALIDATION_ENABLED_PARAM = "clusterSizePaddingValidationEnabled";
 
   /**
    * The pattern for computing the default shared logs directory.
@@ -267,6 +269,18 @@ public class Domain implements KubernetesObject {
     return spec.getEffectiveConfigurationFactory(apiVersion);
   }
 
+  public MonitoringExporterConfiguration getMonitoringExporterConfiguration() {
+    return spec.getMonitoringExporterConfiguration();
+  }
+
+  public String getMonitoringExporterImage() {
+    return spec.getMonitoringExporterImage();
+  }
+
+  public String getMonitoringExporterImagePullPolicy() {
+    return spec.getMonitoringExporterImagePullPolicy();
+  }
+
   /**
    * Returns the specification applicable to a particular server/cluster combination.
    *
@@ -340,6 +354,19 @@ public class Domain implements KubernetesObject {
 
   public int getMaxConcurrentShutdown(String clusterName) {
     return getEffectiveConfigurationFactory().getMaxConcurrentShutdown(clusterName);
+  }
+
+  /**
+   * Return the MII domain.spec.configuration.model.onlineUpdate.nonDynamicChangesMethod
+   * @return {@link MIINonDynamicChangesMethod}
+   */
+  public MIINonDynamicChangesMethod getMiiNonDynamicChangesMethod() {
+    return Optional.of(getSpec())
+        .map(DomainSpec::getConfiguration)
+        .map(Configuration::getModel)
+        .map(Model::getOnlineUpdate)
+        .map(OnlineUpdate::getOnNonDynamicChanges)
+        .orElse(MIINonDynamicChangesMethod.CommitUpdateOnly);
   }
 
   /**
@@ -490,7 +517,7 @@ public class Domain implements KubernetesObject {
     return isDomainSourceTypeFromModel();
   }
 
-  public boolean isDomainSourceTypeFromModel() {
+  private boolean isDomainSourceTypeFromModel() {
     return getDomainHomeSourceType() == DomainSourceType.FromModel;
   }
 
@@ -588,7 +615,7 @@ public class Domain implements KubernetesObject {
   }
 
   private Optional<WDTTimeouts> getWDTOnlineUpdateTimeouts() {
-    return Optional.ofNullable(spec)
+    return Optional.of(spec)
         .map(DomainSpec::getConfiguration)
         .map(Configuration::getModel)
         .map(Model::getOnlineUpdate)
@@ -832,7 +859,7 @@ public class Domain implements KubernetesObject {
      * Gets the configured boolean for enabling cluster size padding validation.
      * @return boolean enabled
      */
-    public boolean isClusterSizePaddingValidationEnabled() {
+    boolean isClusterSizePaddingValidationEnabled() {
       return "true".equalsIgnoreCase(getClusterSizePaddingValidationEnabledParameter());
     }
 
@@ -853,7 +880,7 @@ public class Domain implements KubernetesObject {
       }
     }
 
-    public List<String> getAdditionalValidationFailures(V1PodSpec podSpec) {
+    List<String> getAdditionalValidationFailures(V1PodSpec podSpec) {
       addInvalidMountPathsForPodSpec(podSpec);
       return failures;
     }
@@ -916,19 +943,25 @@ public class Domain implements KubernetesObject {
     }
 
     private boolean skipValidation(String mountPath) {
-      List<V1EnvVar> envVars = spec.getEnv();
-      Set<String> varNames = envVars.stream().map(V1EnvVar::getName).collect(toSet());
       StringTokenizer nameList = new StringTokenizer(mountPath, TOKEN_START_MARKER);
       if (!nameList.hasMoreElements()) {
         return false;
       }
       while (nameList.hasMoreElements()) {
         String token = nameList.nextToken();
-        if (noMatchingEnvVarName(varNames, token)) {
+        if (noMatchingEnvVarName(getEnvNames(), token)) {
           return false;
         }
       }
       return true;
+    }
+
+    @Nonnull
+    private Set<String> getEnvNames() {
+      return Optional.ofNullable(spec.getEnv()).stream()
+            .flatMap(Collection::stream)
+            .map(V1EnvVar::getName)
+            .collect(toSet());
     }
 
     private boolean noMatchingEnvVarName(Set<String> varNames, String token) {
@@ -999,7 +1032,7 @@ public class Domain implements KubernetesObject {
           .forEach(s -> checkReservedEnvironmentVariables(s, "spec.clusters[" + s.getClusterName() + "]"));
     }
 
-    public List<String> getAfterIntrospectValidationFailures(Packet packet) {
+    List<String> getAfterIntrospectValidationFailures(Packet packet) {
       verifyGeneratedResourceNames((WlsDomainConfig) packet.get(ProcessingConstants.DOMAIN_TOPOLOGY));
       return failures;
     }

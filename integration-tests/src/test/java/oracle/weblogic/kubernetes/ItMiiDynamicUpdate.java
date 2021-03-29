@@ -6,6 +6,7 @@ package oracle.weblogic.kubernetes;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -22,7 +23,6 @@ import oracle.weblogic.kubernetes.annotations.Namespaces;
 import oracle.weblogic.kubernetes.logging.LoggingFacade;
 import oracle.weblogic.kubernetes.utils.ExecResult;
 import org.awaitility.core.ConditionFactory;
-import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -283,10 +283,10 @@ class ItMiiDynamicUpdate {
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
 
-    LinkedHashMap<String, DateTime> pods = new LinkedHashMap<>();
+    LinkedHashMap<String, OffsetDateTime> pods = new LinkedHashMap<>();
 
     // get the creation time of the admin server pod before patching
-    DateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
+    OffsetDateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
     pods.put(adminServerPodName, getPodCreationTime(domainNamespace, adminServerPodName));
     // get the creation time of the managed server pods before patching
     for (int i = 1; i <= replicaCount; i++) {
@@ -331,10 +331,10 @@ class ItMiiDynamicUpdate {
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
 
-    LinkedHashMap<String, DateTime> pods = new LinkedHashMap<>();
+    LinkedHashMap<String, OffsetDateTime> pods = new LinkedHashMap<>();
 
     // get the creation time of the admin server pod before patching
-    DateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
+    OffsetDateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
     pods.put(adminServerPodName, getPodCreationTime(domainNamespace, adminServerPodName));
     // get the creation time of the managed server pods before patching
     for (int i = 1; i <= replicaCount; i++) {
@@ -377,10 +377,10 @@ class ItMiiDynamicUpdate {
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
 
-    LinkedHashMap<String, DateTime> pods = new LinkedHashMap<>();
+    LinkedHashMap<String, OffsetDateTime> pods = new LinkedHashMap<>();
 
     // get the creation time of the admin server pod before patching
-    DateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
+    OffsetDateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
     pods.put(adminServerPodName, getPodCreationTime(domainNamespace, adminServerPodName));
     // get the creation time of the managed server pods before patching
     for (int i = 1; i <= replicaCount; i++) {
@@ -436,10 +436,10 @@ class ItMiiDynamicUpdate {
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
 
-    LinkedHashMap<String, DateTime> pods = new LinkedHashMap<>();
+    LinkedHashMap<String, OffsetDateTime> pods = new LinkedHashMap<>();
 
     // get the creation time of the admin server pod before patching
-    DateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
+    OffsetDateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
     pods.put(adminServerPodName, getPodCreationTime(domainNamespace, adminServerPodName));
     // get the creation time of the managed server pods before patching
     for (int i = 1; i <= replicaCount; i++) {
@@ -506,7 +506,7 @@ class ItMiiDynamicUpdate {
 
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
-    LinkedHashMap<String, DateTime> pods = addDataSourceAndVerify(false);
+    LinkedHashMap<String, OffsetDateTime> pods = addDataSourceAndVerify(false);
 
     // Replace contents of an existing configMap with cm config and application target as
     // there are issues with removing them, https://jira.oraclecorp.com/jira/browse/WDT-535
@@ -580,7 +580,7 @@ class ItMiiDynamicUpdate {
 
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
-    LinkedHashMap<String, DateTime> pods = addDataSourceAndVerify(false);
+    LinkedHashMap<String, OffsetDateTime> pods = addDataSourceAndVerify(false);
 
     // check the application myear is deployed using REST API
     int adminServiceNodePort
@@ -657,7 +657,7 @@ class ItMiiDynamicUpdate {
 
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
-    LinkedHashMap<String, DateTime> pods = addDataSourceAndVerify(false);
+    LinkedHashMap<String, OffsetDateTime> pods = addDataSourceAndVerify(false);
 
     // write sparse yaml to delete datasource to file
     Path pathToDeleteDSYaml = Paths.get(WORK_DIR + "/deleteds.yaml");
@@ -737,8 +737,9 @@ class ItMiiDynamicUpdate {
     // Patch a running domain with introspectVersion.
     patchDomainResourceWithNewIntrospectVersion(domainUid, domainNamespace);
 
-    // Verifying introspector pod is created, runs and deleted
-    verifyIntrospectorRuns(domainUid, domainNamespace);
+    // Verifying introspector pod is deleted
+    logger.info("Verifying introspector pod is deleted");
+    checkPodDoesNotExist(getIntrospectJobName(domainUid), domainUid, domainNamespace);
   }
 
   /**
@@ -785,8 +786,9 @@ class ItMiiDynamicUpdate {
     // Patch a running domain with introspectVersion.
     patchDomainResourceWithNewIntrospectVersion(domainUid, domainNamespace);
 
-    // Verifying introspector pod is created, runs and deleted
-    verifyIntrospectorRuns(domainUid, domainNamespace);
+    // Verifying introspector pod is deleted
+    logger.info("Verifying introspector pod is deleted");
+    checkPodDoesNotExist(getIntrospectJobName(domainUid), domainUid, domainNamespace);
   }
 
   /**
@@ -829,8 +831,9 @@ class ItMiiDynamicUpdate {
     // Patch a running domain with introspectVersion.
     patchDomainResourceWithNewIntrospectVersion(domainUid, domainNamespace);
 
-    // Verifying introspector pod is created, runs and deleted
-    verifyIntrospectorRuns(domainUid, domainNamespace);
+    // Verifying introspector pod is deleted
+    logger.info("Verifying introspector pod is deleted");
+    checkPodDoesNotExist(getIntrospectJobName(domainUid), domainUid, domainNamespace);
   }
 
   /**
@@ -878,8 +881,9 @@ class ItMiiDynamicUpdate {
     // Patch a running domain with introspectVersion.
     patchDomainResourceWithNewIntrospectVersion(domainUid, domainNamespace);
 
-    // Verifying introspector pod is created, runs and deleted
-    verifyIntrospectorRuns(domainUid, domainNamespace);
+    // Verifying introspector pod is deleted
+    logger.info("Verifying introspector pod is deleted");
+    checkPodDoesNotExist(getIntrospectJobName(domainUid), domainUid, domainNamespace);
   }
 
   /**
@@ -903,7 +907,7 @@ class ItMiiDynamicUpdate {
 
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
-    LinkedHashMap<String, DateTime> pods = addDataSourceAndVerify(false);
+    LinkedHashMap<String, OffsetDateTime> pods = addDataSourceAndVerify(false);
 
     // write sparse yaml to change ScatteredReadsEnabled for adminserver
     Path pathToChangReadsYaml = Paths.get(WORK_DIR + "/changereads.yaml");
@@ -999,8 +1003,8 @@ class ItMiiDynamicUpdate {
   @DisplayName("Test modification to Dynamic cluster size parameters")
   public void testMiiUpdateDynamicClusterSize() {
     // get the creation time of the server pods before patching
-    LinkedHashMap<String, DateTime> pods = new LinkedHashMap<>();
-    DateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
+    LinkedHashMap<String, OffsetDateTime> pods = new LinkedHashMap<>();
+    OffsetDateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
     pods.put(adminServerPodName, adminPodCreationTime);
     for (int i = 1; i <= replicaCount; i++) {
       pods.put(managedServerPrefix + i, getPodCreationTime(domainNamespace, managedServerPrefix + i));
@@ -1073,10 +1077,10 @@ class ItMiiDynamicUpdate {
     // This test uses the WebLogic domain created in BeforeAll method
     // BeforeEach method ensures that the server pods are running
 
-    LinkedHashMap<String, DateTime> pods = new LinkedHashMap<>();
+    LinkedHashMap<String, OffsetDateTime> pods = new LinkedHashMap<>();
 
     // get the creation time of the admin server pod before patching
-    DateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
+    OffsetDateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
     pods.put(adminServerPodName, getPodCreationTime(domainNamespace, adminServerPodName));
     // get the creation time of the managed server pods before patching
     for (int i = 1; i <= replicaCount; i++) {
@@ -1423,12 +1427,12 @@ class ItMiiDynamicUpdate {
     return false;
   }
 
-  private LinkedHashMap<String, DateTime> addDataSourceAndVerify(boolean introspectorRuns) {
+  private LinkedHashMap<String, OffsetDateTime> addDataSourceAndVerify(boolean introspectorRuns) {
 
-    LinkedHashMap<String, DateTime> pods = new LinkedHashMap<>();
+    LinkedHashMap<String, OffsetDateTime> pods = new LinkedHashMap<>();
 
     // get the creation time of the admin server pod before patching
-    DateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
+    OffsetDateTime adminPodCreationTime = getPodCreationTime(domainNamespace, adminServerPodName);
     pods.put(adminServerPodName, getPodCreationTime(domainNamespace, adminServerPodName));
     // get the creation time of the managed server pods before patching
     for (int i = 1; i <= replicaCount; i++) {

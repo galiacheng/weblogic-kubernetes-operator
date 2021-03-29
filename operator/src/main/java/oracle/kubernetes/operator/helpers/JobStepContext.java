@@ -31,6 +31,7 @@ import oracle.kubernetes.operator.calls.CallResponse;
 import oracle.kubernetes.operator.calls.UnrecoverableErrorBuilder;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
+import oracle.kubernetes.operator.utils.ChecksumUtils;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
@@ -44,6 +45,10 @@ public abstract class JobStepContext extends BasePodStepContext {
   private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
   private static final String WEBLOGIC_OPERATOR_SCRIPTS_INTROSPECT_DOMAIN_SH =
         "/weblogic-operator/scripts/introspectDomain.sh";
+  private static final int MAX_ALLOWED_VOLUME_NAME_LENGTH = 63;
+  private static final String VOLUME_NAME_SUFFIX = "-volume";
+  private static final String CONFIGMAP_TYPE = "cm";
+  private static final String SECRET_TYPE = "st";
   private V1Job jobModel;
 
   JobStepContext(Packet packet) {
@@ -64,7 +69,7 @@ public abstract class JobStepContext extends BasePodStepContext {
 
   // ------------------------ data methods ----------------------------
 
-  protected V1Job getJobModel() {
+  V1Job getJobModel() {
     return jobModel;
   }
 
@@ -151,24 +156,24 @@ public abstract class JobStepContext extends BasePodStepContext {
     return NODEMGR_HOME;
   }
 
-  protected String getDataHome() {
+  String getDataHome() {
     String dataHome = getDomain().getDataHome();
     return dataHome != null && !dataHome.isEmpty() ? dataHome + File.separator + getDomainUid() : null;
   }
 
-  protected String getModelHome() {
+  String getModelHome() {
     return getDomain().getModelHome();
   }
 
-  protected String getWdtDomainType() {
+  String getWdtDomainType() {
     return getDomain().getWdtDomainType();
   }
 
-  protected DomainSourceType getDomainHomeSourceType() {
+  DomainSourceType getDomainHomeSourceType() {
     return getDomain().getDomainHomeSourceType();
   }
 
-  public boolean isUseOnlineUpdate() {
+  boolean isUseOnlineUpdate() {
     return getDomain().isUseOnlineUpdate();
   }
 
@@ -176,7 +181,7 @@ public abstract class JobStepContext extends BasePodStepContext {
     return getDomain().isIstioEnabled();
   }
 
-  public int getIstioReadinessPort() {
+  int getIstioReadinessPort() {
     return getDomain().getIstioReadinessPort();
   }
 
@@ -211,7 +216,7 @@ public abstract class JobStepContext extends BasePodStepContext {
 
   // ---------------------- model methods ------------------------------
 
-  String getWdtConfigMap() {
+  private String getWdtConfigMap() {
     return emptyToNull(getDomain().getWdtConfigMap());
   }
 
@@ -225,7 +230,7 @@ public abstract class JobStepContext extends BasePodStepContext {
           .spec(createJobSpec(TuningParameters.getInstance()));
   }
 
-  V1ObjectMeta createMetadata() {
+  private V1ObjectMeta createMetadata() {
     return updateForOwnerReference(
         new V1ObjectMeta()
           .name(getJobName())
@@ -313,14 +318,14 @@ public abstract class JobStepContext extends BasePodStepContext {
   private void addConfigOverrideSecretVolume(V1PodSpec podSpec, String secretName) {
     podSpec.addVolumesItem(
           new V1Volume()
-                .name(secretName + "-volume")
+                .name(getVolumeName(secretName, SECRET_TYPE))
                 .secret(getOverrideSecretVolumeSource(secretName)));
   }
 
   private void addConfigOverrideVolume(V1PodSpec podSpec, String configOverrides) {
     podSpec.addVolumesItem(
           new V1Volume()
-                .name(configOverrides + "-volume")
+                .name(getVolumeName(configOverrides, CONFIGMAP_TYPE))
                 .configMap(getOverridesVolumeSource(configOverrides)));
   }
 
@@ -331,7 +336,7 @@ public abstract class JobStepContext extends BasePodStepContext {
   private void addWdtConfigMapVolume(V1PodSpec podSpec, String configMapName) {
     podSpec.addVolumesItem(
         new V1Volume()
-            .name(configMapName + "-volume")
+            .name(getVolumeName(configMapName, CONFIGMAP_TYPE))
             .configMap(getWdtConfigMapVolumeSource(configMapName)));
   }
 
@@ -342,8 +347,8 @@ public abstract class JobStepContext extends BasePodStepContext {
             .secret(getRuntimeEncryptionSecretVolume()));
   }
 
-  protected V1Container createContainer(TuningParameters tuningParameters) {
-    V1Container container = super.createContainer(tuningParameters)
+  protected V1Container createPrimaryContainer(TuningParameters tuningParameters) {
+    V1Container container = super.createPrimaryContainer(tuningParameters)
         .addVolumeMountsItem(readOnlyVolumeMount(SECRETS_VOLUME, SECRETS_MOUNT_PATH))
         .addVolumeMountsItem(readOnlyVolumeMount(SCRIPTS_VOLUME, SCRIPTS_MOUNTS_PATH))
         .addVolumeMountsItem(
@@ -365,20 +370,20 @@ public abstract class JobStepContext extends BasePodStepContext {
 
     if (getConfigOverrides() != null && getConfigOverrides().length() > 0) {
       container.addVolumeMountsItem(
-            readOnlyVolumeMount(getConfigOverrides() + "-volume", OVERRIDES_CM_MOUNT_PATH));
+            readOnlyVolumeMount(getVolumeName(getConfigOverrides(), CONFIGMAP_TYPE), OVERRIDES_CM_MOUNT_PATH));
     }
 
     List<String> configOverrideSecrets = getConfigOverrideSecrets();
     for (String secretName : configOverrideSecrets) {
       container.addVolumeMountsItem(
             readOnlyVolumeMount(
-                  secretName + "-volume", OVERRIDE_SECRETS_MOUNT_PATH + '/' + secretName));
+                  getVolumeName(secretName, SECRET_TYPE), OVERRIDE_SECRETS_MOUNT_PATH + '/' + secretName));
     }
 
     if (isSourceWdt()) {
       if (getWdtConfigMap() != null) {
         container.addVolumeMountsItem(
-            readOnlyVolumeMount(getWdtConfigMap() + "-volume", WDTCONFIGMAP_MOUNT_PATH));
+            readOnlyVolumeMount(getVolumeName(getWdtConfigMap(), CONFIGMAP_TYPE), WDTCONFIGMAP_MOUNT_PATH));
       }
       container.addVolumeMountsItem(
           readOnlyVolumeMount(RUNTIME_ENCRYPTION_SECRET_VOLUME,
@@ -387,6 +392,22 @@ public abstract class JobStepContext extends BasePodStepContext {
     }
 
     return container;
+  }
+
+  private String getVolumeName(String resourceName, String type) {
+    return getName(resourceName, type);
+  }
+
+  private String getName(String resourceName, String type) {
+    return resourceName.length() > (MAX_ALLOWED_VOLUME_NAME_LENGTH - VOLUME_NAME_SUFFIX.length())
+            ? getShortName(resourceName, type)
+            : resourceName + VOLUME_NAME_SUFFIX;
+  }
+
+  private String getShortName(String resourceName, String type) {
+    String volumeSuffix = VOLUME_NAME_SUFFIX + "-" + type + "-"
+            + Optional.ofNullable(ChecksumUtils.getMD5Hash(resourceName)).orElse("");
+    return resourceName.substring(0, MAX_ALLOWED_VOLUME_NAME_LENGTH - volumeSuffix.length()) + volumeSuffix;
   }
 
   protected String getContainerName() {
@@ -449,7 +470,7 @@ public abstract class JobStepContext extends BasePodStepContext {
           .defaultMode(ALL_READ_AND_EXECUTE);
   }
 
-  protected V1ConfigMapVolumeSource getIntrospectMD5VolumeSource() {
+  private V1ConfigMapVolumeSource getIntrospectMD5VolumeSource() {
     V1ConfigMapVolumeSource result =
         new V1ConfigMapVolumeSource()
             .name(getDomainUid() + IntrospectorConfigMapConstants.INTROSPECTOR_CONFIG_MAP_NAME_SUFFIX)
@@ -495,7 +516,7 @@ public abstract class JobStepContext extends BasePodStepContext {
     }
   }
 
-  protected V1ConfigMapVolumeSource getWdtConfigMapVolumeSource(String name) {
+  private V1ConfigMapVolumeSource getWdtConfigMapVolumeSource(String name) {
     return new V1ConfigMapVolumeSource().name(name).defaultMode(ALL_READ_AND_EXECUTE);
   }
 

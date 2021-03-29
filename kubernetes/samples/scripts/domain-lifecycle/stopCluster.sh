@@ -21,7 +21,7 @@ function usage() {
  
     $(basename $0) -c mycluster [-n mynamespace] [-d mydomainuid] [-m kubecli]
   
-    -c <cluster-name>   : Cluster name parameter is required.
+    -c <cluster-name>   : Cluster name (required parameter).
 
     -d <domain_uid>     : Domain unique-id. Default is 'sample-domain1'.
 
@@ -75,7 +75,6 @@ function initialize {
 
   validateKubernetesCliAvailable
   validateJqAvailable
-  validateYqAvailable
 
   if [ -z "${clusterName}" ]; then
     validationError "Please specify cluster name using '-c' parameter e.g. '-c cluster-1'."

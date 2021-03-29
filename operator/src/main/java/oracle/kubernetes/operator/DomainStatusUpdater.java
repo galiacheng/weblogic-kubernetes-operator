@@ -16,13 +16,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
-import javax.json.Json;
-import javax.json.JsonPatchBuilder;
 
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodSpec;
+import jakarta.json.Json;
+import jakarta.json.JsonPatchBuilder;
 import oracle.kubernetes.operator.calls.CallResponse;
 import oracle.kubernetes.operator.calls.FailureStatusSource;
 import oracle.kubernetes.operator.calls.UnrecoverableErrorBuilder;
@@ -46,17 +46,24 @@ import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.weblogic.domain.model.ClusterStatus;
+import oracle.kubernetes.weblogic.domain.model.Configuration;
 import oracle.kubernetes.weblogic.domain.model.Domain;
 import oracle.kubernetes.weblogic.domain.model.DomainCondition;
+import oracle.kubernetes.weblogic.domain.model.DomainSpec;
 import oracle.kubernetes.weblogic.domain.model.DomainStatus;
+import oracle.kubernetes.weblogic.domain.model.Model;
+import oracle.kubernetes.weblogic.domain.model.OnlineUpdate;
 import oracle.kubernetes.weblogic.domain.model.ServerHealth;
 import oracle.kubernetes.weblogic.domain.model.ServerStatus;
 
 import static oracle.kubernetes.operator.LabelConstants.CLUSTERNAME_LABEL;
+import static oracle.kubernetes.operator.MIINonDynamicChangesMethod.CommitUpdateOnly;
 import static oracle.kubernetes.operator.ProcessingConstants.DOMAIN_TOPOLOGY;
 import static oracle.kubernetes.operator.ProcessingConstants.EXCEEDED_INTROSPECTOR_MAX_RETRY_COUNT_ERROR_MSG;
 import static oracle.kubernetes.operator.ProcessingConstants.FATAL_INTROSPECTOR_ERROR;
 import static oracle.kubernetes.operator.ProcessingConstants.FATAL_INTROSPECTOR_ERROR_MSG;
+import static oracle.kubernetes.operator.ProcessingConstants.MII_DYNAMIC_UPDATE;
+import static oracle.kubernetes.operator.ProcessingConstants.MII_DYNAMIC_UPDATE_RESTART_REQUIRED;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_HEALTH_MAP;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_STATE_MAP;
 import static oracle.kubernetes.operator.WebLogicConstants.RUNNING_STATE;
@@ -274,24 +281,22 @@ public class DomainStatusUpdater {
       DomainStatus newStatus = context.getNewStatus();
 
       return context.isStatusUnchanged(newStatus)
-            ? doNext(packet)
-            : doNext(createAbortedEventStepIfNeeded(
-                newStatus, context.getStatus(), createDomainStatusReplaceStep(context, newStatus)),
-                packet);
+          ? doNext(packet)
+          : doNext(createAbortedEventStepIfNeeded(
+              newStatus, context.getStatus(), createDomainStatusReplaceStep(context, newStatus)),
+          packet);
     }
 
     private Step createAbortedEventStepIfNeeded(DomainStatus newStatus, DomainStatus oldStatus, Step next) {
       if (hasJustExceededMaxRetryCount(newStatus, oldStatus)) {
-        return Step.chain(next,
-            EventHelper.createEventStep(
+        return Step.chain(EventHelper.createEventStep(
                 new EventData(DOMAIN_PROCESSING_ABORTED)
-                    .message(EXCEEDED_INTROSPECTOR_MAX_RETRY_COUNT_ERROR_MSG)));
+                    .message(EXCEEDED_INTROSPECTOR_MAX_RETRY_COUNT_ERROR_MSG)), next);
       }
       if (hasJustGotFatalIntrospectorError(newStatus, oldStatus)) {
-        return Step.chain(next,
-            EventHelper.createEventStep(
+        return Step.chain(EventHelper.createEventStep(
                 new EventData(DOMAIN_PROCESSING_ABORTED)
-                    .message(FATAL_INTROSPECTOR_ERROR_MSG + newStatus.getMessage())));
+                    .message(FATAL_INTROSPECTOR_ERROR_MSG + newStatus.getMessage())), next);
       }
       return next;
     }
@@ -395,28 +400,50 @@ public class DomainStatusUpdater {
     DomainStatus getNewStatus() {
       DomainStatus newStatus = cloneStatus();
       modifyStatus(newStatus);
-      String existingError = Optional.ofNullable(info)
-          .map(DomainPresenceInfo::getDomain)
-          .map(Domain::getStatus)
-          .map(DomainStatus::getMessage)
-          .orElse(null);
-
 
       if (newStatus.getMessage() == null) {
-        newStatus.setMessage(info.getValidationWarningsAsString());
-        if (existingError != null) {
-          if (hasBackOffLimitCondition()) {
-            newStatus.incrementIntrospectJobFailureCount();
-          }
-        }
+        newStatus.setMessage(
+            Optional.ofNullable(info).map(DomainPresenceInfo::getValidationWarningsAsString).orElse(null));
       }
+      if (shouldUpdateFailureCount(newStatus)) {
+        newStatus.incrementIntrospectJobFailureCount();
+      }
+
       return newStatus;
     }
 
-    private boolean hasBackOffLimitCondition() {
-      List<DomainCondition> domainConditions = Optional.ofNullable(info)
+    private String getExistingStatusMessage() {
+      return Optional.ofNullable(info)
+              .map(DomainPresenceInfo::getDomain)
+              .map(Domain::getStatus)
+              .map(DomainStatus::getMessage)
+              .orElse(null);
+    }
+
+    private DomainCondition getProgressingCondition() {
+      return Optional.ofNullable(info)
           .map(DomainPresenceInfo::getDomain)
           .map(Domain::getStatus)
+          .map(this::getProgressingCondition).orElse(null);
+    }
+
+    private DomainCondition getProgressingCondition(DomainStatus status) {
+      return Optional.ofNullable(status)
+          .map(s -> s.getConditionWithType(Progressing)).orElse(null);
+    }
+
+    private boolean shouldUpdateFailureCount(DomainStatus newStatus) {
+      return transitFromProgressing(newStatus)
+          && getExistingStatusMessage() == null
+          && isBackoffLimitExceeded(newStatus);
+    }
+
+    private boolean transitFromProgressing(DomainStatus newStatus) {
+      return getProgressingCondition() != null && getProgressingCondition(newStatus) == null;
+    }
+
+    private boolean isBackoffLimitExceeded(DomainStatus newStatus) {
+      List<DomainCondition> domainConditions = Optional.of(newStatus)
           .map(DomainStatus::getConditions)
           .orElse(Collections.emptyList());
 
@@ -490,9 +517,11 @@ public class DomainStatusUpdater {
       private final WlsDomainConfig config;
       private final Map<String, String> serverState;
       private final Map<String, ServerHealth> serverHealth;
+      private final Packet packet;
 
       StatusUpdateContext(Packet packet, StatusUpdateStep statusUpdateStep) {
         super(packet, statusUpdateStep);
+        this.packet = packet;
         config = packet.getValue(DOMAIN_TOPOLOGY);
         serverState = packet.getValue(SERVER_STATE_MAP);
         serverHealth = packet.getValue(SERVER_HEALTH_MAP);
@@ -523,6 +552,54 @@ public class DomainStatusUpdater {
                 .withReason(MANAGED_SERVERS_STARTING_PROGRESS_REASON));
         }
 
+        if (miiNondynamicRestartRequired() && isCommitUpdateOnly()) {
+          setOnlineUpdateNeedRestartCondition(status);
+        }
+
+      }
+
+      private boolean miiNondynamicRestartRequired() {
+        return MII_DYNAMIC_UPDATE_RESTART_REQUIRED.equals(packet.get(MII_DYNAMIC_UPDATE));
+      }
+
+      private boolean isCommitUpdateOnly() {
+        return getMiiNonDynamicChangesMethod() == CommitUpdateOnly;
+      }
+
+      private MIINonDynamicChangesMethod getMiiNonDynamicChangesMethod() {
+        return DomainPresenceInfo.fromPacket(packet)
+            .map(DomainPresenceInfo::getDomain)
+            .map(Domain::getSpec)
+            .map(DomainSpec::getConfiguration)
+            .map(Configuration::getModel)
+            .map(Model::getOnlineUpdate)
+            .map(OnlineUpdate::getOnNonDynamicChanges)
+            .orElse(MIINonDynamicChangesMethod.CommitUpdateOnly);
+      }
+
+      private void setOnlineUpdateNeedRestartCondition(DomainStatus status) {
+        String dynamicUpdateRollBackFile = Optional.ofNullable((String)packet.get(
+            ProcessingConstants.MII_DYNAMIC_UPDATE_WDTROLLBACKFILE))
+            .orElse("");
+        String message = String.format("%s\n%s",
+            LOGGER.formatMessage(MessageKeys.MII_DOMAIN_UPDATED_POD_RESTART_REQUIRED), dynamicUpdateRollBackFile);
+        updateDomainConditions(status, message);
+      }
+
+      private void updateDomainConditions(DomainStatus status, String message) {
+        String introspectVersion = DomainPresenceInfo.fromPacket(packet)
+            .map(DomainPresenceInfo::getDomain)
+            .map(Domain::getSpec)
+            .map(DomainSpec::getIntrospectVersion)
+            .orElse("");
+
+        DomainCondition onlineUpdateCondition = new DomainCondition(ConfigChangesPendingRestart)
+            .withMessage(message)
+            .withReason("Online update applied, introspectVersion updated to " + introspectVersion)
+            .withStatus("True");
+
+        status.removeConditionIf(c -> c.getType() == ConfigChangesPendingRestart);
+        status.addCondition(onlineUpdateCondition);
       }
 
       private boolean stillHasPodPendingRestart(DomainStatus status) {
@@ -565,7 +642,7 @@ public class DomainStatusUpdater {
       }
 
       private boolean shouldBeRunning(ServerStartupInfo startupInfo) {
-        return !startupInfo.isServiceOnly() && RUNNING_STATE.equals(startupInfo.getDesiredState());
+        return startupInfo.isNotServiceOnly() && RUNNING_STATE.equals(startupInfo.getDesiredState());
       }
 
       private boolean isNotRunning(@Nonnull String serverName) {
@@ -615,7 +692,7 @@ public class DomainStatusUpdater {
       private boolean shouldStart(final String serverName) {
         return getServerStartupInfos()
             .filter(s -> Objects.equals(serverName, s.getServerName()))
-            .anyMatch(s -> !s.isServiceOnly());
+            .anyMatch(ServerStartupInfo::isNotServiceOnly);
       }
 
       Integer getReplicaSetting() {
@@ -651,9 +728,11 @@ public class DomainStatusUpdater {
       private ClusterStatus createClusterStatus(String clusterName) {
         return new ClusterStatus()
             .withClusterName(clusterName)
-            .withReplicas(Optional.ofNullable(getClusterCounts().get(clusterName)).map(Long::intValue).orElse(null))
+            .withReplicas(Optional.ofNullable(getClusterCounts().get(clusterName))
+                .map(Long::intValue).orElse(null))
             .withReadyReplicas(
-                Optional.ofNullable(getClusterCounts(true).get(clusterName)).map(Long::intValue).orElse(null))
+                Optional.ofNullable(getClusterCounts(true)
+                    .get(clusterName)).map(Long::intValue).orElse(null))
             .withMaximumReplicas(getClusterMaximumSize(clusterName))
             .withMinimumReplicas(getClusterMinimumSize(clusterName))
             .withReplicasGoal(getClusterSizeGoal(clusterName));
