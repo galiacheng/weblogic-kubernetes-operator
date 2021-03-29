@@ -25,7 +25,6 @@ import org.awaitility.core.ConditionFactory;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -995,7 +994,6 @@ class ItMiiDynamicUpdate {
    * and cannot be scaled below MinDynamicClusterSize when allowReplicasBelowMinDynClusterSize is set false.
    * Verify JMS message and connection distribution/load balance after scaling the cluster.
    */
-  @Disabled
   @Test
   @Order(15)
   @DisplayName("Test modification to Dynamic cluster size parameters")
