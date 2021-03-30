@@ -991,6 +991,10 @@ class ItMiiDynamicUpdate {
         "Couldn't check pod label");
     logger.info("Verified pod label");
 
+    // check that the domain status condition type "ConfigChangesPendingRestart" is removed
+    logger.info("Verifying the domain status condition ConfigChangesPendingRestart is removed");
+    assertFalse(verifyDomainStatusCondition("ConfigChangesPendingRestart",
+        expectedMsgForCommitUpdateOnly), "Domain status condition ConfigChangesPendingRestart is not removed");
   }
 
   /**
