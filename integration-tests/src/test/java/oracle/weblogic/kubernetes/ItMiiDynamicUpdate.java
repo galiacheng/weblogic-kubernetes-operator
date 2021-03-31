@@ -1019,7 +1019,8 @@ class ItMiiDynamicUpdate {
     // after the cluster is scaled.
     replaceConfigMapWithModelFiles(configMapName, domainUid, domainNamespace,
         Arrays.asList(MODEL_DIR + "/model.config.wm.yaml", pathToAddClusterYaml.toString(),
-            MODEL_DIR + "/model.jdbc2.yaml", MODEL_DIR + "/model.cluster.size.yaml"), withStandardRetryPolicy);
+            MODEL_DIR + "/model.jdbc2.updatejdbcdriverparams.yaml", MODEL_DIR + "/model.cluster.size.yaml"),
+        withStandardRetryPolicy);
 
     // Patch a running domain with introspectVersion.
     String introspectVersion = patchDomainResourceWithNewIntrospectVersion(domainUid, domainNamespace);
