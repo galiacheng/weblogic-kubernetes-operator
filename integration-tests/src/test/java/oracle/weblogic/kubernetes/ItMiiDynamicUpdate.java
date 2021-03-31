@@ -1416,6 +1416,7 @@ class ItMiiDynamicUpdate {
                 condition.getRemainingTimeInMS()))
         .until(() -> {
           Domain miidomain = getDomainCustomResource(domainUid, domainNamespace);
+          logger.info("Domain status " + miidomain.getStatus());
           if ((miidomain != null) && (miidomain.getStatus() != null)) {
             for (DomainCondition domainCondition : miidomain.getStatus().getConditions()) {
               logger.info("Condition Type =" + domainCondition.getType());
@@ -1474,6 +1475,11 @@ class ItMiiDynamicUpdate {
     // get the creation time of the managed server pods before patching
     for (int i = 1; i <= replicaCount; i++) {
       pods.put(managedServerPrefix + i, getPodCreationTime(domainNamespace, managedServerPrefix + i));
+    }
+    // get the creation time of the managed server pods for cluster2 before patching
+    for (int i = 1; i <= replicaCount; i++) {
+      pods.put(domainUid + "-dynamic-server" + i, getPodCreationTime(domainNamespace,
+          domainUid + "-dynamic-server" + i));
     }
 
     // Replace contents of an existing configMap with cm config and application target as
