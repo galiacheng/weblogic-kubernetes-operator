@@ -993,8 +993,8 @@ class ItMiiDynamicUpdate {
 
     // check that the domain status condition type "ConfigChangesPendingRestart" is removed
     logger.info("Verifying the domain status condition ConfigChangesPendingRestart is removed");
-    assertFalse(verifyDomainStatusCondition("ConfigChangesPendingRestart",
-        expectedMsgForCommitUpdateOnly), "Domain status condition ConfigChangesPendingRestart is not removed");
+    assertFalse(verifyDomainStatusConditionRemoved("ConfigChangesPendingRestart"),
+        "Domain status condition ConfigChangesPendingRestart is not removed");
   }
 
   /**
@@ -1398,6 +1398,38 @@ class ItMiiDynamicUpdate {
           return false;
         });
     return false;
+  }
+
+  /**
+   * Verify domain status condition doesn't exist.
+   *
+   * @param conditionType condition type
+   * @return true if the condition matches
+   */
+  private boolean verifyDomainStatusConditionRemoved(String conditionType) {
+    withStandardRetryPolicy
+        .conditionEvaluationListener(
+            condition -> logger.info("Waiting for domain status condition "
+                    + "\"{0}\", to be removed (elapsed time {1}ms, remaining time {2}ms)",
+                conditionType,
+                condition.getElapsedTimeInMS(),
+                condition.getRemainingTimeInMS()))
+        .until(() -> {
+          Domain miidomain = getDomainCustomResource(domainUid, domainNamespace);
+          if ((miidomain != null) && (miidomain.getStatus() != null)) {
+            for (DomainCondition domainCondition : miidomain.getStatus().getConditions()) {
+              logger.info("Condition Type =" + domainCondition.getType());
+              if (domainCondition.getType() != null) {
+                logger.info("condition " + domainCondition.getType().equalsIgnoreCase(conditionType));
+              }
+              if ((domainCondition.getType() != null && domainCondition.getType().equalsIgnoreCase(conditionType))) {
+                return false;
+              }
+            }
+          }
+          return true;
+        });
+    return true;
   }
 
   /**
