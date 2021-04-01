@@ -7,6 +7,33 @@
 #      $ ./buildDockerImage.sh [-t <image-name>]
 #
 # -------------------------
+FROM ghcr.io/oracle/oraclelinux:8-slim AS builder
+
+RUN set -eux; \
+    microdnf -y install gzip tar; \
+    microdnf clean all
+
+ENV LANG="en_US.UTF-8" \
+    JAVA_HOME="/usr/local/java" \
+    JAVA_VERSION="16" \
+    JAVA_URL="https://download.java.net/java/GA/jdk16/7863447f0ab643c585b9bdebf67c69db/36/GPL/openjdk-16_linux-x64_bin.tar.gz"
+
+# Install Java and make the operator run with a non-root user id (1000 is the `oracle` user)
+RUN set -eux; \
+    curl -fL -o /jdk.tar.gz "$JAVA_URL"; \
+    mkdir -p "$JAVA_HOME"; \
+    tar --extract --file /jdk.tar.gz --directory "$JAVA_HOME" --strip-components 1; \
+    rm /jdk.tar.gz; \
+    mkdir /usr/java; \
+    ln -sfT "$JAVA_HOME" /usr/java/default; \
+    ln -sfT "$JAVA_HOME" /usr/java/latest; \
+    for bin in "$JAVA_HOME/bin/"*; do \
+        base="$(basename "$bin")"; \
+        [ ! -e "/usr/bin/$base" ]; \
+        alternatives --install "/usr/bin/$base" "$base" "$bin" 20000; \
+    done; \
+    jlink --output /minimal-jre --module-path "$JAVA_HOME/jmods" --add-modules java.base,java.logging,java.net.http,java.sql,java.naming,java.xml
+
 FROM ghcr.io/oracle/oraclelinux:8-slim
 
 LABEL "org.opencontainers.image.authors"="Ryan Eberhard <ryan.eberhard@oracle.com>" \
@@ -22,22 +49,15 @@ RUN set -eux; \
     microdnf clean all
 
 ENV LANG="en_US.UTF-8" \
-    JAVA_HOME="/usr/local/java" \
-    PATH="/operator:$JAVA_HOME/bin:$PATH" \
-    JAVA_VERSION="16" \
-    JAVA_URL="https://download.java.net/java/GA/jdk16/7863447f0ab643c585b9bdebf67c69db/36/GPL/openjdk-16_linux-x64_bin.tar.gz"
+    JAVA_HOME="/minimal-jre"
+
+COPY --from=builder /minimal-jre /minimal-jre
 
 # Install Java and make the operator run with a non-root user id (1000 is the `oracle` user)
 RUN set -eux; \
-    curl -fL -o /jdk.tar.gz "$JAVA_URL"; \
-    mkdir -p "$JAVA_HOME"; \
-    tar --extract --file /jdk.tar.gz --directory "$JAVA_HOME" --strip-components 1; \
-    rm /jdk.tar.gz; \
     mkdir /usr/java; \
     ln -sfT "$JAVA_HOME" /usr/java/default; \
     ln -sfT "$JAVA_HOME" /usr/java/latest; \
-    rm -Rf "$JAVA_HOME/include" "$JAVA_HOME/jmods"; \
-    rm -f "$JAVA_HOME/lib/src.zip"; \
     for bin in "$JAVA_HOME/bin/"*; do \
         base="$(basename "$bin")"; \
         [ ! -e "/usr/bin/$base" ]; \
