@@ -525,7 +525,7 @@ class ItMiiDynamicUpdate {
     verifyIntrospectorRuns(domainUid, domainNamespace);
 
     // Verifying the domain is rolling restarted
-    assertTrue(verifyRollingRestartOccurred(pods, 1, domainNamespace),
+    assertTrue(verifyRollingRestartOccurred(pods, 2, domainNamespace),
         "Rolling restart failed");
 
     verifyPodIntrospectVersionUpdated(pods.keySet(), introspectVersion, domainNamespace);
@@ -558,7 +558,7 @@ class ItMiiDynamicUpdate {
     verifyIntrospectorRuns(domainUid, domainNamespace);
 
     // Verifying the domain is rolling restarted
-    assertTrue(verifyRollingRestartOccurred(pods, 1, domainNamespace),
+    assertTrue(verifyRollingRestartOccurred(pods, 2, domainNamespace),
         "Rolling restart failed");
 
     verifyPodIntrospectVersionUpdated(pods.keySet(), introspectVersion, domainNamespace);
@@ -616,7 +616,7 @@ class ItMiiDynamicUpdate {
     verifyIntrospectorRuns(domainUid, domainNamespace);
 
     // Verifying the domain is rolling restarted
-    assertTrue(verifyRollingRestartOccurred(pods, 1, domainNamespace),
+    assertTrue(verifyRollingRestartOccurred(pods, 2, domainNamespace),
         "Rolling restart failed");
 
     verifyPodIntrospectVersionUpdated(pods.keySet(), introspectVersion, domainNamespace);
@@ -969,7 +969,7 @@ class ItMiiDynamicUpdate {
     // restart domain and verify the changes are effective
     String newRestartVersion = patchDomainResourceWithNewRestartVersion(domainUid, domainNamespace);
     logger.log(Level.INFO, "New restart version is {0}", newRestartVersion);
-    assertTrue(verifyRollingRestartOccurred(pods, 1, domainNamespace),
+    assertTrue(verifyRollingRestartOccurred(pods, 2, domainNamespace),
         "Rolling restart failed");
 
     // Even if pods are created, need the service to created
