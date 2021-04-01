@@ -129,6 +129,7 @@ class ItMiiDynamicUpdate {
   private final String workManagerName = "newWM";
   private static Path pathToChangeTargetYaml = null;
   private static Path pathToAddClusterYaml = null;
+  private static Path pathToChangReadsYaml = null;
   private static LoggingFacade logger = null;
 
   /**
@@ -246,6 +247,14 @@ class ItMiiDynamicUpdate {
         + "            ListenPort : 8001";
 
     assertDoesNotThrow(() -> Files.write(pathToAddClusterYaml, yamlToAddCluster.getBytes()));
+
+    // write sparse yaml to change ScatteredReadsEnabled for adminserver
+    pathToChangReadsYaml = Paths.get(WORK_DIR + "/changereads.yaml");
+    String yamlToChangeReads = "topology:\n"
+        + "    Server:\n"
+        + "        \"admin-server\":\n"
+        + "            ScatteredReadsEnabled: true";
+    assertDoesNotThrow(() -> Files.write(pathToChangReadsYaml, yamlToChangeReads.getBytes()));
   }
 
   /**
@@ -910,14 +919,6 @@ class ItMiiDynamicUpdate {
     // BeforeEach method ensures that the server pods are running
     LinkedHashMap<String, OffsetDateTime> pods = addDataSourceAndVerify(false);
 
-    // write sparse yaml to change ScatteredReadsEnabled for adminserver
-    Path pathToChangReadsYaml = Paths.get(WORK_DIR + "/changereads.yaml");
-    String yamlToChangeReads = "topology:\n"
-        + "    Server:\n"
-        + "        \"admin-server\":\n"
-        + "            ScatteredReadsEnabled: true";
-    assertDoesNotThrow(() -> Files.write(pathToChangReadsYaml, yamlToChangeReads.getBytes()));
-
     // make two non-dynamic changes, add  datasource JDBC driver params and change scatteredreadenabled
     replaceConfigMapWithModelFiles(configMapName, domainUid, domainNamespace,
         Arrays.asList(MODEL_DIR + "/model.config.wm.yaml", pathToAddClusterYaml.toString(),
@@ -993,7 +994,7 @@ class ItMiiDynamicUpdate {
 
     // check that the domain status condition type "ConfigChangesPendingRestart" is removed
     logger.info("Verifying the domain status condition ConfigChangesPendingRestart is removed");
-    assertFalse(verifyDomainStatusConditionRemoved("ConfigChangesPendingRestart"),
+    assertTrue(verifyDomainStatusConditionRemoved("ConfigChangesPendingRestart"),
         "Domain status condition ConfigChangesPendingRestart is not removed");
   }
 
@@ -1019,7 +1020,8 @@ class ItMiiDynamicUpdate {
     // after the cluster is scaled.
     replaceConfigMapWithModelFiles(configMapName, domainUid, domainNamespace,
         Arrays.asList(MODEL_DIR + "/model.config.wm.yaml", pathToAddClusterYaml.toString(),
-            MODEL_DIR + "/model.jdbc2.updatejdbcdriverparams.yaml", MODEL_DIR + "/model.cluster.size.yaml"),
+            MODEL_DIR + "/model.jdbc2.updatejdbcdriverparams.yaml", pathToChangReadsYaml.toString(),
+            MODEL_DIR + "/model.cluster.size.yaml"),
         withStandardRetryPolicy);
 
     // Patch a running domain with introspectVersion.
@@ -1108,7 +1110,8 @@ class ItMiiDynamicUpdate {
     // Replace contents of an existing configMap
     replaceConfigMapWithModelFiles(configMapName, domainUid, domainNamespace,
         Arrays.asList(MODEL_DIR + "/model.config.wm.yaml", pathToAddClusterYaml.toString(),
-            MODEL_DIR + "/model.jdbc2.updatejdbcdriverparams.yaml", MODEL_DIR + "/model.cluster.size.yaml",
+            MODEL_DIR + "/model.jdbc2.updatejdbcdriverparams.yaml",
+            pathToChangReadsYaml.toString(), MODEL_DIR + "/model.cluster.size.yaml",
             pathToRemoveTargetYaml.toString()), withStandardRetryPolicy);
 
     // Patch a running domain with introspectVersion.
