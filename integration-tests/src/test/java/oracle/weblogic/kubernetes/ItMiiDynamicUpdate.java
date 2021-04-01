@@ -1108,7 +1108,7 @@ class ItMiiDynamicUpdate {
     // Replace contents of an existing configMap
     replaceConfigMapWithModelFiles(configMapName, domainUid, domainNamespace,
         Arrays.asList(MODEL_DIR + "/model.config.wm.yaml", pathToAddClusterYaml.toString(),
-            MODEL_DIR + "/model.jdbc2.yaml", MODEL_DIR + "/model.cluster.size.yaml",
+            MODEL_DIR + "/model.jdbc2.updatejdbcdriverparams.yaml", MODEL_DIR + "/model.cluster.size.yaml",
             pathToRemoveTargetYaml.toString()), withStandardRetryPolicy);
 
     // Patch a running domain with introspectVersion.
