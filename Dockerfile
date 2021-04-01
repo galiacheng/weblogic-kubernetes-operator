@@ -32,7 +32,7 @@ RUN set -eux; \
         [ ! -e "/usr/bin/$base" ]; \
         alternatives --install "/usr/bin/$base" "$base" "$bin" 20000; \
     done; \
-    jlink --output /minimal-jre --module-path "$JAVA_HOME/jmods" --add-modules java.base,java.logging,java.desktop,java.datatransfer,java.net.http,jdk.crypto.ec,java.sql,java.naming,java.xml,jdk.zipfs
+    jlink --output /minimal-jre --module-path "$JAVA_HOME/jmods" --add-modules java.base,java.logging,java.desktop,java.net.http,jdk.crypto.ec,java.sql,java.naming,jdk.zipfs
 
 FROM ghcr.io/oracle/oraclelinux:8-slim
 
