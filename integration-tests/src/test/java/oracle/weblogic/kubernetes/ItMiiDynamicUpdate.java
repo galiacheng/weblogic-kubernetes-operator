@@ -57,6 +57,7 @@ import static oracle.weblogic.kubernetes.actions.TestActions.patchDomainResource
 import static oracle.weblogic.kubernetes.actions.TestActions.scaleCluster;
 import static oracle.weblogic.kubernetes.assertions.TestAssertions.domainExists;
 import static oracle.weblogic.kubernetes.assertions.TestAssertions.verifyRollingRestartOccurred;
+import static oracle.weblogic.kubernetes.assertions.impl.Kubernetes.doesPodExist;
 import static oracle.weblogic.kubernetes.utils.CommonMiiTestUtils.checkApplicationRuntime;
 import static oracle.weblogic.kubernetes.utils.CommonMiiTestUtils.checkWorkManagerRuntime;
 import static oracle.weblogic.kubernetes.utils.CommonMiiTestUtils.createDatabaseSecret;
@@ -1067,6 +1068,11 @@ class ItMiiDynamicUpdate {
                 condition.getRemainingTimeInMS()))
         .until(runClientInsidePod(adminServerPodName, domainNamespace,
             "/u01", "JmsTestClient", "t3://" + domainUid + "-cluster-cluster-1:8001", "4", "true"));
+    
+    // check that the domain status condition type "ConfigChangesPendingRestart" is removed
+    logger.info("Verifying the domain status condition ConfigChangesPendingRestart is removed");
+    assertTrue(verifyDomainStatusConditionRemoved("ConfigChangesPendingRestart"),
+        "Domain status condition ConfigChangesPendingRestart is not removed");
 
   }
 
@@ -1481,10 +1487,13 @@ class ItMiiDynamicUpdate {
       pods.put(managedServerPrefix + i, getPodCreationTime(domainNamespace, managedServerPrefix + i));
     }
     // get the creation time of the managed server pods for cluster2 before patching
-    for (int i = 1; i <= replicaCount; i++) {
-      pods.put(domainUid + "-dynamic-server" + i, getPodCreationTime(domainNamespace,
-          domainUid + "-dynamic-server" + i));
+    if (assertDoesNotThrow(() -> doesPodExist(domainNamespace, domainUid, domainUid + "-dynamic-server" + 1))) {
+      for (int i = 1; i <= replicaCount; i++) {
+        pods.put(domainUid + "-dynamic-server" + i, getPodCreationTime(domainNamespace,
+            domainUid + "-dynamic-server" + i));
+      }
     }
+
 
     // Replace contents of an existing configMap with cm config and application target as
     // there are issues with removing them, https://jira.oraclecorp.com/jira/browse/WDT-535
