@@ -758,11 +758,14 @@ public class CommonMiiTestUtils {
         "Could not get introspector pod");
     assertTrue(introspectorPod != null && introspectorPod.getMetadata() != null,
         "introspector pod or metadata is null");
-    String introspectorLog =  assertDoesNotThrow(() -> getPodLog(introspectorPod.getMetadata().getName(),
-        domainNamespace), "Failed to get introspector pod log");
-    logger.info("Introspector pod log START***********************************");
-    logger.info(introspectorLog);
-    logger.info("Introspector pod log END***********************************");
+    try {
+      String introspectorLog = getPodLog(introspectorPod.getMetadata().getName(), domainNamespace);
+      logger.info("Introspector pod log START***********************************");
+      logger.info(introspectorLog);
+      logger.info("Introspector pod log END***********************************");
+    } catch (Exception ex) {
+      logger.info("Failed to get introspector pod log", ex);
+    }
     checkPodDoesNotExist(introspectJobName, domainUid, domainNamespace);
   }
 
