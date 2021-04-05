@@ -25,6 +25,7 @@ import oracle.weblogic.kubernetes.utils.ExecResult;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -1125,6 +1126,7 @@ class ItMiiDynamicUpdate {
    * Wait for introspector to complete
    * Verify application target is changed by accessing the application runtime using REST API.
    */
+  @Disabled("Test disabled, Bug - https://jira.oraclecorp.com/jira/browse/WDT-551")
   @Test
   @Order(16)
   @DisplayName("Remove all targets for the application deployment in MII domain using mii dynamic update")
