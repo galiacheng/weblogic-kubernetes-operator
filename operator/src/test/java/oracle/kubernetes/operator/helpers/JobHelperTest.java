@@ -753,7 +753,7 @@ public class JobHelperTest extends DomainValidationBaseTest {
 
     assertThat(
         getPodSpec(jobSpec).getInitContainers(),
-        nullValue());
+        notNullValue());
   }
 
   @Test

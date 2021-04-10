@@ -262,6 +262,9 @@ public abstract class JobStepContext extends BasePodStepContext {
           .metadata(createPodTemplateMetadata())
           .spec(createPodSpec(tuningParameters));
 
+    getServerSpec().getInitContainers().stream()
+        .forEach(c -> podTemplateSpec.getSpec().addInitContainersItem(c));
+
     return updateForDeepSubstitution(podTemplateSpec.getSpec(), podTemplateSpec);
   }
 
@@ -312,6 +315,8 @@ public abstract class JobStepContext extends BasePodStepContext {
       Optional.ofNullable(getWdtConfigMap()).ifPresent(mapName -> addWdtConfigMapVolume(podSpec, mapName));
       addWdtSecretVolume(podSpec);
     }
+
+
     return podSpec;
   }
 
