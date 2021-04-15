@@ -745,6 +745,23 @@ public class EventHelperTest {
             NAMESPACE_WATCHING_STOPPED_EVENT, 2), is(true));
   }
 
+  @Test
+  public void whenNSWatchStoppedEventCreatedTwice_fail403OnReplace_foundExpectedLogMessage() {
+    loggerControl.withLogLevel(Level.INFO).collectLogMessages(logRecords, CREATING_EVENT_FORBIDDEN);
+    testSupport.addRetryStrategy(retryStrategy);
+    Step eventStep = createEventStep(new EventData(NAMESPACE_WATCHING_STOPPED).namespace(NS).resourceName(NS));
+
+    testSupport.runSteps(eventStep);
+    dispatchAddedEventWatches();
+
+    CoreV1Event event = EventTestUtils.getEventWithReason(getEvents(testSupport), NAMESPACE_WATCHING_STOPPED_EVENT);
+    testSupport.failOnReplace(EVENT, EventTestUtils.getName(event), NS, HTTP_FORBIDDEN);
+
+    testSupport.runSteps(eventStep);
+
+    assertThat(logRecords, containsInfo(CREATING_EVENT_FORBIDDEN, NAMESPACE_WATCHING_STOPPED_EVENT, NS));
+  }
+
   private void dispatchAddedEventWatches() {
     List<CoreV1Event> events = getEvents(testSupport);
     for (CoreV1Event event : events) {

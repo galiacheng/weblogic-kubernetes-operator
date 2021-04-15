@@ -173,17 +173,18 @@ public class EventHelper {
 
       @Override
       public NextAction onFailure(Packet packet, CallResponse<CoreV1Event> callResponse) {
-        if (isForbiddenForNamespaceWatchingStoppedEvent(callResponse)) {
+        if (isForbiddenForNamespaceWatchingStoppedEvent(this, callResponse)) {
           LOGGER.info(MessageKeys.CREATING_EVENT_FORBIDDEN,
               eventData.eventItem.getReason(), eventData.getNamespace());
           return doNext(packet);
         }
         return super.onFailure(packet, callResponse);
       }
+    }
 
-      private boolean isForbiddenForNamespaceWatchingStoppedEvent(CallResponse<CoreV1Event> callResponse) {
-        return isForbidden(callResponse) && NAMESPACE_WATCHING_STOPPED == eventData.eventItem;
-      }
+    private boolean isForbiddenForNamespaceWatchingStoppedEvent(
+        ResponseStep responseStep, CallResponse<CoreV1Event> callResponse) {
+      return responseStep.isForbidden(callResponse) && NAMESPACE_WATCHING_STOPPED == eventData.eventItem;
     }
 
     private class ReplaceEventResponseStep extends ResponseStep<CoreV1Event> {
@@ -208,6 +209,10 @@ public class EventHelper {
         restoreExistingEvent();
         if (UnrecoverableErrorBuilder.isAsyncCallNotFoundFailure(callResponse)) {
           return doNext(Step.chain(createCreateEventCall(createEventModel(packet, eventData)), getNext()), packet);
+        } else if (isForbiddenForNamespaceWatchingStoppedEvent(this, callResponse)) {
+          LOGGER.info(MessageKeys.CREATING_EVENT_FORBIDDEN,
+              eventData.eventItem.getReason(), eventData.getNamespace());
+          return doNext(packet);
         } else if (UnrecoverableErrorBuilder.isAsyncCallUnrecoverableFailure(callResponse)) {
           return onFailureNoRetry(packet, callResponse);
         } else {
