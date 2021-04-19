@@ -90,6 +90,8 @@ public class ReadHealthStep extends Step {
     DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
     V1Service service = info.getServerService(serverName);
 
+    LOGGER.info("XXX ReadHealthStep.apply: info = " + info + " service = " + service);
+
     if (service == null) {
       return doNext(packet);
     } else {

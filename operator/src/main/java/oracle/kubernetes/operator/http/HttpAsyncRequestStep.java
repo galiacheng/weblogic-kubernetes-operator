@@ -115,6 +115,7 @@ public class HttpAsyncRequestStep extends Step {
 
     private void resume(AsyncFiber fiber, HttpResponse<String> response, Throwable throwable) {
       DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
+      LOGGER.info("XXX AsyncProcessing resume is called: info = " + info);
       try (LoggingContext ignored =
                setThreadContext().namespace(getNamespaceFromInfo(info)).domainUid(getDomainUIDFromInfo(info))) {
         if (throwable instanceof HttpTimeoutException) {

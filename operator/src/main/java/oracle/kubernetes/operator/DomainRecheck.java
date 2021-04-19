@@ -36,7 +36,6 @@ import oracle.kubernetes.operator.work.Step;
 
 import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.NAMESPACE_WATCHING_STARTED;
 import static oracle.kubernetes.operator.helpers.NamespaceHelper.getOperatorNamespace;
-import static oracle.kubernetes.operator.logging.LoggingContext.setThreadContext;
 import static oracle.kubernetes.operator.logging.MessageKeys.BEGIN_MANAGING_NAMESPACE;
 
 class DomainRecheck {
@@ -213,12 +212,10 @@ class DomainRecheck {
   }
 
   private Step startNamespaceSteps(String ns) {
-    try (LoggingContext ignored = setThreadContext().namespace(ns)) {
-      return Step.chain(
-          createNamespaceReview(ns),
-          new StartNamespaceBeforeStep(ns),
-          domainNamespaces.readExistingResources(ns, domainProcessor));
-    }
+    return Step.chain(
+        createNamespaceReview(ns),
+        new StartNamespaceBeforeStep(ns),
+        domainNamespaces.readExistingResources(ns, domainProcessor));
   }
 
   private class StartNamespaceBeforeStep extends Step {

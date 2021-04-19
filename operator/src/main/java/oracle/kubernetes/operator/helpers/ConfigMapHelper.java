@@ -35,6 +35,7 @@ import oracle.kubernetes.operator.IntrospectorConfigMapConstants;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.calls.CallResponse;
+import oracle.kubernetes.operator.logging.LoggingContext;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
@@ -62,6 +63,7 @@ import static oracle.kubernetes.operator.LabelConstants.INTROSPECTION_STATE_LABE
 import static oracle.kubernetes.operator.ProcessingConstants.DOMAIN_VALIDATION_ERRORS;
 import static oracle.kubernetes.operator.helpers.KubernetesUtils.getDomainUidLabel;
 import static oracle.kubernetes.operator.helpers.NamespaceHelper.getOperatorNamespace;
+import static oracle.kubernetes.operator.logging.LoggingContext.setThreadContext;
 
 public class ConfigMapHelper {
 
@@ -196,9 +198,11 @@ public class ConfigMapHelper {
     }
 
     private static synchronized Map<String, String> loadScriptsFromClasspath(String domainNamespace) {
-      Map<String, String> scripts = scriptReader.loadFilesFromClasspath();
-      LOGGER.fine(MessageKeys.SCRIPT_LOADED, domainNamespace);
-      return scripts;
+      try (LoggingContext ignored = setThreadContext().namespace(domainNamespace)) {
+        Map<String, String> scripts = scriptReader.loadFilesFromClasspath();
+        LOGGER.fine(MessageKeys.SCRIPT_LOADED, domainNamespace);
+        return scripts;
+      }
     }
 
     @Override
