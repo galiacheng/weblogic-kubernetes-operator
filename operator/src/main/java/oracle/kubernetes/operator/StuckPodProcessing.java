@@ -17,9 +17,11 @@ import io.kubernetes.client.openapi.models.V1PodList;
 import oracle.kubernetes.operator.calls.CallResponse;
 import oracle.kubernetes.operator.helpers.CallBuilder;
 import oracle.kubernetes.operator.helpers.PodHelper;
+import oracle.kubernetes.operator.logging.LoggingContext;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.steps.DefaultResponseStep;
+import oracle.kubernetes.operator.work.Component;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
@@ -55,14 +57,19 @@ public class StuckPodProcessing {
   class PodListProcessing extends DefaultResponseStep<V1PodList> {
 
     private final OffsetDateTime now;
+    private final String namespace;
 
     public PodListProcessing(String namespace, OffsetDateTime dateTime) {
       super(new PodActionsStep(namespace));
+      this.namespace = namespace;
       now = dateTime;
     }
 
     @Override
     public NextAction onSuccess(Packet packet, CallResponse<V1PodList> callResponse) {
+      packet.getComponents().put(
+          LoggingContext.LOGGING_CONTEXT_KEY,
+          Component.createFor(new LoggingContext().namespace(namespace)));
       callResponse.getResult().getItems().stream()
             .filter(pod -> isStuck(pod, now))
             .forEach(pod -> addStuckPodToPacket(packet, pod));
