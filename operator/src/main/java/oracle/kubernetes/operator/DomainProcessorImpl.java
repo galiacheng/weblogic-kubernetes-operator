@@ -519,6 +519,8 @@ public class DomainProcessorImpl implements DomainProcessor {
       switch (item.type) {
         case "MODIFIED":
         case "DELETED":
+          LOGGER.info("XXX dispatchCMWatch: namespace = " + c.getMetadata().getNamespace());
+
           delegate.runSteps(
               ConfigMapHelper.createScriptConfigMapStep(
                     c.getMetadata().getNamespace()));

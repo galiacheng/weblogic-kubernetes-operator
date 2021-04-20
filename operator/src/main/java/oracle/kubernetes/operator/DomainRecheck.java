@@ -94,6 +94,7 @@ class DomainRecheck {
 
       // we don't have the domain presence information yet
       // we add a logging context to pass the namespace information to the LoggingFormatter
+      LOGGER.info("XXX NamespaceRulesReviewStep apply setting LC on packet to " + ns);
       packet.getComponents().put(
           LoggingContext.LOGGING_CONTEXT_KEY,
           Component.createFor(new LoggingContext().namespace(ns)));
@@ -155,6 +156,7 @@ class DomainRecheck {
     // a strategy that specifies them explicitly.
     @Override
     protected NextAction onFailureNoRetry(Packet packet, CallResponse<V1NamespaceList> callResponse) {
+      LOGGER.info("XXX NamespaceListResponseStep.onFailureNoRetry LC in packet = ", packet.get(LoggingContext.class));
       return useBackupStrategy(callResponse)
             ? doNext(createStartNamespacesStep(Namespaces.getConfiguredDomainNamespaces()), packet)
             : super.onFailureNoRetry(packet, callResponse);
