@@ -169,6 +169,7 @@ class DomainRecheck {
 
     @Override
     public NextAction onSuccess(Packet packet, CallResponse<V1NamespaceList> callResponse) {
+      LOGGER.info("XXX NamespaceListResponseStep.onSuccess LC in packet = ", packet.get(LoggingContext.class));
       final Set<String> domainNamespaces = getNamespacesToStart(getNames(callResponse.getResult()));
       Namespaces.getFoundDomainNamespaces(packet).addAll(domainNamespaces);
 
