@@ -36,6 +36,10 @@ public class LoggingContext implements AutoCloseable {
     return Optional.ofNullable(currentContext.get());
   }
 
+  public static Object get() {
+    return currentContext.get();
+  }
+
   public LoggingContext namespace(String namespace) {
     this.namespace = namespace;
     return this;

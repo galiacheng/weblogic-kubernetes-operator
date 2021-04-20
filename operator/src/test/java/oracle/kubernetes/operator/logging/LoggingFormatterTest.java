@@ -113,8 +113,8 @@ public class LoggingFormatterTest {
   @Test
   public void whenPacketContainsLoggingContextAndThreadLocalIsDefined_retrieveDomainUidFromLoggingContext() {
     testSupport.addLoggingContext(new LoggingContext().domainUid("test-lc-uid1"));
-    try (LoggingContext stack = LoggingContext.setThreadContext().namespace("test-lc-tl-uid")) {
-      assertThat(getFormattedMessageInFiber().get("domainUID"), equalTo("test-lc-uid1"));
+    try (LoggingContext stack = LoggingContext.setThreadContext().domainUid("test-lc-tl-uid")) {
+      assertThat(getFormattedMessageInFiber().get("domainUID"), equalTo("test-lc-tl-uid"));
     }
   }
 
@@ -164,7 +164,7 @@ public class LoggingFormatterTest {
   public void whenPacketContainsLoggingContextAndThreadLocalIsDefined_retrieveNamespaceFromLoggingContext() {
     testSupport.addLoggingContext(new LoggingContext().namespace("test-lc-ns1"));
     try (LoggingContext stack = LoggingContext.setThreadContext().namespace("test-lc-tl-ns")) {
-      assertThat(getFormattedMessageInFiber().get("namespace"), equalTo("test-lc-ns1"));
+      assertThat(getFormattedMessageInFiber().get("namespace"), equalTo("test-lc-tl-ns"));
     }
   }
 

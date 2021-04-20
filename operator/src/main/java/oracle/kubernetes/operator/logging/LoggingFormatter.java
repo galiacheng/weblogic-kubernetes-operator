@@ -160,15 +160,19 @@ public class LoggingFormatter extends Formatter {
           .map(Fiber::getPacket)
           .map(this::getDomainPresenceInfo)
           .map(DomainPresenceInfo::getDomainUid)
-          .orElse(getDomainUidFromLoggingContext(fiber));
+          .orElse(Optional.ofNullable(getDomainUidFromLoggingContext(fiber)).orElse(""));
   }
 
   private String getDomainUidFromLoggingContext(Fiber fiber) {
+    return LoggingContext.optionalContext()
+        .orElse(getLoggingContextFromPacket(fiber)).domainUid();
+  }
+
+  private LoggingContext getLoggingContextFromPacket(Fiber fiber) {
     return Optional.ofNullable(fiber)
         .map(Fiber::getPacket)
         .map(p -> p.getSpi(LoggingContext.class))
-        .map(LoggingContext::domainUid)
-        .orElse(getDomainUidFromThreadContext());
+        .orElse(new LoggingContext());
   }
 
   private String getDomainUidFromThreadContext() {
@@ -192,16 +196,11 @@ public class LoggingFormatter extends Formatter {
           .map(Fiber::getPacket)
           .map(this::getDomainPresenceInfo)
           .map(DomainPresenceInfo::getNamespace)
-          .orElse(getNamespaceFromLoggingContext(fiber));
+          .orElse(Optional.ofNullable(getNamespaceFromLoggingContext(fiber)).orElse(""));
   }
 
   private String getNamespaceFromLoggingContext(Fiber fiber) {
-    return Optional.ofNullable(fiber)
-          .map(Fiber::getPacket)
-          .map(p -> p.getSpi(LoggingContext.class))
-          .or(LoggingContext::optionalContext)
-          .map(LoggingContext::namespace)
-          .orElse("");
+    return LoggingContext.optionalContext()
+          .orElse(getLoggingContextFromPacket(fiber)).namespace();
   }
-
 }
