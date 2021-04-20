@@ -198,8 +198,8 @@ public class ConfigMapHelper {
     }
 
     private static synchronized Map<String, String> loadScriptsFromClasspath(String domainNamespace) {
-      LOGGER.info("XXX loadScriptsFromClassPath: domainNamespace = "
-          + domainNamespace + " optionalContext = " + LoggingContext.optionalContext());
+      LOGGER.info("XXX loadScriptsFromClassPath: domainNamespace = " + domainNamespace
+          + " optionalContext = " + LoggingContext.optionalContext().map(LoggingContext::namespace).orElse(""));
       try (LoggingContext ignored = setThreadContext().namespace(domainNamespace)) {
         Map<String, String> scripts = scriptReader.loadFilesFromClasspath();
         LOGGER.fine(MessageKeys.SCRIPT_LOADED, domainNamespace);

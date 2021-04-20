@@ -41,6 +41,7 @@ public class StuckPodProcessing {
   }
 
   void checkStuckPods(String namespace) {
+    LOGGER.info("XXX starting checkStuckPods run");
     Step step = new CallBuilder()
           .withLabelSelectors(LabelConstants.getCreatedByOperatorSelector())
           .listPodAsync(namespace, new PodListProcessing(namespace, SystemClock.now()));

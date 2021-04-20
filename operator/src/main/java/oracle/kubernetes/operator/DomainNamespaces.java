@@ -28,6 +28,8 @@ import io.kubernetes.client.openapi.models.V1beta1PodDisruptionBudget;
 import io.kubernetes.client.openapi.models.V1beta1PodDisruptionBudgetList;
 import oracle.kubernetes.operator.TuningParameters.WatchTuning;
 import oracle.kubernetes.operator.helpers.ConfigMapHelper;
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.watcher.WatchListener;
 import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.operator.work.ThreadFactorySingleton;
@@ -42,6 +44,8 @@ import static oracle.kubernetes.operator.helpers.KubernetesUtils.getResourceVers
  */
 @SuppressWarnings("SameParameterValue")
 public class DomainNamespaces {
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
+
   private static final WatchListener<V1Job> NULL_LISTENER = w -> { };
 
   private final Map<String, NamespaceStatus> namespaceStatuses = new ConcurrentHashMap<>();
@@ -173,6 +177,7 @@ public class DomainNamespaces {
    * @param processor processing to be done to bring up any found domains
    */
   Step readExistingResources(String ns, DomainProcessor processor) {
+    LOGGER.info("XXX readExistingResource");
     NamespacedResources resources = new NamespacedResources(ns, null);
     resources.addProcessing(new DomainResourcesValidation(ns, processor).getProcessors());
     resources.addProcessing(createWatcherStartupProcessing(ns, processor));
