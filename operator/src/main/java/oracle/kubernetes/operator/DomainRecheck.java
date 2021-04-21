@@ -36,6 +36,7 @@ import oracle.kubernetes.operator.work.Step;
 
 import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.NAMESPACE_WATCHING_STARTED;
 import static oracle.kubernetes.operator.helpers.NamespaceHelper.getOperatorNamespace;
+import static oracle.kubernetes.operator.logging.LoggingContext.setThreadContext;
 import static oracle.kubernetes.operator.logging.MessageKeys.BEGIN_MANAGING_NAMESPACE;
 
 class DomainRecheck {
@@ -94,10 +95,13 @@ class DomainRecheck {
 
       // we don't have the domain presence information yet
       // we add a logging context to pass the namespace information to the LoggingFormatter
-      LOGGER.info("XXX NamespaceRulesReviewStep apply setting LC on packet to " + ns);
-      packet.getComponents().put(
-          LoggingContext.LOGGING_CONTEXT_KEY,
-          Component.createFor(new LoggingContext().namespace(ns)));
+
+      if (isDomainNamespace) {
+        LOGGER.info("XXX NamespaceRulesReviewStep apply setting LC on packet to " + ns);
+        packet.getComponents().put(
+            LoggingContext.LOGGING_CONTEXT_KEY,
+            Component.createFor(new LoggingContext().namespace(ns)));
+      }
 
       V1SubjectRulesReviewStatus status = nss.getRulesReviewStatus().updateAndGet(prev -> {
         if (prev != null) {
@@ -215,10 +219,13 @@ class DomainRecheck {
   }
 
   private Step startNamespaceSteps(String ns) {
-    return Step.chain(
-        createNamespaceReview(ns),
-        new StartNamespaceBeforeStep(ns),
-        domainNamespaces.readExistingResources(ns, domainProcessor));
+    try (LoggingContext ignored =
+             setThreadContext().namespace(ns).domainUid("")) {
+      return Step.chain(
+          createNamespaceReview(ns),
+          new StartNamespaceBeforeStep(ns),
+          domainNamespaces.readExistingResources(ns, domainProcessor));
+    }
   }
 
   private class StartNamespaceBeforeStep extends Step {
