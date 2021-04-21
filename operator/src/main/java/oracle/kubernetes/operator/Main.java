@@ -297,6 +297,7 @@ public class Main {
   }
 
   void startOperator(Runnable completionAction) {
+    LOGGER.info("XXX startOperator");
     try {
       delegate.runSteps(new Packet(), createStartupSteps(), completionAction);
     } catch (Throwable e) {
@@ -407,6 +408,7 @@ public class Main {
   }
 
   private Step createDomainRecheckSteps(OffsetDateTime now) {
+    LOGGER.info("XXX createDomainRecheckSteps");
     int recheckInterval = TuningParameters.getInstance().getMainTuning().domainPresenceRecheckIntervalSeconds;
     boolean isFullRecheck = false;
     if (lastFullRecheck.get().plusSeconds(recheckInterval).isBefore(now)) {
@@ -526,6 +528,7 @@ public class Main {
           return;
         }
 
+        LOGGER.info("XXX dispatchNamespaceWatch ns = " + ns);
         delegate.runSteps(createPacketWithLoggingContext(ns),
               new DomainRecheck(delegate, true).createStartNamespacesStep(Collections.singletonList(ns)),
               null);

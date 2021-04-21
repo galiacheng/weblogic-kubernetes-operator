@@ -160,7 +160,8 @@ class DomainRecheck {
     // a strategy that specifies them explicitly.
     @Override
     protected NextAction onFailureNoRetry(Packet packet, CallResponse<V1NamespaceList> callResponse) {
-      LOGGER.info("XXX NamespaceListResponseStep.onFailureNoRetry LC in packet = ", packet.get(LoggingContext.class));
+      LOGGER.info("XXX NamespaceListResponseStep.onFailureNoRetry LC in packet = ",
+          packet.getSpi(LoggingContext.class));
       return useBackupStrategy(callResponse)
             ? doNext(createStartNamespacesStep(Namespaces.getConfiguredDomainNamespaces()), packet)
             : super.onFailureNoRetry(packet, callResponse);
@@ -173,7 +174,7 @@ class DomainRecheck {
 
     @Override
     public NextAction onSuccess(Packet packet, CallResponse<V1NamespaceList> callResponse) {
-      LOGGER.info("XXX NamespaceListResponseStep.onSuccess LC in packet = ", packet.get(LoggingContext.class));
+      LOGGER.info("XXX NamespaceListResponseStep.onSuccess LC in packet = ", packet.getSpi(LoggingContext.class));
       final Set<String> domainNamespaces = getNamespacesToStart(getNames(callResponse.getResult()));
       Namespaces.getFoundDomainNamespaces(packet).addAll(domainNamespaces);
 

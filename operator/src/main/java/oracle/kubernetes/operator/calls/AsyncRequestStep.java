@@ -19,6 +19,7 @@ import io.kubernetes.client.openapi.models.V1ListMeta;
 import oracle.kubernetes.operator.helpers.CallBuilder;
 import oracle.kubernetes.operator.helpers.ClientPool;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
+import oracle.kubernetes.operator.helpers.NamespaceHelper;
 import oracle.kubernetes.operator.helpers.ResponseStep;
 import oracle.kubernetes.operator.logging.LoggingContext;
 import oracle.kubernetes.operator.logging.LoggingFacade;
@@ -32,6 +33,7 @@ import oracle.kubernetes.operator.work.Step;
 
 import static oracle.kubernetes.operator.calls.CallResponse.createFailure;
 import static oracle.kubernetes.operator.calls.CallResponse.createSuccess;
+import static oracle.kubernetes.operator.helpers.NamespaceHelper.getOperatorNamespace;
 import static oracle.kubernetes.operator.logging.MessageKeys.ASYNC_SUCCESS;
 
 /**
@@ -244,7 +246,8 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
     // add a logging context to pass the namespace information to the LoggingFormatter
     if (requestParams.namespace != null 
         && packet.getSpi(DomainPresenceInfo.class) == null
-        && packet.getSpi(LoggingContext.class) == null) {
+        && packet.getSpi(LoggingContext.class) == null
+        && !requestParams.namespace.equals(getOperatorNamespace())) {
       packet.getComponents().put(
           LoggingContext.LOGGING_CONTEXT_KEY,
           Component.createFor(new LoggingContext()
