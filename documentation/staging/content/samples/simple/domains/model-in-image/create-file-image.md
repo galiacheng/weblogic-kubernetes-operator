@@ -18,7 +18,15 @@ Run the following commands to create the model file image `model-file-image:v1`:
   $ utils/build-file-image.sh
   ```
 
-The image has WDT executables copied to `/common/weblogic-deploy` and all the WDT models, variables, and archives copied to `/common/models`, you can verify
+The script does the followings:
+
+1. Create a temporary directory for docker build context `/tmp/mii-file-iamge`.
+2. Copy the Dockefile to the context root.
+3. Unzip the WDT executable to the context root. It also removes all the `weblogic-deploy/bin/*.cmd` files which are not used in Unix environment.
+4. Copy all WDT models, variables, and archives into the `/tmp/mii-file-image/models`
+5. build the docker image.
+
+The image has WDT executables copied to `/common/weblogic-deploy` and all the WDT models, variables, and archives are copied to `/common/models`, you can verify
 the contents of the image:
 
   ```shell
