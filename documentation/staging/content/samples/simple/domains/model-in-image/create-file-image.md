@@ -12,9 +12,23 @@ At this point, you have staged all of the files needed for image `model-in-image
 
 If you don't see the `weblogic-deploy.zip` file, then you missed a step in the [prerequisites]({{< relref "/samples/simple/domains/model-in-image/prerequisites.md" >}}).
 
-Run the following commands to create the model file image `model-file-image:v1` and verify that it worked:
+Run the following commands to create the model file image `model-file-image:v1`:
 
   ```shell
   $ utils/build-file-image.sh
   ```
+
+The image has WDT executables copied to `/common/weblogic-deploy` and all the WDT models, variables, and archives copied to `/common/models`, you can verify
+the contents of the image:
+
   ```shell
+  $ docker run -it --rm model-file-image:v1 ls -l /common
+  ```
+
+  ```shell
+  $ docker run -it --rm model-file-image:v1 ls -l /common/models  
+  ```
+
+  ```shell
+  $ docker run -it --rm model-file-image:v1 ls -l /common/weblogic-deploy
+  ```
