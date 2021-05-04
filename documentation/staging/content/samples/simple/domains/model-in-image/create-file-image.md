@@ -1,4 +1,4 @@
-#### Creating the image with WIT
+#### Creating file image with docker command for Common Mount Use Case
 
 As an alternative to put all the WDT models, variables, and archives including the WDT executables in the main image, you
 can also create a separate file image containing the same artifacts and use the Common Mount Option (NEED LINK)
