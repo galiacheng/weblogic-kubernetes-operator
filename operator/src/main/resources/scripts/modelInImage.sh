@@ -730,6 +730,7 @@ function createPrimordialDomain() {
       local rcu_password_updated="false"
       rcu_password_updated=$(contain_returncode ${diff_rc} ${RCU_PASSWORD_CHANGED})
       if [ ${WDT_DOMAIN_TYPE} == "JRF" ] && [ ${rcu_password_updated} == "true" ] ; then
+          recreate_domain=1
           UPDATE_RCUPWD_FLAG="-updateRCUSchemaPassword"
       fi
     fi
