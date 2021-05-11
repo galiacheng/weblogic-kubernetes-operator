@@ -196,6 +196,8 @@ public class ItFmwDiiSample {
     params.command("sh "
             + Paths.get(sampleBase.toString(), "create-domain.sh").toString()
             + " -i " + Paths.get(sampleBase.toString(), "create-domain-inputs.yaml").toString()
+            + " -u " + ADMIN_USERNAME_DEFAULT
+            + " -p " + ADMIN_PASSWORD_DEFAULT
             + " -o "
             + Paths.get(sampleBase.toString()));
 
