@@ -198,6 +198,7 @@ public class ItFmwDiiSample {
             + " -i " + Paths.get(sampleBase.toString(), "create-domain-inputs.yaml").toString()
             + " -u " + ADMIN_USERNAME_DEFAULT
             + " -p " + ADMIN_PASSWORD_DEFAULT
+            + " -q Oradoc_db1"
             + " -o "
             + Paths.get(sampleBase.toString()));
 
