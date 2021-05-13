@@ -178,7 +178,7 @@ public class ItFmwDiiSample {
     // change image name
     assertDoesNotThrow(() -> {
       replaceStringInFile(Paths.get(sampleBase.toString(), "create-domain-inputs.yaml").toString(),
-          "createDomainFilesDir: wlst", "createDomainFilesDir: " + script);
+          "mode: wdt", "mode: " + script);
       replaceStringInFile(Paths.get(sampleBase.toString(), "create-domain-inputs.yaml").toString(),
               "image: container-registry.oracle.com/middleware/fmw-infrastructure:12.2.1.4",
               "image: " + FMWINFRA_IMAGE_TO_USE_IN_SPEC);
