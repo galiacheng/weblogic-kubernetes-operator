@@ -124,7 +124,7 @@ public class ItFmwDiiSample {
         String.format("Failed to create DB in the namespace %s with dbPort %d ",
             dbNamespace, dbPort));
 
-    dbUrl = K8S_NODEPORT_HOST + ":" + dbPort +"/devpdb.k8s";
+    dbUrl = K8S_NODEPORT_HOST + ":" + dbPort + "/devpdb.k8s";
 
     for (String param: params) {
       String rcuSchemaPrefix = param.split(":")[1];
