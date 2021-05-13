@@ -105,7 +105,7 @@ public class ItFmwDiiSample {
     logger.info("Assign a unique namespace for DB and RCU");
     assertNotNull(namespaces.get(0), "Namespace is null");
     dbNamespace = namespaces.get(0);
-    dbUrl = ORACLEDBURLPREFIX + dbNamespace + ORACLEDBSUFFIX;
+    //dbUrl = ORACLEDBURLPREFIX + dbNamespace + ORACLEDBSUFFIX;
 
     logger.info("Assign a unique namespace for operator");
     assertNotNull(namespaces.get(1), "Namespace is null");
@@ -123,6 +123,8 @@ public class ItFmwDiiSample {
         dbNamespace, dbPort),
         String.format("Failed to create DB in the namespace %s with dbPort %d ",
             dbNamespace, dbPort));
+
+    dbUrl = K8S_NODEPORT_HOST + ":" + dbPort +"/devpdb.k8s";
 
     for (String param: params) {
       String rcuSchemaPrefix = param.split(":")[1];
@@ -291,6 +293,9 @@ public class ItFmwDiiSample {
               "#imagePullSecretName:", "imagePullSecretName: " + BASE_IMAGES_REPO_SECRET);
       replaceStringInFile(Paths.get(sampleBase.toString(), "create-domain-inputs.yaml").toString(),
               "rcuDatabaseURL: database:1521/service", "rcuDatabaseURL: " + dbUrl);
+      replaceStringInFile(Paths.get(sampleBase.toString(), "create-domain-inputs.yaml").toString(),
+              "initialManagedServerReplicas: 1", "initialManagedServerReplicas: 2");
+
     });
   }
 
