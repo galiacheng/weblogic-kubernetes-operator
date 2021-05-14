@@ -82,7 +82,7 @@ public class ItFmwDiiSample {
 
   private static LoggingFacade logger = null;
 
-  private static final String[] params = { "wdt:fmwsamplediiwdt", "wlst:fmwsamplediiwlst"};
+  private static final String[] params = { "wdt:fmwdiiwdt", "wlst:fmwdiiwlst"};
 
   // generates the stream of objects used by parametrized test.
   private static Stream<String> paramProvider() {
