@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import io.kubernetes.client.openapi.ApiException;
@@ -55,9 +56,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests related to FMW domain samples.
+ * Tests related to FMW domain-in-image samples.
  */
-@DisplayName("Verify the JRF domain on pv sample using wlst and wdt")
+@DisplayName("Verify the JRF domain-in-image sample using wlst and wdt")
 @IntegrationTest
 public class ItFmwDiiSample {
 
@@ -67,8 +68,6 @@ public class ItFmwDiiSample {
   private static final Path samplePath = Paths.get(ITTESTS_DIR, "../kubernetes/samples");
   private static final Path tempSamplePath = Paths.get(WORK_DIR, "fmw-sample-testing");
 
-  private static final String ORACLEDBURLPREFIX = "oracle-db.";
-  private static final String ORACLEDBSUFFIX = ".svc.cluster.local:1521/devpdb.k8s";
   private static final String RCUSYSUSERNAME = "sys";
   private static final String RCUSYSPASSWORD = "Oradoc_db1";
   private static final String RCUSCHEMAUSERNAME = "myrcuuser";
@@ -83,7 +82,7 @@ public class ItFmwDiiSample {
 
   private static LoggingFacade logger = null;
 
-  private static final String[] params = { "wdt:fmwsamplepv", "wlst:fmwsamplepv2"};
+  private static final String[] params = { "wdt:fmwsamplediiwdt", "wlst:fmwsamplediiwlst"};
 
   // generates the stream of objects used by parametrized test.
   private static Stream<String> paramProvider() {
@@ -119,8 +118,7 @@ public class ItFmwDiiSample {
     logger.info("Start DB and for namespace: {0}, "
             + "dbImage: {2},  fmwImage: {3}, dbPort: {4} ", dbNamespace,
         DB_IMAGE_TO_USE_IN_SPEC, FMWINFRA_IMAGE_TO_USE_IN_SPEC, dbPort);
-    assertDoesNotThrow(() -> setupDBBySample(DB_IMAGE_TO_USE_IN_SPEC, FMWINFRA_IMAGE_TO_USE_IN_SPEC,
-        dbNamespace, dbPort),
+    assertDoesNotThrow(() -> setupDBBySample(DB_IMAGE_TO_USE_IN_SPEC, dbNamespace, dbPort),
         String.format("Failed to create DB in the namespace %s with dbPort %d ",
             dbNamespace, dbPort));
 
@@ -147,14 +145,15 @@ public class ItFmwDiiSample {
   }
 
   /**
-   * Test JRF domain on pv samples using domains created by wlst and wdt. Verify Pod is ready and
-   * service exists for both admin server and managed servers. Verify EM console is accessible.
+   * Test JRF domain-in-image samples using domains created by wlst and wdt.
+   * Verify Pod is ready and service exists for both admin server and managed servers.
+   * Verify EM console is accessible.
    *
    * @param model domain name and script type to create domain. Acceptable values of format String:wlst|wdt
    */
   @ParameterizedTest
   @MethodSource("paramProvider")
-  @DisplayName("Test FMW domain on PV sample")
+  @DisplayName("Test FMW domain in image sample")
   public void testFmwDomainInImage(String model) {
 
     String domainUid = model.split(":")[1];
@@ -200,7 +199,7 @@ public class ItFmwDiiSample {
             + " -i " + Paths.get(sampleBase.toString(), "create-domain-inputs.yaml").toString()
             + " -u " + ADMIN_USERNAME_DEFAULT
             + " -p " + ADMIN_PASSWORD_DEFAULT
-            + " -q Oradoc_db1"
+            + " -q " + RCUSYSPASSWORD
             + " -o "
             + Paths.get(sampleBase.toString()));
 
@@ -303,15 +302,12 @@ public class ItFmwDiiSample {
    * Start Oracle DB instance, create rcu pod and load database schema in the specified namespace.
    *
    * @param dbImage image name of database
-   * @param fmwImage image name of FMW
-]   * @param dbNamespace namespace where DB and RCU schema are going to start
+   * @param dbNamespace namespace where DB and RCU schema are going to start
    * @param dbPort NodePort of DB
-   * @throws Exception if any error occurs when setting up RCU database
+   * @throws ApiException if any error occurs when setting up RCU database
    */
 
-  private static void setupDBBySample(String dbImage, String fmwImage,
-       String dbNamespace, int dbPort) throws ApiException {
-    LoggingFacade logger = getLogger();
+  private static void setupDBBySample(String dbImage, String dbNamespace, int dbPort) throws ApiException {
 
     setupSample();
     // create pull secrets when running in non Kind Kubernetes cluster
@@ -331,7 +327,6 @@ public class ItFmwDiiSample {
    * @param dbNamespace namespace where DB instance is going to start
    */
   private static synchronized void startOracleDB(String dbBaseImageName, int dbPort, String dbNamespace) {
-    LoggingFacade logger = getLogger();
 
     Path dbSamplePathBase = Paths.get(tempSamplePath.toString(), "/scripts/create-oracle-db-service/");
     String script = Paths.get(dbSamplePathBase.toString(),  "start-db-service.sh").toString();
@@ -351,11 +346,7 @@ public class ItFmwDiiSample {
         .execute(), "Failed to execute command: " + command);
 
     // sleep for a while to make sure the DB pod is created
-    try {
-      Thread.sleep(10 * 1000);
-    } catch (InterruptedException ie) {
-        // ignore
-    }
+    assertDoesNotThrow(() -> TimeUnit.SECONDS.sleep(10));
   }
 
   /**
@@ -368,8 +359,6 @@ public class ItFmwDiiSample {
    */
   private static void createRcuSchema(String fmwBaseImageName, String rcuPrefix, String dbUrl,
       String dbNamespace) {
-
-    LoggingFacade logger = getLogger();
 
     Path rcuSamplePathBase = Paths.get(tempSamplePath.toString(), "/scripts/create-rcu-schema");
     String script = Paths.get(rcuSamplePathBase.toString(), "create-rcu-schema.sh").toString();
