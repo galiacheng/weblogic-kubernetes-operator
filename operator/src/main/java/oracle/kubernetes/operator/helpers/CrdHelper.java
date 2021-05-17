@@ -320,7 +320,8 @@ public class CrdHelper {
     }
 
     static V1CustomResourceValidation createSchemaValidation() {
-      return new V1CustomResourceValidation().openAPIV3Schema(createOpenApiV3Schema());
+      return new V1CustomResourceValidation().openAPIV3Schema(createOpenApiV3Schema()
+              .xKubernetesPreserveUnknownFields(true));
     }
 
     static V1beta1CustomResourceValidation createBetaSchemaValidation() {

@@ -21253,6 +21253,7 @@ spec:
                         if this value is larger than zero.
                       type: number
                       minimum: 0.0
+        xKubernetesPreserveUnknownFields: true
     served: true
     storage: true
     subresources:
@@ -42497,6 +42498,7 @@ spec:
                         if this value is larger than zero.
                       type: number
                       minimum: 0.0
+        xKubernetesPreserveUnknownFields: true
     served: true
     storage: false
     subresources:
