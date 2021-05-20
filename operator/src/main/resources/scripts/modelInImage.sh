@@ -309,6 +309,17 @@ function createWLDomain() {
        "but the secret does not have this key."
     exitOrLoop
   fi
+
+  if [ -z "$(cat ${RUNTIME_ENCRYPTION_SECRET_PASSWORD})" ] ; then
+    trace SEVERE "The domain resource 'spec.domainHomeSourceType'" \
+       "is 'FromModel';" \
+       "this requires specifying a" \
+       "'spec.configuration.model.runtimeEncryptionSecret' in your domain" \
+       "resource and deploying this secret with a 'password' key," \
+       "and the value must be non empty string without spaces."
+    exitOrLoop
+  fi
+
   # Check if modelHome (default /u01/wdt/models) and /u01/wdt/weblogic-deploy exists
 
   checkDirNotExistsOrEmpty ${IMG_MODELS_HOME}
@@ -535,7 +546,7 @@ function createModelDomain() {
       mkdir ${DOMAIN_HOME}/lib
       # Since the SerializedSystem ini is encrypted, restore it first
       local MII_PASSPHRASE=$(cat ${RUNTIME_ENCRYPTION_SECRET_PASSWORD})
-      encrypt_decrypt_domain_secret "decrypt" ${DOMAIN_HOME} ${MII_PASSPHRASE}
+      encrypt_decrypt_domain_secret "decrypt" ${DOMAIN_HOME} "${MII_PASSPHRASE}"
     fi
 
     wdtUpdateModelDomain
@@ -674,7 +685,7 @@ function createPrimordialDomain() {
     # Maintain backward compatibility - check first byte to see if it is a json file
     # if yes then it is the not a gzipped and encrypted model, just use it
     # else base64d to gzip file and unzip it
-    encrypt_decrypt_model "decrypt" ${INTROSPECTCM_MERGED_MODEL}  ${MII_PASSPHRASE} \
+    encrypt_decrypt_model "decrypt" ${INTROSPECTCM_MERGED_MODEL}  "${MII_PASSPHRASE}" \
       ${DECRYPTED_MERGED_MODEL}
 
     if [ "{" != $(head -c 1 ${DECRYPTED_MERGED_MODEL}) ] ; then
@@ -772,7 +783,7 @@ function createPrimordialDomain() {
     cp ${DOMAIN_HOME}/security/SerializedSystemIni.dat /tmp/sii.dat.saved
 
     local MII_PASSPHRASE=$(cat ${RUNTIME_ENCRYPTION_SECRET_PASSWORD})
-    encrypt_decrypt_domain_secret "encrypt" ${DOMAIN_HOME} ${MII_PASSPHRASE}
+    encrypt_decrypt_domain_secret "encrypt" ${DOMAIN_HOME} "${MII_PASSPHRASE}"
 
     tar -pczf ${LOCAL_PRIM_DOMAIN_ZIP} --exclude ${DOMAIN_HOME}/wlsdeploy --exclude ${DOMAIN_HOME}/sysman/log  \
     --exclude ${DOMAIN_HOME}/lib --exclude ${DOMAIN_HOME}/backup_config ${empath} ${DOMAIN_HOME}/*
@@ -972,7 +983,7 @@ function wdtUpdateModelDomain() {
 
   gzip ${DOMAIN_HOME}/wlsdeploy/domain_model.json || exitOrLoop
   base64 ${DOMAIN_HOME}/wlsdeploy/domain_model.json.gz > ${DOMAIN_HOME}/wlsdeploy/domain_model.json.b64 || exitOrLoop
-  encrypt_decrypt_model "encrypt" ${DOMAIN_HOME}/wlsdeploy/domain_model.json.b64 ${MII_PASSPHRASE} \
+  encrypt_decrypt_model "encrypt" ${DOMAIN_HOME}/wlsdeploy/domain_model.json.b64 "${MII_PASSPHRASE}" \
     ${DOMAIN_HOME}/wlsdeploy/domain_model.json
 
   # restore trap
@@ -1160,7 +1171,7 @@ function encrypt_decrypt_domain_secret() {
   ${JAVA_HOME}/bin/java -cp ${CP} \
     ${JAVA_PROPS} \
     org.python.util.jython \
-    ${SCRIPTPATH}/model-encryption-util.py $1 "$(cat /tmp/secure.ini)" $3 ${tmp_output} > ${WDT_OUTPUT} 2>&1
+    ${SCRIPTPATH}/model-encryption-util.py $1 "$(cat /tmp/secure.ini)" "$3" ${tmp_output} > ${WDT_OUTPUT} 2>&1
   rc=$?
   if [ $rc -ne 0 ]; then
     trace SEVERE "Failed to '$1' domain model. Check to see if the secret" \
@@ -1214,7 +1225,7 @@ function prepareMIIServer() {
     "in your domain resource and deploying this secret with a 'password' key, but the secret does not have this key."
     return 1
   fi
-  encrypt_decrypt_domain_secret "decrypt" ${DOMAIN_HOME} ${MII_PASSPHRASE}
+  encrypt_decrypt_domain_secret "decrypt" ${DOMAIN_HOME} "${MII_PASSPHRASE}"
 
   # restore the config zip
   #
