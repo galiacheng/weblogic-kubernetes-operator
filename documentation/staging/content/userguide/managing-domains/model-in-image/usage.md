@@ -166,7 +166,8 @@ Here are the required Domain YAML file and model YAML file settings for Model in
 
 - Set `configuration.model.domainType` to `JRF`.
 
-- Set `configuration.opss.walletPasswordSecret` to reference a secret that defines a `walletPassword` key. This is used to encrypt the domain's OPSS wallet file. This is a required field for JRF domains.
+- Set `configuration.opss.walletPasswordSecret` to reference a secret that defines a `walletPassword` key. This is used to encrypt the domain's OPSS wallet file. This is a required field for JRF domains. The password must have a minimum length of eight characters and contain 
+  alphabetic characters combined with numbers or special characters.  
 
 - Set `configuration.opss.walletFileSecret` to reference a secret that contains your domain's OPSS wallet file in its `walletFile` key. This assumes you have an OPSS wallet file from a previous start of the same domain. It enables a restarted or migrated domain to access its database information. This is an optional field for JRF domains, but must always be set if you want a restarted or migrated domain to access its database information.
 
