@@ -199,6 +199,7 @@ class OfflineWlstEnv(object):
     self.WDT_DOMAIN_TYPE = self.getEnvOrDef('WDT_DOMAIN_TYPE', 'WLS')
 
     if self.WDT_DOMAIN_TYPE == 'JRF':
+      trace("Saving OPSS wallet information")
       try:
         # Only export if it is not there already (i.e. have not been copied from the secrets
         if not os.path.exists('/tmp/opsswallet/ewallet.p12'):
@@ -208,8 +209,7 @@ class OfflineWlstEnv(object):
           exportEncryptionKey(jpsConfigFile=self.getDomainHome() + '/config/fmwconfig/jps-config.xml', \
                               keyFilePath='/tmp/opsswallet', keyFilePassword=opss_passphrase)
       except:
-        trace("SEVERE","Error in exporting OPSS key ")
-        dumpStack()
+        trace("SEVERE","Error in saving OPSS wallet, exiting.")
         sys.exit(1)
 
   def close(self):
