@@ -315,8 +315,8 @@ function createWLDomain() {
        "is 'FromModel';" \
        "this requires specifying a" \
        "'spec.configuration.model.runtimeEncryptionSecret' in your domain" \
-       "resource and deploying this secret with a 'password' key," \
-       "and the value must be non empty string without spaces."
+       "resource and deploying this secret with a 'password' key with " \
+       "empty value."
     exitOrLoop
   fi
 
@@ -1128,7 +1128,7 @@ function encrypt_decrypt_model() {
   ${JAVA_HOME}/bin/java -cp ${CP} \
     ${JAVA_PROPS} \
     org.python.util.jython \
-    ${SCRIPTPATH}/model-encryption-util.py $1 "$(cat $2)" $3 $4 > ${WDT_OUTPUT} 2>&1
+    ${SCRIPTPATH}/model-encryption-util.py $1 "$(cat $2)" "$3" $4 > ${WDT_OUTPUT} 2>&1
   rc=$?
   if [ $rc -ne 0 ]; then
     trace SEVERE "Failed to '$1' domain model. Check to see if the secret" \
