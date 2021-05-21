@@ -209,7 +209,7 @@ class OfflineWlstEnv(object):
           exportEncryptionKey(jpsConfigFile=self.getDomainHome() + '/config/fmwconfig/jps-config.xml', \
                               keyFilePath='/tmp/opsswallet', keyFilePassword=opss_passphrase)
       except:
-        trace("SEVERE","Error in saving OPSS wallet, exiting.")
+        trace("SEVERE","Error in saving OPSS wallet, you need to recreate the RCU schema and try again.")
         sys.exit(1)
 
   def close(self):
