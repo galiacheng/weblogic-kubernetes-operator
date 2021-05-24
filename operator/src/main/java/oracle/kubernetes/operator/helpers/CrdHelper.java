@@ -213,7 +213,7 @@ public class CrdHelper {
       V1beta1CustomResourceDefinitionSpec spec =
           new V1beta1CustomResourceDefinitionSpec()
               .group(KubernetesConstants.DOMAIN_GROUP)
-              .preserveUnknownFields(false)
+              .preserveUnknownFields(true)
               .versions(getBetaCrdVersions())
               .validation(createBetaSchemaValidation())
               .subresources(createBetaSubresources())
