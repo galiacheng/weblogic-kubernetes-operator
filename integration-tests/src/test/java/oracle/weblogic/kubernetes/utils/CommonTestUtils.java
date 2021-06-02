@@ -1545,7 +1545,8 @@ public class CommonTestUtils {
     // set the annotations for Voyager
     HashMap<String, String> annotations = new HashMap<>();
     annotations.put("ingress.appscode.com/type", ingressType);
-    annotations.put("ingress.appscode.com/affinity", ingressAffinity);
+    // set the sessionAffinity at clusterService Level
+    // annotations.put("ingress.appscode.com/affinity", ingressAffinity);
     annotations.put("kubernetes.io/ingress.class", ingressClass);
 
     // create an ingress in domain namespace

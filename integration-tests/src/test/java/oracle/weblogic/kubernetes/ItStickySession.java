@@ -22,6 +22,7 @@ import oracle.weblogic.domain.AdminServer;
 import oracle.weblogic.domain.AdminService;
 import oracle.weblogic.domain.Channel;
 import oracle.weblogic.domain.Cluster;
+import oracle.weblogic.domain.ClusterService;
 import oracle.weblogic.domain.Configuration;
 import oracle.weblogic.domain.Domain;
 import oracle.weblogic.domain.DomainSpec;
@@ -369,7 +370,9 @@ class ItStickySession {
             .addClustersItem(new Cluster()
                 .clusterName(clusterName)
                 .replicas(replicaCount)
-                .serverStartState("RUNNING"))
+                .serverStartState("RUNNING")
+                .clusterService(new ClusterService()
+                                .sessionAffinity("ClientIP")))
             .configuration(new Configuration()
                 .model(new Model()
                     .domainType("WLS")
