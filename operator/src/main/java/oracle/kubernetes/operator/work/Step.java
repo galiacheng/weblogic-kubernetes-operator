@@ -261,26 +261,14 @@ public abstract class Step {
         step,
         (fiber) -> {
           CompletionCallback callback =
-              new JoinCompletionCallback(fiber, packet, startDetails.size()) {
-                @Override
-                public void onCompletion(Packet p) {
-                  int current = count.decrementAndGet();
-                  if (current == 0) {
-                    // no need to synchronize throwables as all fibers are done
-                    if (throwables.isEmpty()) {
-                      fiber.resume(packet);
-                    } else if (throwables.size() == 1) {
-                      fiber.terminate(throwables.get(0), packet);
-                    } else {
-                      fiber.terminate(new MultiThrowable(throwables), packet);
-                    }
-                  }
-                }
-              };
+              new JoinCompletionCallback(fiber, packet, startDetails.size());
           // start forked fibers
           for (StepAndPacket sp : startDetails) {
             fiber.createChildFiber().start(sp.step, sp.packet, callback);
           }
+
+          // start timer
+          // if expires then cancel children and resume at timeout step
         });
   }
 
@@ -304,7 +292,7 @@ public abstract class Step {
     }
   }
 
-  private abstract static class JoinCompletionCallback implements CompletionCallback {
+  private static class JoinCompletionCallback implements CompletionCallback {
     protected final AsyncFiber fiber;
     protected final Packet packet;
     protected final AtomicInteger count;
@@ -314,6 +302,21 @@ public abstract class Step {
       this.fiber = fiber;
       this.packet = packet;
       this.count = new AtomicInteger(initialCount);
+    }
+
+    @Override
+    public void onCompletion(Packet p) {
+      int current = count.decrementAndGet();
+      if (current == 0) {
+        // no need to synchronize throwables as all fibers are done
+        if (throwables.isEmpty()) {
+          fiber.resume(packet);
+        } else if (throwables.size() == 1) {
+          fiber.terminate(throwables.get(0), packet);
+        } else {
+          fiber.terminate(new MultiThrowable(throwables), packet);
+        }
+      }
     }
 
     @Override
