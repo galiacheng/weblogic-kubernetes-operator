@@ -59,8 +59,8 @@ import oracle.kubernetes.operator.TuningParameters.CallBuilderTuning;
 import oracle.kubernetes.operator.builders.CallParamsImpl;
 import oracle.kubernetes.operator.calls.AsyncRequestStep;
 import oracle.kubernetes.operator.calls.CallFactory;
-import oracle.kubernetes.operator.calls.CallWrapper;
-import oracle.kubernetes.operator.calls.CancellableCall;
+import oracle.kubernetes.operator.calls.Wrapper;
+import oracle.kubernetes.operator.work.Cancellable;
 import oracle.kubernetes.operator.calls.RequestParams;
 import oracle.kubernetes.operator.calls.RetryStrategy;
 import oracle.kubernetes.operator.calls.SynchronousCallDispatcher;
@@ -2076,8 +2076,8 @@ public class CallBuilder {
         resourceVersion);
   }
 
-  private CancellableCall wrap(Call call) {
-    return new CallWrapper(call);
+  private Cancellable wrap(Call call) {
+    return new Wrapper(call);
   }
 
   public ClientPool getClientPool() {

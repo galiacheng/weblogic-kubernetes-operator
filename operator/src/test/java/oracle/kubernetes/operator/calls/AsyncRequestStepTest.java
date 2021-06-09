@@ -19,6 +19,7 @@ import oracle.kubernetes.operator.ClientFactoryStub;
 import oracle.kubernetes.operator.builders.CallParams;
 import oracle.kubernetes.operator.helpers.ClientPool;
 import oracle.kubernetes.operator.helpers.ResponseStep;
+import oracle.kubernetes.operator.work.Cancellable;
 import oracle.kubernetes.operator.work.FiberTestSupport;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
@@ -238,16 +239,16 @@ public class AsyncRequestStepTest {
     }
 
     @Override
-    public CancellableCall generate(
+    public Cancellable generate(
         RequestParams requestParams, ApiClient client, String cont, ApiCallback<DomainList> callback) {
       this.requestParams = requestParams;
       this.callback = callback;
 
-      return new CancellableCallStub();
+      return new CancellableStub();
     }
   }
 
-  static class CancellableCallStub implements CancellableCall {
+  static class CancellableStub implements Cancellable {
 
     @Override
     public void cancel() {

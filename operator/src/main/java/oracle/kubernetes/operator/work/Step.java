@@ -7,9 +7,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import oracle.kubernetes.operator.calls.RetryStrategy;
 import oracle.kubernetes.operator.work.Fiber.CompletionCallback;
 
 /** Individual step in a processing flow. */
@@ -257,19 +259,18 @@ public abstract class Step {
    */
   protected NextAction doForkJoin(
       Step step, Packet packet, Collection<StepAndPacket> startDetails) {
+    JoinStepProcessing processing = new JoinStepProcessing(packet, startDetails);
+    int timeoutSeconds = 50; // TODO
     return doSuspend(
         step,
         (fiber) -> {
-          CompletionCallback callback =
-              new JoinCompletionCallback(fiber, packet, startDetails.size());
-          // start forked fibers
-          for (StepAndPacket sp : startDetails) {
-            fiber.createChildFiber().start(sp.step, sp.packet, callback);
-          }
-
-          // start timer
-          // if expires then cancel children and resume at timeout step
+          Cancellable cc = processing.create(fiber);
+          scheduleTimeoutCheck(fiber, timeoutSeconds, () -> processing.handleTimeout(fiber, cc));
         });
+  }
+
+  private void scheduleTimeoutCheck(AsyncFiber fiber, int timeoutSeconds, Runnable timeoutCheck) {
+    fiber.scheduleOnce(timeoutSeconds, TimeUnit.SECONDS, timeoutCheck);
   }
 
   /** Multi-exception. */
@@ -292,45 +293,85 @@ public abstract class Step {
     }
   }
 
-  private static class JoinCompletionCallback implements CompletionCallback {
-    protected final AsyncFiber fiber;
-    protected final Packet packet;
-    protected final AtomicInteger count;
+  private class JoinStepProcessing {
+    final Packet packet;
+    final Collection<StepAndPacket> startDetails;
+    final AtomicBoolean didResume = new AtomicBoolean(false);
     protected final List<Throwable> throwables = new ArrayList<>();
 
-    JoinCompletionCallback(AsyncFiber fiber, Packet packet, int initialCount) {
-      this.fiber = fiber;
+    public JoinStepProcessing(Packet packet, Collection<StepAndPacket> startDetails) {
       this.packet = packet;
-      this.count = new AtomicInteger(initialCount);
+      this.startDetails = startDetails;
     }
 
-    @Override
-    public void onCompletion(Packet p) {
-      int current = count.decrementAndGet();
-      if (current == 0) {
-        // no need to synchronize throwables as all fibers are done
-        if (throwables.isEmpty()) {
+    private Cancellable create(AsyncFiber fiber) {
+      CompletionCallback callback =
+          new JoinCompletionCallback(fiber, packet, startDetails.size());
+      // start forked fibers
+      for (StepAndPacket sp : startDetails) {
+        fiber.createChildFiber().start(sp.step, sp.packet, callback);
+      }
+
+      // TODO
+      return null;
+    }
+
+    private void handleTimeout(AsyncFiber fiber, Cancellable cc) {
+      if (firstTimeResumed()) {
+        try {
+          cc.cancel();
+        } finally {
+          if (LOGGER.isFinerEnabled()) {
+            logTimeout();
+          }
           fiber.resume(packet);
-        } else if (throwables.size() == 1) {
-          fiber.terminate(throwables.get(0), packet);
-        } else {
-          fiber.terminate(new MultiThrowable(throwables), packet);
         }
       }
     }
 
-    @Override
-    public void onThrowable(Packet p, Throwable throwable) {
-      synchronized (throwables) {
-        throwables.add(throwable);
+    private boolean firstTimeResumed() {
+      return didResume.compareAndSet(false, true);
+    }
+
+    class JoinCompletionCallback implements CompletionCallback {
+      protected final AsyncFiber fiber;
+      protected final Packet packet;
+      protected final AtomicInteger count;
+
+      JoinCompletionCallback(AsyncFiber fiber, Packet packet, int initialCount) {
+        this.fiber = fiber;
+        this.packet = packet;
+        this.count = new AtomicInteger(initialCount);
       }
-      int current = count.decrementAndGet();
-      if (current == 0) {
-        // no need to synchronize throwables as all fibers are done
-        if (throwables.size() == 1) {
-          fiber.terminate(throwable, packet);
-        } else {
-          fiber.terminate(new MultiThrowable(throwables), packet);
+
+      @Override
+      public void onCompletion(Packet p) {
+        int current = count.decrementAndGet();
+        if (current == 0) {
+          // no need to synchronize throwables as all fibers are done
+          if (throwables.isEmpty()) {
+            fiber.resume(packet);
+          } else if (throwables.size() == 1) {
+            fiber.terminate(throwables.get(0), packet);
+          } else {
+            fiber.terminate(new MultiThrowable(throwables), packet);
+          }
+        }
+      }
+
+      @Override
+      public void onThrowable(Packet p, Throwable throwable) {
+        synchronized (throwables) {
+          throwables.add(throwable);
+        }
+        int current = count.decrementAndGet();
+        if (current == 0) {
+          // no need to synchronize throwables as all fibers are done
+          if (throwables.size() == 1) {
+            fiber.terminate(throwable, packet);
+          } else {
+            fiber.terminate(new MultiThrowable(throwables), packet);
+          }
         }
       }
     }

@@ -24,11 +24,7 @@ import oracle.kubernetes.operator.logging.LoggingContext;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
-import oracle.kubernetes.operator.work.AsyncFiber;
-import oracle.kubernetes.operator.work.Component;
-import oracle.kubernetes.operator.work.NextAction;
-import oracle.kubernetes.operator.work.Packet;
-import oracle.kubernetes.operator.work.Step;
+import oracle.kubernetes.operator.work.*;
 
 import static oracle.kubernetes.operator.calls.CallResponse.createFailure;
 import static oracle.kubernetes.operator.calls.CallResponse.createSuccess;
@@ -172,7 +168,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
     }
 
     // Create a call to Kubernetes that we can cancel if it doesn't succeed in time.
-    private CancellableCall createCall(AsyncFiber fiber) throws ApiException {
+    private Cancellable createCall(AsyncFiber fiber) throws ApiException {
       return factory.generate(requestParams, client, cont, new ApiCallbackImpl(this, fiber));
     }
 
@@ -213,7 +209,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
 
     // If this is the first event after the fiber resumes, it indicates that we did not receive
     // a callback within the timeout. So cancel the call and prepare to try again.
-    private void handleTimeout(AsyncFiber fiber, CancellableCall cc) {
+    private void handleTimeout(AsyncFiber fiber, Cancellable cc) {
       if (firstTimeResumed()) {
         try {
           cc.cancel();
@@ -285,7 +281,7 @@ public class AsyncRequestStep<T> extends Step implements RetryStrategyListener {
     return doSuspend(
         (fiber) -> {
           try {
-            CancellableCall cc = processing.createCall(fiber);
+            Cancellable cc = processing.createCall(fiber);
             scheduleTimeoutCheck(fiber, timeoutSeconds, () -> processing.handleTimeout(fiber, cc));
           } catch (ApiException t) {
             logAsyncFailure(t, t.getResponseBody());

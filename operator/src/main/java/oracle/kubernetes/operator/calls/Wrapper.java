@@ -4,13 +4,14 @@
 package oracle.kubernetes.operator.calls;
 
 import okhttp3.Call;
+import oracle.kubernetes.operator.work.Cancellable;
 
 /** A wrapper for an OKHttp call to isolate its own callers. */
-public class CallWrapper implements CancellableCall {
+public class Wrapper implements Cancellable {
 
   private final Call underlyingCall;
 
-  public CallWrapper(Call underlyingCall) {
+  public Wrapper(Call underlyingCall) {
     this.underlyingCall = underlyingCall;
   }
 

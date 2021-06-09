@@ -6,10 +6,11 @@ package oracle.kubernetes.operator.calls;
 import io.kubernetes.client.openapi.ApiCallback;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
+import oracle.kubernetes.operator.work.Cancellable;
 
 @FunctionalInterface
 public interface CallFactory<T> {
-  CancellableCall generate(
+  Cancellable generate(
       RequestParams requestParams, ApiClient client, String cont, ApiCallback<T> callback)
       throws ApiException;
 }
