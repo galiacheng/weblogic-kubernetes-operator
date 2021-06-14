@@ -46,8 +46,6 @@ import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.weblogic.domain.model.Domain;
 
-import static oracle.kubernetes.operator.ProcessingConstants.MAKE_RIGHT_DOMAIN_OPERATION;
-
 /**
  * Watches for changes to pods.
  */
@@ -312,7 +310,7 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod>, 
     return new WaitForPodDeleteStep(pod, next);
   }
 
-  private abstract static class WaitForPodStatusStep extends WaitForReadyStep<V1Pod> {
+  private abstract class WaitForPodStatusStep extends WaitForReadyStep<V1Pod> {
 
     private WaitForPodStatusStep(V1Pod pod, Step next) {
       super(pod, next);
@@ -443,7 +441,7 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod>, 
     }
   }
 
-  private static class MakeRightDomainStep extends DefaultResponseStep {
+  private class MakeRightDomainStep extends DefaultResponseStep {
     MakeRightDomainStep(Step next) {
       super(next);
     }
@@ -451,8 +449,7 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod>, 
     @Override
     public NextAction onSuccess(Packet packet, CallResponse callResponse) {
       MakeRightDomainOperation makeRightDomainOperation =
-              (MakeRightDomainOperation)packet.get(MAKE_RIGHT_DOMAIN_OPERATION);
-      makeRightDomainOperation.setLiveInfo(new DomainPresenceInfo((Domain)callResponse.getResult()));
+          Main.createMakeRightOperation(new DomainPresenceInfo((Domain)callResponse.getResult()));
       makeRightDomainOperation.withExplicitRecheck().interrupt().execute();
       return super.onSuccess(packet, callResponse);
     }
