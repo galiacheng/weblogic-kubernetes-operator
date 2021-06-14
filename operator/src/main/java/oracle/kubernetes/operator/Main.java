@@ -138,7 +138,7 @@ public class Main {
     private final String operatorImpl;
     private final String operatorBuildTime;
     private final SemanticVersion productVersion;
-    private final KubernetesVersion kubernetesVersion;
+    private KubernetesVersion kubernetesVersion;
     private final Engine engine;
     private final DomainProcessor domainProcessor;
     private final DomainNamespaces domainNamespaces;
@@ -149,7 +149,6 @@ public class Main {
       operatorBuildTime = getBuildTime(buildProps);
 
       productVersion = new SemanticVersion(buildVersion);
-      kubernetesVersion = HealthCheckHelper.performK8sVersionCheck();
 
       engine = new Engine(scheduledExecutorService);
       domainProcessor = new DomainProcessorImpl(this, productVersion);
@@ -157,6 +156,10 @@ public class Main {
       domainNamespaces = new DomainNamespaces(productVersion);
 
       PodHelper.setProductVersion(productVersion.toString());
+    }
+
+    private void performK8sVersionCheck() {
+      kubernetesVersion = HealthCheckHelper.performK8sVersionCheck();
     }
 
     private static String getBuildVersion(Properties buildProps) {
@@ -262,7 +265,7 @@ public class Main {
    * @param args none, ignored
    */
   public static void main(String[] args) {
-
+    main.delegate.getKubernetesVersion();
     try {
       main.startOperator(main::completeBegin);
 
