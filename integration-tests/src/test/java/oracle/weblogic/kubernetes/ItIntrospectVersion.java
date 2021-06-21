@@ -86,6 +86,7 @@ import static oracle.weblogic.kubernetes.actions.TestActions.getDomainCustomReso
 import static oracle.weblogic.kubernetes.actions.TestActions.getNextIntrospectVersion;
 import static oracle.weblogic.kubernetes.actions.TestActions.getServiceNodePort;
 import static oracle.weblogic.kubernetes.actions.TestActions.getServicePort;
+import static oracle.weblogic.kubernetes.actions.TestActions.now;
 import static oracle.weblogic.kubernetes.actions.TestActions.patchDomainResourceWithNewIntrospectVersion;
 import static oracle.weblogic.kubernetes.actions.TestActions.scaleCluster;
 import static oracle.weblogic.kubernetes.actions.TestActions.uninstallNginx;
@@ -184,8 +185,8 @@ public class ItIntrospectVersion {
     installAndVerifyOperator(opNamespace, introDomainNamespace);
 
     // get a free node port for NGINX
-    nodeportshttp = getNextFreePort(30109, 30405);
-    int nodeportshttps = getNextFreePort(30143, 30543);
+    nodeportshttp = getNextFreePort();
+    int nodeportshttps = getNextFreePort();
 
     // install and verify NGINX
     nginxHelmParams = installAndVerifyNginx(nginxNamespace, nodeportshttp, nodeportshttps);
@@ -229,10 +230,7 @@ public class ItIntrospectVersion {
 
     int replicaCount = 2;
 
-    // in general the node port range has to be between 30,000 to 32,767
-    // to avoid port conflict because of the delay in using it, the port here
-    // starts with 30100
-    final int t3ChannelPort = getNextFreePort(30172, 32767);
+    final int t3ChannelPort = getNextFreePort();
 
     final String pvName = domainUid + "-pv"; // name of the persistent volume
     final String pvcName = domainUid + "-pvc"; // name of the persistent volume claim
@@ -519,6 +517,7 @@ public class ItIntrospectVersion {
    * Updates the admin server listen port using online WLST.
    * Patches the domain custom resource with introSpectVersion.
    * Verifies the introspector runs and pods are restated in a rolling fashion.
+   * Verifies that the domain roll starting/pod cycle starting events are logged.
    * Verifies the new admin port of the admin server in services.
    * Verifies accessing sample application in admin server works.
    */
@@ -573,6 +572,9 @@ public class ItIntrospectVersion {
     assertTrue(execResult.exitValue() == 0 || execResult.stderr() == null || execResult.stderr().isEmpty(),
         "Failed to change admin port number");
 
+    //needed for event verification
+    OffsetDateTime timestamp = now();
+
     patchDomainResourceWithNewIntrospectVersion(domainUid, introDomainNamespace);
 
     //verify the introspector pod is created and runs
@@ -603,6 +605,30 @@ public class ItIntrospectVersion {
           managedServerPodNamePrefix + i, introDomainNamespace);
       checkPodReady(managedServerPodNamePrefix + i, domainUid, introDomainNamespace);
     }
+
+    /* commented due to bug Bugs - OWLS-89879
+    //verify the introspectVersion change causes the domain roll events to be logged
+    logger.info("verify domain roll starting/pod cycle starting/domain roll completed events are logged");
+    checkEvent(opNamespace, introDomainNamespace, domainUid, DOMAIN_ROLL_STARTING,
+        "Normal", timestamp, withStandardRetryPolicy);
+    checkEvent(opNamespace, introDomainNamespace, domainUid, POD_CYCLE_STARTING,
+        "Normal", timestamp, withStandardRetryPolicy);
+
+    CoreV1Event event = getEvent(opNamespace, introDomainNamespace,
+        domainUid, DOMAIN_ROLL_STARTING, "Normal", timestamp);
+    logger.info(Yaml.dump(event));
+    logger.info("verify the event message contains the domain resource changed message");
+    assertTrue(event.getMessage().contains("resource changed"));
+
+    event = getEvent(opNamespace, introDomainNamespace, domainUid, POD_CYCLE_STARTING, "Normal", timestamp);
+    logger.info(Yaml.dump(event));
+    logger.info("verify the event message contains the property changed in domain resource");
+    assertTrue(event.getMessage().contains("ADMIN_PORT"));
+
+    checkEvent(opNamespace, introDomainNamespace, domainUid, DOMAIN_ROLL_COMPLETED,
+        "Normal", timestamp, withStandardRetryPolicy);
+    */
+
 
     // verify the admin port is changed to newAdminPort
     assertEquals(newAdminPort, assertDoesNotThrow(()
