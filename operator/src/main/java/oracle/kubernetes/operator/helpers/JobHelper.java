@@ -23,6 +23,7 @@ import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import oracle.kubernetes.operator.DomainStatusUpdater;
 import oracle.kubernetes.operator.IntrospectorConfigMapConstants;
+import oracle.kubernetes.operator.JobAwaiterStepFactory;
 import oracle.kubernetes.operator.JobWatcher;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.MakeRightDomainOperation;
@@ -183,8 +184,8 @@ public class JobHelper {
    * @param next Next processing step
    * @return Step for deleting the domain introsepctor jod
    */
-  public static Step deleteDomainIntrospectorJobStep(Step next) {
-    return new DeleteIntrospectorJobStep(next);
+  public static Step deleteAndCreateDomainIntrospectorJobStep(Step next) {
+    return new DeleteAndCreateIntrospectorJobStep(next);
   }
 
   private static Step createWatchDomainIntrospectorJobReadyStep(Step next) {
@@ -383,7 +384,7 @@ public class JobHelper {
                 createProgressingStartedEventStep(info, INSPECTING_DOMAIN_PROGRESS_REASON, true, null),
                 context.createNewJob(null),
                 readDomainIntrospectorPodLogStep(null),
-                deleteDomainIntrospectorJobStep(null),
+                deleteDomainIntrospectorPodJob(context.getJobModel().getMetadata().getName(), null),
                 ConfigMapHelper.createIntrospectorConfigMapStep(getNext())),
               packet);
       }
@@ -392,50 +393,65 @@ public class JobHelper {
     }
   }
 
-  private static class DeleteIntrospectorJobStep extends Step {
+  private static class DeleteAndCreateIntrospectorJobStep extends Step {
 
     static final int JOB_DELETE_TIMEOUT_SECONDS = 1;
 
-    DeleteIntrospectorJobStep(Step next) {
+    DeleteAndCreateIntrospectorJobStep(Step next) {
       super(next);
     }
 
     @Override
     public NextAction apply(Packet packet) {
-      return doNext(deleteJob(packet, getNext()), packet);
+      return doNext(deleteAndCreateJob(packet, getNext()), packet);
     }
 
-    String getJobDeletedMessageKey() {
-      return MessageKeys.JOB_DELETED;
-    }
 
-    void logJobDeleted(String domainUid, String namespace, String jobName, Packet packet) {
-      V1Job domainIntrospectorJob =
-          (V1Job) packet.remove(ProcessingConstants.DOMAIN_INTROSPECTOR_JOB);
-
-      packet.remove(ProcessingConstants.INTROSPECTOR_JOB_FAILURE_LOGGED);
-      if (domainIntrospectorJob != null
-          && !JobWatcher.isComplete(domainIntrospectorJob)) {
-        logIntrospectorFailure(packet, domainIntrospectorJob);
-      }
-      packet.remove(ProcessingConstants.JOB_POD_NAME);
-
-      LOGGER.fine(getJobDeletedMessageKey(), domainUid, namespace, jobName);
-    }
-
-    private Step deleteJob(Packet packet, Step next) {
+    private Step deleteAndCreateJob(Packet packet, Step next) {
       DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
       java.lang.String domainUid = info.getDomain().getDomainUid();
       java.lang.String namespace = info.getNamespace();
       String jobName = JobHelper.createJobName(domainUid);
-      logJobDeleted(domainUid, namespace, jobName, packet);
-      return new CallBuilder().withTimeoutSeconds(JOB_DELETE_TIMEOUT_SECONDS)
-            .deleteJobAsync(
-                  jobName,
-                  namespace,
-                  domainUid,
-                  new V1DeleteOptions().propagationPolicy("Foreground"),
-                  new DefaultResponseStep<>(next));
+      return new CallBuilder().readJobAsync(jobName, namespace, domainUid,
+              new DeleteIntrospectorJobIfExistsOrCreateStep(jobName, next));
+    }
+
+    private class DeleteIntrospectorJobIfExistsOrCreateStep extends DefaultResponseStep {
+      private final String jobName;
+
+      DeleteIntrospectorJobIfExistsOrCreateStep(String jobName, Step next) {
+        super(next);
+        this.jobName = jobName;
+      }
+
+      @Override
+      public NextAction onSuccess(Packet packet, CallResponse callResponse) {
+        DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
+        String namespace = info.getNamespace();
+        V1Job job = (V1Job) callResponse.getResult();
+        JobAwaiterStepFactory jw = packet.getSpi(JobAwaiterStepFactory.class);
+        Step afterIntrospectorJobReadyStep = Step.chain(
+                createProgressingStartedEventStep(info, INSPECTING_DOMAIN_PROGRESS_REASON, true, null),
+                readDomainIntrospectorPodLogStep(null),
+                deleteDomainIntrospectorPodJob(jobName, null),
+                ConfigMapHelper.createIntrospectorConfigMapStep(getNext()));
+        if ((job != null) && (packet.get(ProcessingConstants.DOMAIN_INTROSPECTOR_JOB) == null)) {
+          packet.put(ProcessingConstants.DOMAIN_INTROSPECTOR_JOB, job);
+        }
+
+        if (job != null) {
+          LOGGER.info("DEBUG: Introspector job is not null..waiting and executing afterIntrospectorJobReadyStep");
+          return doNext(afterIntrospectorJobReadyStep, packet);
+        } else {
+          LOGGER.info("DEBUG: Introspector job is null..create intro job if config map is not uptodate");
+          Step checkAndCreateIntrospectorJobStep = Step.chain(
+                  ConfigMapHelper.readExistingIntrospectorConfigMap(namespace, info.getDomainUid()),
+                  createDomainIntrospectorJobStep(getNext()));
+          packet.putIfAbsent(START_TIME, System.currentTimeMillis());
+          return doNext(checkAndCreateIntrospectorJobStep, packet);
+
+        }
+      }
     }
   }
 
@@ -609,6 +625,51 @@ public class JobHelper {
           domainIntrospectorJob.getMetadata().getName(),
           domainIntrospectorJob.toString());
     }
+  }
+
+  static class DeleteDomainIntrospectorPodJob extends Step {
+    public final String jobName;
+
+    DeleteDomainIntrospectorPodJob(String jobName, Step next) {
+      super(next);
+      this.jobName = jobName;
+    }
+
+    @Override
+    public NextAction apply(Packet packet) {
+      LOGGER.info("DEBUG: In DeleteDomainIntrospectorPodJob..");
+      DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
+      logJobDeleted(info.getDomainUid(), info.getNamespace(), jobName, packet);
+      return doNext(new CallBuilder().withTimeoutSeconds(DeleteAndCreateIntrospectorJobStep.JOB_DELETE_TIMEOUT_SECONDS)
+              .deleteJobAsync(
+                      jobName,
+                      info.getNamespace(),
+                      info.getDomainUid(),
+                      new V1DeleteOptions().propagationPolicy("Foreground"),
+                      new DefaultResponseStep<>(getNext())), packet);
+    }
+  }
+
+  public static Step deleteDomainIntrospectorPodJob(String jobName, Step next) {
+    return new DeleteDomainIntrospectorPodJob(jobName, next);
+  }
+
+  static void logJobDeleted(String domainUid, String namespace, String jobName, Packet packet) {
+    V1Job domainIntrospectorJob =
+            (V1Job) packet.remove(ProcessingConstants.DOMAIN_INTROSPECTOR_JOB);
+
+    packet.remove(ProcessingConstants.INTROSPECTOR_JOB_FAILURE_LOGGED);
+    if (domainIntrospectorJob != null
+            && !JobWatcher.isComplete(domainIntrospectorJob)) {
+      logIntrospectorFailure(packet, domainIntrospectorJob);
+    }
+    packet.remove(ProcessingConstants.JOB_POD_NAME);
+
+    LOGGER.fine(getJobDeletedMessageKey(), domainUid, namespace, jobName);
+  }
+
+  static String getJobDeletedMessageKey() {
+    return MessageKeys.JOB_DELETED;
   }
 
   private static class ReadDomainIntrospectorPodStep extends Step {

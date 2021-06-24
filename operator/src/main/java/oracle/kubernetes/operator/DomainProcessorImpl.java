@@ -303,8 +303,7 @@ public class DomainProcessorImpl implements DomainProcessor {
     return Step.chain(
           ConfigMapHelper.readIntrospectionVersionStep(info.getNamespace(), info.getDomainUid()),
           new IntrospectionRequestStep(info),
-          JobHelper.deleteDomainIntrospectorJobStep(null),
-          JobHelper.createDomainIntrospectorJobStep(null));
+          JobHelper.deleteAndCreateDomainIntrospectorJobStep(null));
   }
 
   private static class IntrospectionRequestStep extends Step {

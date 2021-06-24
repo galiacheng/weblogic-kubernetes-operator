@@ -525,7 +525,7 @@ public class DomainIntrospectorJobTest {
     IntrospectionTestUtils.defineResources(testSupport, SEVERE_MESSAGE_1);
     testSupport.addToPacket(DOMAIN_INTROSPECTOR_JOB, testSupport.getResourceWithName(JOB, getJobName()));
 
-    testSupport.runSteps(JobHelper.deleteDomainIntrospectorJobStep(terminalStep));
+    testSupport.runSteps(JobHelper.deleteDomainIntrospectorPodJob(DOMAIN_INTROSPECTOR_JOB, terminalStep));
 
     assertThat(logRecords, containsInfo(getJobFailedMessageKey()));
     assertThat(logRecords, containsFine(getJobFailedDetailMessageKey()));

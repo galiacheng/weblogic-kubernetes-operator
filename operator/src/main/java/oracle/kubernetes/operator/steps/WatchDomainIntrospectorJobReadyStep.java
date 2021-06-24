@@ -19,6 +19,7 @@ public class WatchDomainIntrospectorJobReadyStep extends Step {
 
   @Override
   public NextAction apply(Packet packet) {
+    System.out.println("DEBUG: In WatchDomainIntrospectorJobReadyStep..");
     V1Job domainIntrospectorJob = (V1Job) packet.get(ProcessingConstants.DOMAIN_INTROSPECTOR_JOB);
 
     if (hasNotCompleted(domainIntrospectorJob)) {
