@@ -184,6 +184,7 @@ public class Ingress {
 
     // create the ingress
     try {
+      getLogger().info("Creating ingress {0} in namespace {1}", ingress, namespace);
       Kubernetes.createIngress(namespace, ingress);
     } catch (ApiException apex) {
       getLogger().severe("got ApiException while calling createIngress: {0}", apex.getResponseBody());

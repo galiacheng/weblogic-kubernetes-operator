@@ -410,6 +410,7 @@ public class ItTwoDomainsLoadBalancers {
     createTraefikIngressRoutingRules();
 
     // create ingress rules with non-tls host routing for Voyager and NGINX
+    logger.info("creating voyager ingress host routing rules");
     createVoyagerIngressHostRoutingRules(false);
     createNginxIngressHostRoutingForTwoDomains(false);
 
@@ -1605,6 +1606,7 @@ public class ItTwoDomainsLoadBalancers {
         tlsList.add(tls);
       }
 
+      logger.info("creating ingress and retry if fail");
       createIngressAndRetryIfFail(60, isTLS, ingressName, defaultNamespace, annotations, ingressRules, tlsList);
 
       // wait until voyager ingress pod is ready

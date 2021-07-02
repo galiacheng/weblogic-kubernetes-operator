@@ -4047,6 +4047,7 @@ public class CommonTestUtils {
                                                  List<NetworkingV1beta1IngressRule> ingressRules,
                                                  List<NetworkingV1beta1IngressTLS> tlsList) {
     for (int i = 0; i < maxRetries; i++) {
+      getLogger().info("Creating ingress {0}, trying {1} times", ingressName, i + 1);
       try {
         if (isTLS) {
           createIngress(ingressName, namespace, annotations, ingressRules, tlsList);
