@@ -96,7 +96,7 @@ public class JobHelper {
     LOGGER.fine("isModelInImageUpdate: " + isModelInImageUpdate(packet, info));
     return topology == null
           || isBringingUpNewDomain(packet, info)
-          || introspectionRequested(packet)
+          || checkIfIntrospectionRequestedAndReset(packet)
           || isModelInImageUpdate(packet, info)
           || isIntrospectVersionChanged(packet, info);
   }
@@ -105,7 +105,7 @@ public class JobHelper {
     return runningServersCount(info) == 0 && creatingServers(info) && isGenerationChanged(packet, info);
   }
 
-  private static boolean introspectionRequested(Packet packet) {
+  private static boolean checkIfIntrospectionRequestedAndReset(Packet packet) {
     return packet.remove(ProcessingConstants.DOMAIN_INTROSPECT_REQUESTED) != null;
   }
 
