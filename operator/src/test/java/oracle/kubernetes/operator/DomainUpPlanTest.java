@@ -142,8 +142,7 @@ public class DomainUpPlanTest {
             "AdminPodStep",
             "ForServerStep",
             "WatchPodReadyAdminStep",
-            "ManagedServersUpStep",
-            "EndProgressingStep"));
+            "ManagedServersUpStep"));
   }
 
   @Test

@@ -236,6 +236,10 @@ abstract class ServiceHelperTest extends ServiceHelperTestBase {
     return DomainConfiguratorFactory.forDomain(domainPresenceInfo.getDomain());
   }
 
+  protected WlsServerConfig getServerConfig() {
+    return serverConfig;
+  }
+
   @Test
   public void whenCreated_createWithOwnerReference() {
     V1OwnerReference expectedReference = new V1OwnerReference()
@@ -451,7 +455,7 @@ abstract class ServiceHelperTest extends ServiceHelperTestBase {
   }
 
   private List<Object> getStrandedService() {
-    ArrayList<V1Service> svcList = (ArrayList)testSupport.getResources(SERVICE);
+    List<V1Service> svcList = testSupport.getResources(SERVICE);
     return svcList.stream().filter(s -> s.getMetadata().getName().equals(STRANDED)).collect(Collectors.toList());
   }
 

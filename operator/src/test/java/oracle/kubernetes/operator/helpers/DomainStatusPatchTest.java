@@ -180,37 +180,33 @@ public class DomainStatusPatchTest {
   @Test
   public void whenBothStatusesHaveConditions_replaceMismatches() {  // time to rethink this
     DomainStatus status1 = new DomainStatus()
-          .addCondition(new DomainCondition(DomainConditionType.Available)
-                .withReason("ok now").withMessage("hello").withStatus("true"))
-          .addCondition(new DomainCondition(DomainConditionType.Progressing)
+          .addCondition(new DomainCondition(DomainConditionType.Failed)
                 .withReason("because").withStatus("true"));
     DomainStatus status2 = new DomainStatus()
-          .addCondition(new DomainCondition(DomainConditionType.Available)
-                .withReason("ok now").withMessage("hello").withStatus("true"))
-          .addCondition(new DomainCondition(DomainConditionType.Progressing)
-                .withReason("trying").withMessage("Almost"));
-
-    computePatch(status1, status2);
-
-    assertThat(builder.getPatches(),
-          hasItemsInOrder("REMOVE /status/conditions/1",
-                          "ADD /status/conditions/- {'message':'Almost','reason':'trying','type':'Progressing'}"));
-  }
-
-  @Test
-  public void whenBothStatusesHaveSameConditionTypeWithMismatch_replaceIt() {  // time to rethink this
-    DomainStatus status1 = new DomainStatus()
-          .addCondition(new DomainCondition(DomainConditionType.Progressing)
-                .withReason("because").withMessage("Not There"));
-    DomainStatus status2 = new DomainStatus()
-          .addCondition(new DomainCondition(DomainConditionType.Progressing)
+          .addCondition(new DomainCondition(DomainConditionType.Failed)
                 .withReason("trying").withMessage("Almost"));
 
     computePatch(status1, status2);
 
     assertThat(builder.getPatches(),
           hasItemsInOrder("REMOVE /status/conditions/0",
-                          "ADD /status/conditions/- {'message':'Almost','reason':'trying','type':'Progressing'}"));
+                          "ADD /status/conditions/- {'message':'Almost','reason':'trying','type':'Failed'}"));
+  }
+
+  @Test
+  public void whenBothStatusesHaveSameConditionTypeWithMismatch_replaceIt() {  // time to rethink this
+    DomainStatus status1 = new DomainStatus()
+          .addCondition(new DomainCondition(DomainConditionType.Failed)
+                .withReason("because").withMessage("Not There"));
+    DomainStatus status2 = new DomainStatus()
+          .addCondition(new DomainCondition(DomainConditionType.Failed)
+                .withReason("trying").withMessage("Almost"));
+
+    computePatch(status1, status2);
+
+    assertThat(builder.getPatches(),
+          hasItemsInOrder("REMOVE /status/conditions/0",
+                          "ADD /status/conditions/- {'message':'Almost','reason':'trying','type':'Failed'}"));
   }
 
   @Test

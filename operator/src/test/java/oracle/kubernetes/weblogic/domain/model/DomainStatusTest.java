@@ -19,7 +19,6 @@ import static oracle.kubernetes.operator.WebLogicConstants.SHUTDOWN_STATE;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionMatcher.hasCondition;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Available;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Failed;
-import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Progressing;
 import static oracle.kubernetes.weblogic.domain.model.DomainStatusTest.ClusterStatusMatcher.clusterStatus;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
@@ -64,31 +63,6 @@ public class DomainStatusTest {
   }
 
   @Test
-  public void whenAddedConditionProgressing_addedItWithoutRemovingFailed() {
-    DomainCondition originalCondition1 = new DomainCondition(Failed).withStatus("True");
-    domainStatus.addCondition(originalCondition1);
-    DomainCondition originalCondition2 = new DomainCondition(Progressing).withStatus("True");
-    domainStatus.addCondition(originalCondition2);
-
-    assertThat(domainStatus.getConditionWithType(Failed), sameInstance(originalCondition1));
-    assertThat(domainStatus.getConditionWithType(Progressing), sameInstance(originalCondition2));
-  }
-
-  @Test
-  public void whenAddedConditionFailed_removeProgressingCondition() {
-    DomainCondition originalCondition1 = new DomainCondition(Failed).withStatus("True");
-    domainStatus.addCondition(originalCondition1);
-    DomainCondition originalCondition2 = new DomainCondition(Progressing).withStatus("True");
-    domainStatus.addCondition(originalCondition2);
-
-    SystemClockTestSupport.increment();
-    domainStatus.addCondition(new DomainCondition(Failed).withStatus("True"));
-
-    assertThat(domainStatus.getConditionWithType(Failed), sameInstance(originalCondition1));
-    assertThat(domainStatus.getConditionWithType(Progressing), is(nullValue()));
-  }
-
-  @Test
   public void whenAddedConditionIsFailed_replaceOldFailedCondition() {
     domainStatus.addCondition(new DomainCondition(Failed).withStatus("False"));
 
@@ -96,16 +70,6 @@ public class DomainStatusTest {
 
     assertThat(domainStatus, hasCondition(Failed).withStatus("True"));
     assertThat(domainStatus, not(hasCondition(Failed).withStatus("False")));
-  }
-
-  @Test
-  public void whenAddedConditionIsFailed_removeProgressingCondition() {
-    domainStatus.addCondition(new DomainCondition(Progressing).withStatus("False"));
-
-    domainStatus.addCondition(new DomainCondition(Failed).withStatus("True"));
-
-    assertThat(domainStatus, not(hasCondition(Progressing)));
-    assertThat(domainStatus, hasCondition(Failed).withStatus("True"));
   }
 
   @Test
@@ -129,16 +93,6 @@ public class DomainStatusTest {
   }
 
   @Test
-  public void whenAddedConditionIsAvailable_removeExistedProgressingCondition() {
-    domainStatus.addCondition(new DomainCondition(Progressing).withStatus("False"));
-
-    domainStatus.addCondition(new DomainCondition(Available).withStatus("True"));
-
-    assertThat(domainStatus, not(hasCondition(Progressing)));
-    assertThat(domainStatus, hasCondition(Available).withStatus("True"));
-  }
-
-  @Test
   public void whenAddedConditionIsAvailable_removeExistedFailedCondition() {
     domainStatus.addCondition(new DomainCondition(Failed).withStatus("False"));
 
@@ -146,36 +100,6 @@ public class DomainStatusTest {
 
     assertThat(domainStatus, not(hasCondition(Failed)));
     assertThat(domainStatus, hasCondition(Available).withStatus("True"));
-  }
-
-  @Test
-  public void whenAddedConditionIsProgressing_replaceOldProgressingCondition() {
-    domainStatus.addCondition(new DomainCondition(Progressing).withStatus("False"));
-
-    domainStatus.addCondition(new DomainCondition(Progressing).withStatus("True"));
-
-    assertThat(domainStatus, hasCondition(Progressing).withStatus("True"));
-    assertThat(domainStatus, not(hasCondition(Progressing).withStatus("False")));
-  }
-
-  @Test
-  public void whenAddedConditionIsProgressing_leaveExistingAvailableCondition() {
-    domainStatus.addCondition(new DomainCondition(Available).withStatus("False"));
-
-    domainStatus.addCondition(new DomainCondition(Progressing).withStatus("True"));
-
-    assertThat(domainStatus, hasCondition(Progressing).withStatus("True"));
-    assertThat(domainStatus, hasCondition(Available).withStatus("False"));
-  }
-
-  @Test
-  public void whenAddedConditionIsProgress_doNotRmoveExistedFailedCondition() {
-    domainStatus.addCondition(new DomainCondition(Failed).withStatus("False"));
-
-    domainStatus.addCondition(new DomainCondition(Progressing).withStatus("True"));
-
-    assertThat(domainStatus, hasCondition(Failed));
-    assertThat(domainStatus, hasCondition(Progressing).withStatus("True"));
   }
 
   @Test
@@ -203,7 +127,7 @@ public class DomainStatusTest {
     domainStatus.setMessage("old message");
     domainStatus.setReason("old reason");
 
-    domainStatus.addCondition(new DomainCondition(Progressing).withMessage("message").withReason("reason"));
+    domainStatus.addCondition(new DomainCondition(Available).withMessage("message").withReason("reason"));
 
     assertThat(domainStatus.getMessage(), nullValue());
     assertThat(domainStatus.getReason(), nullValue());
@@ -241,7 +165,7 @@ public class DomainStatusTest {
 
   @Test
   public void whenHasCondition_cloneIsEqual() {
-    domainStatus.addCondition(new DomainCondition(Progressing).withStatus("False"));
+    domainStatus.addCondition(new DomainCondition(Available).withStatus("False"));
 
     DomainStatus clone = new DomainStatus(this.domainStatus);
 

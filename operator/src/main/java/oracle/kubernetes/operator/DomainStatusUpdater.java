@@ -103,6 +103,8 @@ public class DomainStatusUpdater {
    * @param next the next step
    * @return the new step
    */
+  // ServerStatusReader.StatusUpdateHookStep.apply(Packet)
+  // ManagedServerUpIteratorStep.apply(Packet)
   public static Step createStatusUpdateStep(Step next) {
     return new StatusUpdateStep(next);
   }
@@ -159,16 +161,6 @@ public class DomainStatusUpdater {
       DomainPresenceInfo info, String reason, boolean isPreserveAvailable, Step next) {
     return Step.chain(EventHelper.createEventStep(DOMAIN_PROCESSING_STARTING),
         createProgressingStep(info, reason, isPreserveAvailable, next));
-  }
-
-  /**
-   * Asynchronous step to set Domain condition end Progressing and set Available, if needed.
-   *
-   * @param next Next step
-   * @return Step
-   */
-  static Step createEndProgressingStep(Step next) {
-    return new EndProgressingStep(next);
   }
 
   /**
@@ -332,7 +324,7 @@ public class DomainStatusUpdater {
             createResponseStep(context, getNext()));
     }
 
-    private String createPatchString(DomainStatusUpdaterContext context, DomainStatus newStatus) {
+    public String createPatchString(DomainStatusUpdaterContext context, DomainStatus newStatus) {
       JsonPatchBuilder builder = Json.createPatchBuilder();
       newStatus.createPatchFrom(builder, context.getStatus());
       return builder.build().toString();
@@ -820,19 +812,6 @@ public class DomainStatusUpdater {
       if (!isPreserveAvailable) {
         status.removeConditionIf(c -> c.getType() == Available);
       }
-    }
-  }
-
-  private static class EndProgressingStep extends DomainStatusUpdaterStep {
-
-    EndProgressingStep(Step next) {
-      super(next);
-    }
-
-    @Override
-    void modifyStatus(DomainStatus status) {
-      status.removeConditionIf(
-          c -> c.getType() == Progressing && TRUE.equals(c.getStatus()));
     }
   }
 

@@ -405,16 +405,6 @@ public class DomainStatusUpdaterTest {
   }
 
   @Test
-  public void progressingStep_containsValidationWarnings() {
-    info.addValidationWarning(validationWarning);
-    testSupport.addToPacket(DOMAIN_TOPOLOGY, configSupport.createDomainConfig());
-
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, true, endStep));
-
-    assertThat(getRecordedDomain().getStatus().getMessage(), containsString(validationWarning));
-  }
-
-  @Test
   public void failedStepWithFailureMessage_doesNotContainValidationWarnings() {
     info.addValidationWarning(validationWarning);
     testSupport.addToPacket(DOMAIN_TOPOLOGY, configSupport.createDomainConfig());
@@ -707,21 +697,6 @@ public class DomainStatusUpdaterTest {
     assertThat(getRecordedDomain(), not(hasCondition(Available)));
   }
 
-  @Test
-  public void whenTwoConditionUpdatesScheduled_useResultOfFirstToComputeSecond() {
-    domain.getStatus().addCondition(new DomainCondition(Available).withStatus("False"));
-    domain.getStatus().addCondition(new DomainCondition(Progressing).withStatus("True").withReason("Initial"));
-
-    testSupport.runSteps(
-          Step.chain(
-                DomainStatusUpdater.createProgressingStep("Modifying", false, null),
-                DomainStatusUpdater.createAvailableStep("Test complete", null))
-    );
-
-    assertThat(getRecordedDomain(), hasCondition(Available).withStatus("True"));
-
-  }
-
   // 1. response step must call onFailure to repeat the initiating step on a 500 error, in order to recompute the patch;
   //    potentially, multiple repeats may be needed, but that should be rare. Maybe 3 tries?
   // 2. will still need to update the packet for this to work. That probably needs to happen on as part of this.
@@ -788,131 +763,6 @@ public class DomainStatusUpdaterTest {
 
   private V1Pod createPod(String serverName) {
     return new V1Pod().metadata(createPodMetadata(serverName)).spec(new V1PodSpec());
-  }
-
-  @Test
-  public void whenDomainHasNoStatus_progressingStepUpdatesItWithProgressingTrueAndReason() {
-    domain.setStatus(null);
-
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, false, endStep));
-
-    assertThat(getRecordedDomain(), hasCondition(Progressing).withStatus("True").withReason(reason));
-  }
-
-  @Test
-  public void
-      whenDomainHasNoProgressingCondition_progressingStepUpdatesItWithProgressingTrueAndReason() {
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, false, endStep));
-
-    assertThat(getRecordedDomain(), hasCondition(Progressing).withStatus("True").withReason(reason));
-  }
-
-  @Test
-  public void
-      whenDomainHasProgressingNonTrueCondition_progressingStepUpdatesItWithProgressingTrueAndReason() {
-    domain.getStatus().addCondition(new DomainCondition(Progressing).withStatus("?"));
-
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, false, endStep));
-
-    assertThat(getRecordedDomain(), hasCondition(Progressing).withStatus("True").withReason(reason));
-    assertThat(getRecordedDomain().getStatus().getConditions(), hasSize(1));
-  }
-
-  @Test
-  public void whenDomainHasProgressingTrueConditionWithDifferentReason_progressingStepUpdatesReason() {
-    domain
-        .getStatus()
-        .addCondition(
-            new DomainCondition(Progressing)
-                .withStatus("True")
-                .withReason(generator.getUniqueString()));
-
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, false, endStep));
-
-    assertThat(getRecordedDomain(), hasCondition(Progressing).withStatus("True").withReason(reason));
-    assertThat(getRecordedDomain().getStatus().getConditions(), hasSize(1));
-    assertThat(testSupport.getNumCalls(), equalTo(1));
-  }
-
-  @Test
-  public void whenDomainHasProgressingTrueConditionWithSameReason_progressingStepIgnoresIt() {
-    domain
-        .getStatus()
-        .addCondition(new DomainCondition(Progressing).withStatus("True").withReason(reason));
-
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, false, endStep));
-
-    assertThat(testSupport.getNumCalls(), equalTo(0));
-  }
-
-  @Test
-  public void whenDomainHasFailedCondition_progressingStepShouldNotRemovesIt() {
-    domain.getStatus().addCondition(new DomainCondition(Failed));
-
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, false, endStep));
-
-    assertThat(getRecordedDomain(), hasCondition(Failed));
-  }
-
-  @Test
-  public void whenDomainHasAvailableCondition_progressingStepRemovesIt() {
-    domain.getStatus().addCondition(new DomainCondition(Available));
-
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, false, endStep));
-
-    assertThat(getRecordedDomain(), not(hasCondition(Available)));
-  }
-
-  @Test
-  public void whenDomainHasAvailableCondition_progressingStepWithPreserveAvailableIgnoresIt() {
-    domain.getStatus().addCondition(new DomainCondition(Available));
-
-    testSupport.runSteps(DomainStatusUpdater.createProgressingStep(reason, true, endStep));
-
-    assertThat(getRecordedDomain(), hasCondition(Available));
-  }
-
-  @Test
-  public void whenDomainHasNoConditions_endProgressingStepDoesNothing() {
-    testSupport.runSteps(DomainStatusUpdater.createEndProgressingStep(endStep));
-
-    assertThat(testSupport.getNumCalls(), equalTo(0));
-  }
-
-  @Test
-  public void whenDomainHasProgressingTrueCondition_endProgressingStepRemovesIt() {
-    domain.getStatus().addCondition(new DomainCondition(Progressing).withStatus("True"));
-
-    testSupport.runSteps(DomainStatusUpdater.createEndProgressingStep(endStep));
-
-    assertThat(getRecordedDomain(), not(hasCondition(Progressing)));
-  }
-
-  @Test
-  public void whenDomainHasProgressingNotTrueCondition_endProgressingStepIgnoresIt() {
-    domain.getStatus().addCondition(new DomainCondition(Progressing).withStatus("?"));
-
-    testSupport.runSteps(DomainStatusUpdater.createEndProgressingStep(endStep));
-
-    assertThat(testSupport.getNumCalls(), equalTo(0));
-  }
-
-  @Test
-  public void whenDomainHasAvailableCondition_endProgressingStepIgnoresIt() {
-    domain.getStatus().addCondition(new DomainCondition(Available));
-
-    testSupport.runSteps(DomainStatusUpdater.createEndProgressingStep(endStep));
-
-    assertThat(testSupport.getNumCalls(), equalTo(0));
-  }
-
-  @Test
-  public void whenDomainHasFailedCondition_endProgressingStepIgnoresIt() {
-    domain.getStatus().addCondition(new DomainCondition(Failed));
-
-    testSupport.runSteps(DomainStatusUpdater.createEndProgressingStep(endStep));
-
-    assertThat(testSupport.getNumCalls(), equalTo(0));
   }
 
   @Test

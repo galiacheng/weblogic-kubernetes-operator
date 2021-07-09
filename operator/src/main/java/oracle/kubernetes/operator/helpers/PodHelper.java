@@ -316,15 +316,15 @@ public class PodHelper {
 
     @Override
     Step createNewPod(Step next) {
-      return createProgressingStep(createPod(next));
+      return createPod(next);
     }
 
     @Override
     Step replaceCurrentPod(V1Pod pod, Step next) {
       if (MakeRightDomainOperation.isInspectionRequired(packet)) {
-        return createProgressingStep(MakeRightDomainOperation.createStepsToRerunWithIntrospection(packet));
+        return MakeRightDomainOperation.createStepsToRerunWithIntrospection(packet);
       } else {
-        return createProgressingStep(createCyclePodStep(pod, next));
+        return createCyclePodStep(pod, next);
       }
     }
 
@@ -475,7 +475,7 @@ public class PodHelper {
     }
 
     private Step.StepAndPacket createRollRequest(Step deferredStep) {
-      return new Step.StepAndPacket(createProgressingStep(deferredStep), packet.copy());
+      return new Step.StepAndPacket(deferredStep, packet.copy());
     }
 
     @SuppressWarnings("unchecked")
@@ -491,7 +491,11 @@ public class PodHelper {
 
     @Override
     Step createNewPod(Step next) {
+      /*/
+      return createPod(next);
+      /*/
       return createProgressingStep(createPod(next));
+      /**/
     }
 
     @Override

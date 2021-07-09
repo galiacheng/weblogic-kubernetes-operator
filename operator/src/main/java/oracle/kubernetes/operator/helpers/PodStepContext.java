@@ -387,7 +387,7 @@ public abstract class PodStepContext extends BasePodStepContext {
   abstract Step createProgressingStep(Step actionStep);
 
   private Step patchCurrentPod(V1Pod currentPod, Step next) {
-    return createProgressingStep(patchPod(currentPod, next));
+    return patchPod(currentPod, next);
   }
 
   private Step patchPod(V1Pod currentPod, Step next) {

@@ -17,7 +17,6 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodCondition;
 import io.kubernetes.client.openapi.models.V1PodStatus;
 import io.kubernetes.client.openapi.models.V1SecretReference;
-import oracle.kubernetes.operator.DomainStatusUpdater;
 import oracle.kubernetes.operator.PodAwaiterStepFactory;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.helpers.PodHelper.ManagedPodStepContext;
@@ -141,13 +140,14 @@ public class RollingHelperTest {
   private Step.StepAndPacket createRollingStepAndPacket(String serverName) {
     Packet packet = testSupport.getPacket().copy();
     packet.put(SERVER_SCAN, domainTopology.getServerConfig(serverName));
-    return new Step.StepAndPacket(DomainStatusUpdater.createProgressingStep(
-        DomainStatusUpdater.MANAGED_SERVERS_STARTING_PROGRESS_REASON,
-        false,
-        new ManagedPodStepContext(terminalStep, packet).createCyclePodStep(
-            testSupport.getResourceWithName(
+    return new Step.StepAndPacket(createCyclePodStep(serverName, packet), packet);
+  }
+
+  private Step createCyclePodStep(String serverName, Packet packet) {
+    return new ManagedPodStepContext(terminalStep, packet).createCyclePodStep(
+          testSupport.getResourceWithName(
                 KubernetesTestSupport.POD,
-                LegalNames.toPodName(UID, serverName)), null)), packet);
+                LegalNames.toPodName(UID, serverName)), null);
   }
 
   private void initializeExistingPods() {

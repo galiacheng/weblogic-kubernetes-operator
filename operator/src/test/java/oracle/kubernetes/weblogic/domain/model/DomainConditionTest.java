@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Available;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.ConfigChangesPendingRestart;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Failed;
-import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Progressing;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
 
@@ -41,7 +40,7 @@ public class DomainConditionTest {
   @Test
   public void predicateDetectsType() {
     assertThat(new DomainCondition(Failed).hasType(Failed), is(true));
-    assertThat(new DomainCondition(Progressing).hasType(Available), is(false));
+    assertThat(new DomainCondition(ConfigChangesPendingRestart).hasType(Available), is(false));
     assertThat(new DomainCondition(ConfigChangesPendingRestart).hasType(ConfigChangesPendingRestart), is(true));
   }
 
