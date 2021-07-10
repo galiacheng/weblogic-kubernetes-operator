@@ -39,6 +39,7 @@ abstract class CollectiveCompatibility implements CompatibilityCheck {
     for (CompatibilityCheck check : checks) {
       if (!check.isCompatible()) {
         reasons.add(getIndent() + check.getIncompatibility());
+        System.out.println("DEBUG: check is " + check + ", reason is " + reasons);
       }
     }
     return reasons.isEmpty() ? null : getHeader() + String.join(",\n", reasons);
@@ -50,6 +51,9 @@ abstract class CollectiveCompatibility implements CompatibilityCheck {
     for (CompatibilityCheck check : checks) {
       if (!check.isCompatible() && check.getScopedIncompatibility(scope) != null) {
         reasons.add(getIndent() + check.getScopedIncompatibility(scope));
+        System.out.println("DEBUG: check is " + check
+                + ", check.getScopedIncompatibility(scope) is " + check.getScopedIncompatibility(scope)
+                + ", reasons is " + reasons);
       }
     }
     return reasons.isEmpty()

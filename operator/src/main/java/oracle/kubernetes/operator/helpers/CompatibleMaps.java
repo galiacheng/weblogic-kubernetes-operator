@@ -76,6 +76,7 @@ class CompatibleMaps<K, V> implements CompatibilityCheck {
       }
     }
 
+    System.out.println("DEBUG: getIncompatibility -> reasons " + reasons);
     return reasons.isEmpty() ? null : String.join(",\n", reasons);
   }
 
@@ -90,6 +91,7 @@ class CompatibleMaps<K, V> implements CompatibilityCheck {
       }
     }
 
+    System.out.println("DEBUG: getDomainIncompatibility -> reasons " + reasons);
     return reasons.isEmpty() ? null : String.join(",\n", reasons);
   }
 

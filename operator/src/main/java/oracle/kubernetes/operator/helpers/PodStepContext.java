@@ -479,6 +479,7 @@ public abstract class PodStepContext extends BasePodStepContext {
     }
 
     String domainIncompatibility = getDomainIncompatibility(pod);
+    LOGGER.info("DEBUG: domainIncompatibility is " + domainIncompatibility);
     if (haveReasonsToRoll(domainIncompatibility)) {
       return createDomainRollStartEvent(next, domainIncompatibility);
     }
@@ -500,6 +501,7 @@ public abstract class PodStepContext extends BasePodStepContext {
         domainIncompatibility = ROLL_REASON_WEBLOGIC_CONFIGURATION_CHANGED;
       }
     }
+    LOGGER.info("DEBUG: domainIncompatibility is " + domainIncompatibility);
     return domainIncompatibility;
   }
 
@@ -513,6 +515,7 @@ public abstract class PodStepContext extends BasePodStepContext {
   }
 
   private boolean haveReasonsToRoll(String domainIncompatibility) {
+    LOGGER.info("DEBUG: domainIncompatibility " + domainIncompatibility);
     return domainIncompatibility != null && domainIncompatibility.length() != 0;
   }
 
@@ -542,15 +545,22 @@ public abstract class PodStepContext extends BasePodStepContext {
           MessageKeys.POD_DUMP,
           AnnotationHelper.getDebugString(currentPod),
           AnnotationHelper.getDebugString(getPodModel()));
+    } else if (!useCurrent) {
+      LOGGER.fine(
+              MessageKeys.POD_DUMP,
+              AnnotationHelper.getDebugString(currentPod),
+              AnnotationHelper.getDebugString(getPodModel()));
     }
-
+    LOGGER.info("DEBUG: returning useCurrent value of " + useCurrent);
     return useCurrent;
   }
 
   private boolean hasCorrectPodHash(V1Pod currentPod) {
     if (!isLegacyPod(currentPod)) {
+      LOGGER.info("DEBUG: Non legacy pod.. checking pod hash");
       return AnnotationHelper.getHash(getPodModel()).equals(AnnotationHelper.getHash(currentPod));
     } else {
+      LOGGER.info("DEBUG: Legacy pod.. checking pod hash");
       return canAdjustHashToMatch(currentPod, AnnotationHelper.getHash(currentPod));
     }
   }
@@ -616,15 +626,20 @@ public abstract class PodStepContext extends BasePodStepContext {
     String dynamicUpdateResult = packet.getValue(MII_DYNAMIC_UPDATE);
 
     if (miiDomainZipHash == null || isDomainZipUnchanged(currentPod)) {
+      LOGGER.info("DEBUG: miiDomainZipHash is null or domain zip is unchanged");
       return true;
     } else if (dynamicUpdateResult == null || !getDomain().isUseOnlineUpdate()) {
+      LOGGER.info("DEBUG: dynamicUpdateResult is null or online update not enabled");
       return false;
     } else if (dynamicUpdateResult.equals(MII_DYNAMIC_UPDATE_SUCCESS)) {
+      LOGGER.info("DEBUG: dynamicUpdateResult equals MII_DYNAMIC_UPDATE_SUCCESS");
       return true;
     } else if (getDomain().getMiiNonDynamicChangesMethod() == MIINonDynamicChangesMethod.CommitUpdateOnly) {
+      LOGGER.info("DEBUG: getMiiNonDynamicChangesMethod equals CommitUpdateOnly");
       addRestartRequiredLabel = true;
       return true;
     } else {
+      LOGGER.info("DEBUG: Returning false as no condition matches");
       return false;
     }
   }
@@ -635,7 +650,10 @@ public abstract class PodStepContext extends BasePodStepContext {
 
   protected String getReasonToRecycle(V1Pod currentPod, CompatibilityScope scope) {
     PodCompatibility compatibility = new PodCompatibility(getPodModel(), currentPod);
-    return compatibility.getScopedIncompatibility(scope);
+    LOGGER.info("DEBUG: compatibility is " + compatibility);
+    String incompatibility = compatibility.getScopedIncompatibility(scope);
+    LOGGER.info("DEBUG: incompatibility is " + incompatibility);
+    return incompatibility;
   }
 
   private ResponseStep<V1Pod> createResponse(Step next) {
@@ -1086,6 +1104,7 @@ public abstract class PodStepContext extends BasePodStepContext {
       if (currentPod == null) {
         return doNext(createNewPod(getNext()), packet);
       } else if (!canUseCurrentPod(currentPod)) {
+        LOGGER.info("DEBUG: calling replaceCurrentPod.. currentPod " + currentPod);
         return doNext(replaceCurrentPod(currentPod, getNext()), packet);
       } else if (mustPatchPod(currentPod)) {
         return doNext(patchCurrentPod(currentPod, getNext()), packet);
