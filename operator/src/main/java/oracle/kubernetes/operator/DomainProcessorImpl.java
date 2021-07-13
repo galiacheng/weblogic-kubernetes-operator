@@ -80,7 +80,6 @@ import static oracle.kubernetes.operator.ProcessingConstants.MAKE_RIGHT_DOMAIN_O
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_HEALTH_MAP;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_STATE_MAP;
 import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.DOMAIN_PROCESSING_ABORTED;
-import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.DOMAIN_PROCESSING_RETRYING;
 import static oracle.kubernetes.operator.helpers.LegalNames.toJobIntrospectorName;
 
 public class DomainProcessorImpl implements DomainProcessor {
@@ -835,7 +834,6 @@ public class DomainProcessorImpl implements DomainProcessor {
         }
         if (getCurrentIntrospectFailureRetryCount() > 0) {
           logRetryCount(cachedInfo);
-          ensureRetryingEventPresent();
         }
         LOGGER.fine("Continue the make-right domain presence, explicitRecheck -> " + explicitRecheck);
         return true;
@@ -846,12 +844,6 @@ public class DomainProcessorImpl implements DomainProcessor {
 
     private boolean shouldReportAbortedEvent() {
       return Optional.ofNullable(eventData).map(EventData::getItem).orElse(null) == DOMAIN_PROCESSING_ABORTED;
-    }
-
-    private void ensureRetryingEventPresent() {
-      if (eventData == null) {
-        eventData = new EventData(DOMAIN_PROCESSING_RETRYING);
-      }
     }
 
     private void resetIntrospectorJobFailureCount() {
@@ -1065,7 +1057,6 @@ public class DomainProcessorImpl implements DomainProcessor {
                             createMakeRightOperation(existing)
                                 .withDeleting(isDeleting)
                                 .withExplicitRecheck()
-                                .withEventData(EventHelper.EventItem.DOMAIN_PROCESSING_RETRYING, null)
                                 .execute();
                           } else {
                             LOGGER.severe(
