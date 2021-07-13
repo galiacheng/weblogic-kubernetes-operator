@@ -9,10 +9,8 @@ public interface EventConstants {
   String DOMAIN_CHANGED_EVENT = "DomainChanged";
   String DOMAIN_CREATED_EVENT = "DomainCreated";
   String DOMAIN_DELETED_EVENT = "DomainDeleted";
-  String DOMAIN_PROCESSING_STARTING_EVENT = "DomainProcessingStarting";
   String DOMAIN_PROCESSING_COMPLETED_EVENT = "DomainProcessingCompleted";
   String DOMAIN_PROCESSING_FAILED_EVENT = "DomainProcessingFailed";
-  String DOMAIN_PROCESSING_RETRYING_EVENT = "DomainProcessingRetrying";
   String DOMAIN_PROCESSING_ABORTED_EVENT = "DomainProcessingAborted";
   String DOMAIN_VALIDATION_ERROR_EVENT = "DomainValidationError";
   String EVENT_NORMAL = "Normal";

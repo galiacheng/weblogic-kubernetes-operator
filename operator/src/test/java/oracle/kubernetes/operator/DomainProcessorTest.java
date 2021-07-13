@@ -78,7 +78,6 @@ import static oracle.kubernetes.operator.DomainSourceType.FromModel;
 import static oracle.kubernetes.operator.DomainSourceType.Image;
 import static oracle.kubernetes.operator.DomainSourceType.PersistentVolume;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_COMPLETED_EVENT;
-import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_STARTING_EVENT;
 import static oracle.kubernetes.operator.IntrospectorConfigMapConstants.INTROSPECTOR_CONFIG_MAP_NAME_SUFFIX;
 import static oracle.kubernetes.operator.LabelConstants.CLUSTERNAME_LABEL;
 import static oracle.kubernetes.operator.LabelConstants.CREATEDBYOPERATOR_LABEL;
@@ -477,8 +476,6 @@ public class DomainProcessorTest {
     // Run the make right flow again with explicit recheck and no domain updates
     OffsetDateTime timestamp = OffsetDateTime.now();
     processor.createMakeRightOperation(info).withExplicitRecheck().execute();
-    assertThat("Event DOMAIN_PROCESSING_STARTED",
-            doesNotContainEvent(getEventsAfterTimestamp(timestamp), DOMAIN_PROCESSING_STARTING_EVENT), is(true));
     assertThat("Event DOMAIN_PROCESSING_COMPLETED_EVENT",
             doesNotContainEvent(getEventsAfterTimestamp(timestamp), DOMAIN_PROCESSING_COMPLETED_EVENT), is(true));
   }
@@ -498,8 +495,6 @@ public class DomainProcessorTest {
     // Run the make right flow again with explicit recheck and no domain updates
     OffsetDateTime timestamp = OffsetDateTime.now();
     processor.createMakeRightOperation(info).withExplicitRecheck().execute();
-    assertThat("Event DOMAIN_PROCESSING_STARTED",
-            doesNotContainEvent(getEventsAfterTimestamp(timestamp), DOMAIN_PROCESSING_STARTING_EVENT), is(true));
     assertThat("Event DOMAIN_PROCESSING_COMPLETED_EVENT",
             doesNotContainEvent(getEventsAfterTimestamp(timestamp), DOMAIN_PROCESSING_COMPLETED_EVENT), is(true));
   }

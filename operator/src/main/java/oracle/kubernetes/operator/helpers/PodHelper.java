@@ -22,7 +22,6 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodCondition;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1PodStatus;
-import oracle.kubernetes.operator.DomainStatusUpdater;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.MakeRightDomainOperation;
 import oracle.kubernetes.operator.PodAwaiterStepFactory;
@@ -309,12 +308,6 @@ public class PodHelper {
     }
 
     @Override
-    Step createProgressingStep(Step actionStep) {
-      return DomainStatusUpdater.createProgressingStartedEventStep(
-          DomainStatusUpdater.ADMIN_SERVER_STARTING_PROGRESS_REASON, false, actionStep);
-    }
-
-    @Override
     Step createNewPod(Step next) {
       return createPod(next);
     }
@@ -484,14 +477,8 @@ public class PodHelper {
     }
 
     @Override
-    Step createProgressingStep(Step actionStep) {
-      return DomainStatusUpdater.createProgressingStartedEventStep(
-          DomainStatusUpdater.MANAGED_SERVERS_STARTING_PROGRESS_REASON, false, actionStep);
-    }
-
-    @Override
     Step createNewPod(Step next) {
-      /*/
+      /**/
       return createPod(next);
       /*/
       return createProgressingStep(createPod(next));

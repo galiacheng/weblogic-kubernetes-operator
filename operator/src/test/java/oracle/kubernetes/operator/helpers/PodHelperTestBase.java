@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -97,6 +98,7 @@ import static oracle.kubernetes.operator.ProcessingConstants.MAKE_RIGHT_DOMAIN_O
 import static oracle.kubernetes.operator.ProcessingConstants.MII_DYNAMIC_UPDATE;
 import static oracle.kubernetes.operator.ProcessingConstants.MII_DYNAMIC_UPDATE_RESTART_REQUIRED;
 import static oracle.kubernetes.operator.ProcessingConstants.MII_DYNAMIC_UPDATE_SUCCESS;
+import static oracle.kubernetes.operator.ProcessingConstants.NUM_SERVERS_STARTED;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_SCAN;
 import static oracle.kubernetes.operator.helpers.AnnotationHelper.SHA256_ANNOTATION;
 import static oracle.kubernetes.operator.helpers.DomainStatusMatcher.hasStatus;
@@ -351,6 +353,13 @@ public abstract class PodHelperTestBase extends DomainValidationBaseTest {
   @Test
   public void whenPodCreated_specHasOneContainer() {
     assertThat(getCreatedPod().getSpec().getContainers(), hasSize(1));
+  }
+
+  @Test
+  public void afterPodCreated_incrementNumServersStarted() {
+    final Packet packet = testSupport.runSteps(getStepFactory(), terminalStep);
+
+    assertThat(packet.<AtomicInteger>getValue(NUM_SERVERS_STARTED).get(), equalTo(1));
   }
 
   @Test

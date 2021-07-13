@@ -3,6 +3,8 @@
 
 package oracle.kubernetes.operator.steps;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.wlsconfig.WlsDomainConfig;
 import oracle.kubernetes.operator.work.NextAction;
@@ -21,6 +23,7 @@ public class BeforeAdminServiceStep extends Step {
     String adminServerName = domainTopology.getAdminServerName();
     packet.put(ProcessingConstants.SERVER_NAME, adminServerName);
     packet.put(ProcessingConstants.SERVER_SCAN, domainTopology.getServerConfig(adminServerName));
+    packet.put(ProcessingConstants.NUM_SERVERS_STARTED, new AtomicInteger());
 
     return doNext(packet);
   }

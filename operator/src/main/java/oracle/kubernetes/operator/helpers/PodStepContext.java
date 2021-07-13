@@ -378,14 +378,6 @@ public abstract class PodStepContext extends BasePodStepContext {
     return createPodAsync(replaceResponse(next));
   }
 
-  /**
-   * Creates a Progressing step before an action step.
-   *
-   * @param actionStep the step to perform after the ProgressingStep.
-   * @return a step to be scheduled.
-   */
-  abstract Step createProgressingStep(Step actionStep);
-
   private Step patchCurrentPod(V1Pod currentPod, Step next) {
     return patchPod(currentPod, next);
   }

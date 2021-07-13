@@ -38,7 +38,6 @@ import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_COMPLE
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_COMPLETED_PATTERN;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_FAILED_EVENT;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_FAILED_PATTERN;
-import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_STARTING_EVENT;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_STARTING_PATTERN;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_VALIDATION_ERROR_EVENT;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_VALIDATION_ERROR_PATTERN;
@@ -48,8 +47,6 @@ import static oracle.kubernetes.operator.EventConstants.NAMESPACE_WATCHING_START
 import static oracle.kubernetes.operator.EventConstants.NAMESPACE_WATCHING_STOPPED_EVENT;
 import static oracle.kubernetes.operator.EventConstants.WEBLOGIC_OPERATOR_COMPONENT;
 import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.DOMAIN_PROCESSING_ABORTED;
-import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.DOMAIN_PROCESSING_COMPLETED;
-import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.DOMAIN_PROCESSING_STARTING;
 import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.NAMESPACE_WATCHING_STOPPED;
 import static oracle.kubernetes.operator.helpers.NamespaceHelper.getOperatorNamespace;
 import static oracle.kubernetes.operator.helpers.NamespaceHelper.getOperatorPodName;
@@ -104,15 +101,6 @@ public class EventHelper {
 
     @Override
     public NextAction apply(Packet packet) {
-      DomainPresenceInfo info = packet.getSpi(DomainPresenceInfo.class);
-      if (hasProcessingNotStarted(info) && (eventData.eventItem == DOMAIN_PROCESSING_COMPLETED)) {
-        return doNext(packet);
-      }
-
-      if (isDuplicatedStartedEvent(info)) {
-        return doNext(packet);
-      }
-
       return doNext(createEventAPICall(createEventModel(packet, eventData)), packet);
     }
 
@@ -146,15 +134,6 @@ public class EventHelper {
     private CoreV1Event getExistingEvent(CoreV1Event event) {
       return Optional.ofNullable(getEventK8SObjects(event))
           .map(o -> o.getExistingEvent(event)).orElse(null);
-    }
-
-    private boolean isDuplicatedStartedEvent(DomainPresenceInfo info) {
-      return eventData.eventItem == EventItem.DOMAIN_PROCESSING_STARTING
-          && Optional.ofNullable(info).map(dpi -> dpi.getLastEventItem() == DOMAIN_PROCESSING_STARTING).orElse(false);
-    }
-
-    private boolean hasProcessingNotStarted(DomainPresenceInfo info) {
-      return Optional.ofNullable(info).map(dpi -> dpi.getLastEventItem() != DOMAIN_PROCESSING_STARTING).orElse(false);
     }
 
     private class CreateEventResponseStep extends ResponseStep<CoreV1Event> {
@@ -318,7 +297,7 @@ public class EventHelper {
     DOMAIN_PROCESSING_STARTING {
       @Override
       public String getReason() {
-        return DOMAIN_PROCESSING_STARTING_EVENT;
+        return "nononono";
       }
 
       @Override
