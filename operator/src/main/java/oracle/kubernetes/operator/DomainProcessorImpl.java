@@ -1092,7 +1092,6 @@ public class DomainProcessorImpl implements DomainProcessor {
   Step createDomainUpPlan(DomainPresenceInfo info) {
     Step managedServerStrategy = Step.chain(
         bringManagedServersUp(null),
-        EventHelper.createEventStep(EventItem.DOMAIN_PROCESSING_COMPLETED),
         MonitorExporterSteps.updateExporterSidecars(),
         new TailStep());
 
@@ -1124,8 +1123,7 @@ public class DomainProcessorImpl implements DomainProcessor {
     return Step.chain(
         new DownHeadStep(info, ns),
         new DeleteDomainStep(info, ns, domainUid),
-        new UnregisterStep(info),
-        EventHelper.createEventStep(EventItem.DOMAIN_PROCESSING_COMPLETED));
+        new UnregisterStep(info));
   }
 
   private static class UnregisterStep extends Step {

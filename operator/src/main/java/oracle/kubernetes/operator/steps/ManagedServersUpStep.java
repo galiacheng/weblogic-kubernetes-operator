@@ -38,8 +38,6 @@ import oracle.kubernetes.weblogic.domain.model.Domain;
 import oracle.kubernetes.weblogic.domain.model.ServerSpec;
 
 import static java.util.Comparator.comparing;
-import static oracle.kubernetes.operator.DomainStatusUpdater.MANAGED_SERVERS_STARTING_PROGRESS_REASON;
-import static oracle.kubernetes.operator.DomainStatusUpdater.createProgressingStartedEventStep;
 import static oracle.kubernetes.operator.helpers.EventHelper.createEventStep;
 
 public class ManagedServersUpStep extends Step {
@@ -75,9 +73,7 @@ public class ManagedServersUpStep extends Step {
     List<ServerShutdownInfo> serversToStop = getServersToStop(info, factory.shutdownInfos);
 
     if (!serversToStop.isEmpty()) {
-      insert(steps,
-              Step.chain(createProgressingStartedEventStep(info, MANAGED_SERVERS_STARTING_PROGRESS_REASON, true,
-                      null), new ServerDownIteratorStep(factory.shutdownInfos, null)));
+      insert(steps, new ServerDownIteratorStep(factory.shutdownInfos, null));
     }
 
     return Step.chain(steps.toArray(new Step[0]));
@@ -124,9 +120,10 @@ public class ManagedServersUpStep extends Step {
     info.setServerShutdownInfo(factory.getShutdownInfos());
     LOGGER.exiting();
 
+    final Step nextStep = factory.createNextStep(getNext());
     return doNext(
         NEXT_STEP_FACTORY.createServerStep(
-            info, config, factory, factory.createNextStep(getNext())),
+            info, config, factory, nextStep),
         packet);
   }
 

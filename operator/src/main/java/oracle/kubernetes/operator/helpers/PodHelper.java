@@ -478,11 +478,7 @@ public class PodHelper {
 
     @Override
     Step createNewPod(Step next) {
-      /**/
       return createPod(next);
-      /*/
-      return createProgressingStep(createPod(next));
-      /**/
     }
 
     @Override

@@ -69,7 +69,6 @@ import static oracle.kubernetes.operator.ProcessingConstants.SERVER_STATE_MAP;
 import static oracle.kubernetes.operator.WebLogicConstants.RUNNING_STATE;
 import static oracle.kubernetes.operator.WebLogicConstants.SHUTDOWN_STATE;
 import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.DOMAIN_PROCESSING_ABORTED;
-import static oracle.kubernetes.operator.helpers.EventHelper.EventItem.DOMAIN_PROCESSING_STARTING;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Available;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.ConfigChangesPendingRestart;
 import static oracle.kubernetes.weblogic.domain.model.DomainConditionType.Failed;
@@ -112,18 +111,6 @@ public class DomainStatusUpdater {
   /**
    * Asynchronous step to set Domain condition to Progressing.
    *
-   * @param reason Progressing reason
-   * @param isPreserveAvailable true, if existing Available=True condition should be preserved
-   * @param next Next step
-   * @return Step
-   */
-  public static Step createProgressingStep(String reason, boolean isPreserveAvailable, Step next) {
-    return new ProgressingStep(null, reason, isPreserveAvailable, next);
-  }
-
-  /**
-   * Asynchronous step to set Domain condition to Progressing.
-   *
    * @param info Domain presence info
    * @param reason Progressing reason
    * @param isPreserveAvailable true, if existing Available=True condition should be preserved
@@ -133,34 +120,6 @@ public class DomainStatusUpdater {
   public static Step createProgressingStep(
       DomainPresenceInfo info, String reason, boolean isPreserveAvailable, Step next) {
     return new ProgressingStep(info, reason, isPreserveAvailable, next);
-  }
-
-  /**
-   * Asynchronous step to set Domain condition to Progressing and create DOMAIN_PROCESSING_STARTING event.
-   *
-   * @param reason Progressing reason
-   * @param isPreserveAvailable true, if existing Available=True condition should be preserved
-   * @param next Next step
-   * @return Step
-   */
-  public static Step createProgressingStartedEventStep(String reason, boolean isPreserveAvailable, Step next) {
-    return Step.chain(EventHelper.createEventStep(DOMAIN_PROCESSING_STARTING),
-        createProgressingStep(reason, isPreserveAvailable, next));
-  }
-
-  /**
-   * Asynchronous step to set Domain condition to Progressing and create DOMAIN_PROCESSING_STARTING event.
-   *
-   * @param info Domain presence info
-   * @param reason Progressing reason
-   * @param isPreserveAvailable true, if existing Available=True condition should be preserved
-   * @param next Next step
-   * @return Step
-   */
-  public static Step createProgressingStartedEventStep(
-      DomainPresenceInfo info, String reason, boolean isPreserveAvailable, Step next) {
-    return Step.chain(EventHelper.createEventStep(DOMAIN_PROCESSING_STARTING),
-        createProgressingStep(info, reason, isPreserveAvailable, next));
   }
 
   /**

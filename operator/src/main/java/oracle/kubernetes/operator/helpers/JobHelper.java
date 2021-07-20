@@ -17,6 +17,7 @@ import io.kubernetes.client.openapi.models.V1JobStatus;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
+import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import oracle.kubernetes.operator.DomainStatusUpdater;
@@ -47,8 +48,6 @@ import oracle.kubernetes.weblogic.domain.model.ManagedServer;
 import oracle.kubernetes.weblogic.domain.model.ServerEnvVars;
 
 import static oracle.kubernetes.operator.DomainSourceType.FromModel;
-import static oracle.kubernetes.operator.DomainStatusUpdater.INSPECTING_DOMAIN_PROGRESS_REASON;
-import static oracle.kubernetes.operator.DomainStatusUpdater.createProgressingStartedEventStep;
 import static oracle.kubernetes.operator.logging.MessageKeys.INTROSPECTOR_JOB_FAILED;
 import static oracle.kubernetes.operator.logging.MessageKeys.INTROSPECTOR_JOB_FAILED_DETAIL;
 
@@ -367,9 +366,7 @@ public class JobHelper {
 
         return doNext(
             Step.chain(
-                DomainValidationSteps.createAdditionalDomainValidationSteps(
-                    Objects.requireNonNull(context.getJobModel().getSpec()).getTemplate().getSpec()),
-                createProgressingStartedEventStep(info, INSPECTING_DOMAIN_PROGRESS_REASON, true, null),
+                DomainValidationSteps.createAdditionalDomainValidationSteps(getJobTemplatePodSpec(context)),
                 context.createNewJob(null),
                 readDomainIntrospectorPodLogStep(null),
                 deleteDomainIntrospectorJobStep(null),
@@ -378,6 +375,10 @@ public class JobHelper {
       }
 
       return doNext(packet);
+    }
+
+    private V1PodSpec getJobTemplatePodSpec(JobStepContext context) {
+      return Objects.requireNonNull(context.getJobModel().getSpec()).getTemplate().getSpec();
     }
   }
 

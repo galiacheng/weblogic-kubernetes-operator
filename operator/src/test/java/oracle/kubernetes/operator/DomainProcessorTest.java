@@ -70,6 +70,7 @@ import oracle.kubernetes.weblogic.domain.model.ManagedServer;
 import oracle.kubernetes.weblogic.domain.model.ServerStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static oracle.kubernetes.operator.DomainProcessorTestSetup.NS;
@@ -217,7 +218,7 @@ public class DomainProcessorTest {
   public void whenDomainConfiguredForMaxServers_establishMatchingPresence() {
     domainConfigurator.configureCluster(CLUSTER).withReplicas(MAX_SERVERS);
 
-    DomainPresenceInfo info = new DomainPresenceInfo(domain);
+    DomainPresenceInfo info = new DomainPresenceInfo(newDomain);
     processor.createMakeRightOperation(info).execute();
 
     assertServerPodAndServicePresent(info, ADMIN_NAME);
@@ -233,7 +234,7 @@ public class DomainProcessorTest {
   public void whenMakeRightRun_updateDomainStatus() {
     domainConfigurator.configureCluster(CLUSTER).withReplicas(MIN_REPLICAS);
 
-    processor.createMakeRightOperation(new DomainPresenceInfo(domain)).execute();
+    processor.createMakeRightOperation(new DomainPresenceInfo(newDomain)).execute();
 
     Domain updatedDomain = testSupport.getResourceWithName(DOMAIN, UID);
 
@@ -251,7 +252,7 @@ public class DomainProcessorTest {
     Arrays.stream(MANAGED_SERVER_NAMES).forEach(this::defineServerResources);
 
     domainConfigurator.configureCluster(CLUSTER).withReplicas(MIN_REPLICAS);
-    processor.createMakeRightOperation(new DomainPresenceInfo(domain)).withExplicitRecheck().execute();
+    processor.createMakeRightOperation(new DomainPresenceInfo(newDomain)).withExplicitRecheck().execute();
 
     assertThat((int) getServerServices().count(), equalTo(MIN_REPLICAS + NUM_ADMIN_SERVERS));
     assertThat(getRunningPods().size(), equalTo(MIN_REPLICAS + NUM_ADMIN_SERVERS + NUM_JOB_PODS));
@@ -461,51 +462,7 @@ public class DomainProcessorTest {
     assertThat(info.getClusterService(CLUSTER), notNullValue());
   }
 
-  @Test
-  public void whenMakeRightOperationHasNoDomainUpdates_domainProcessingEventsNotGenerated()
-          throws JsonProcessingException {
-    establishPreviousIntrospection(null, Arrays.asList(1, 2, 3, 4));
-    for (Integer i : Arrays.asList(1,2,3,4)) {
-      domainConfigurator.configureServer(MS_PREFIX + i);
-    }
-    domainConfigurator.configureCluster(CLUSTER).withReplicas(3);
-    DomainPresenceInfo info = new DomainPresenceInfo(newDomain);
-
-    processor.createMakeRightOperation(info).execute();
-
-    // Run the make right flow again with explicit recheck and no domain updates
-    OffsetDateTime timestamp = OffsetDateTime.now();
-    processor.createMakeRightOperation(info).withExplicitRecheck().execute();
-    assertThat("Event DOMAIN_PROCESSING_COMPLETED_EVENT",
-            doesNotContainEvent(getEventsAfterTimestamp(timestamp), DOMAIN_PROCESSING_COMPLETED_EVENT), is(true));
-  }
-
-  @Test
-  public void whenMakeRightOperationHasNoDomainUpdatesAndServiceOnlyServers_domainProcessingEventsNotGenerated()
-          throws JsonProcessingException {
-    establishPreviousIntrospection(null, Arrays.asList(1, 2, 3, 4));
-    for (Integer i : Arrays.asList(1,2,3,4)) {
-      domainConfigurator.configureServer(MS_PREFIX + i);
-    }
-    domainConfigurator.configureCluster(CLUSTER).withReplicas(3).withPrecreateServerService(true);
-    DomainPresenceInfo info = new DomainPresenceInfo(newDomain);
-
-    processor.createMakeRightOperation(info).execute();
-
-    // Run the make right flow again with explicit recheck and no domain updates
-    OffsetDateTime timestamp = OffsetDateTime.now();
-    processor.createMakeRightOperation(info).withExplicitRecheck().execute();
-    assertThat("Event DOMAIN_PROCESSING_COMPLETED_EVENT",
-            doesNotContainEvent(getEventsAfterTimestamp(timestamp), DOMAIN_PROCESSING_COMPLETED_EVENT), is(true));
-  }
-
-  private static boolean doesNotContainEvent(List<CoreV1Event> events, String reason) {
-    return Optional.ofNullable(events).get()
-            .stream()
-            .filter(e -> reason.equals(e.getReason())).findFirst().orElse(null) == null;
-  }
-
-  @Test
+  @Test @Disabled("should only happen after servers reach ready state - need scaledown equivalent as well")
   public void whenScalingUpDomain_domainProcessingCompletedEventsGenerated()
           throws JsonProcessingException {
     establishPreviousIntrospection(null, Arrays.asList(1, 2));

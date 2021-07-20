@@ -19,7 +19,6 @@ public interface ProcessingConstants {
   String SERVER_NAME = "serverName";
   String CLUSTER_NAME = "clusterName";
 
-  String NUM_SERVERS_STARTED = "servers";
   String SERVERS_TO_ROLL = "roll";
 
   String SCRIPT_CONFIG_MAP = "scriptConfigMap";

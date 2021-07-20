@@ -38,7 +38,6 @@ import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_COMPLE
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_COMPLETED_PATTERN;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_FAILED_EVENT;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_FAILED_PATTERN;
-import static oracle.kubernetes.operator.EventConstants.DOMAIN_PROCESSING_STARTING_PATTERN;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_VALIDATION_ERROR_EVENT;
 import static oracle.kubernetes.operator.EventConstants.DOMAIN_VALIDATION_ERROR_PATTERN;
 import static oracle.kubernetes.operator.EventConstants.EVENT_NORMAL;
@@ -293,17 +292,6 @@ public class EventHelper {
         return DOMAIN_DELETED_PATTERN;
       }
 
-    },
-    DOMAIN_PROCESSING_STARTING {
-      @Override
-      public String getReason() {
-        return "nononono";
-      }
-
-      @Override
-      public String getPattern() {
-        return DOMAIN_PROCESSING_STARTING_PATTERN;
-      }
     },
     DOMAIN_PROCESSING_COMPLETED {
       @Override

@@ -5,7 +5,6 @@ package oracle.kubernetes.operator.steps;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.meterware.simplestub.Memento;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -25,9 +24,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static oracle.kubernetes.operator.ProcessingConstants.NUM_SERVERS_STARTED;
 import static oracle.kubernetes.operator.ProcessingConstants.SERVER_NAME;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.junit.MatcherAssert.assertThat;
 
@@ -97,12 +94,5 @@ public class BeforeAdminServiceStepTest {
 
   private Packet invokeStep() {
     return testSupport.runSteps(step);
-  }
-
-  @Test
-  public void afterProcessing_packetContainsAtomicIntegerToCountStartingServers() {
-    Packet packet = invokeStep();
-
-    assertThat(packet.<AtomicInteger>getValue(NUM_SERVERS_STARTED).get(), equalTo(0));
   }
 }
