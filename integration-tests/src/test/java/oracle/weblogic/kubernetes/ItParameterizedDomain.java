@@ -268,9 +268,9 @@ class ItParameterizedDomain {
 
     // set resource request and limit
     resourceRequest.put("cpu", new Quantity("250m"));
-    resourceRequest.put("memory", new Quantity("768Mi"));
+    resourceRequest.put("memory", new Quantity("128Mi"));
     resourceLimit.put("cpu", new Quantity("2"));
-    resourceLimit.put("memory", new Quantity("2Gi"));
+    resourceLimit.put("memory", new Quantity("128Mi"));
 
     // create model in image domain with multiple clusters
     miiDomain = createMiiDomainWithMultiClusters(miiDomainUid, miiDomainNamespace);
