@@ -37,7 +37,7 @@ script="${BASH_SOURCE[0]}"
 scriptDir="$( cd "$( dirname "${script}" )" && pwd )"
 
 function usage {
-  echo "usage: ${script} [-v <version>] [-n <name>] [-s] [-o <directory>] [-t <tests>] [-c <name>] [-p true|false] [-x <number_of_threads>] [-d <wdt_download_url>] [-i <wit_download_url>] [-l <wle_download_url>] [-m <maven_profile_name>] [-h]"
+  echo "usage: ${script} [-v <version>] [-n <name>] [-s] [-o <directory>] [-t <tests>] [-c <name>] [-r <name>] [-p true|false] [-x <number_of_threads>] [-d <wdt_download_url>] [-i <wit_download_url>] [-l <wle_download_url>] [-m <maven_profile_name>] [-h]"
   echo "  -v Kubernetes version (optional) "
   echo "      (default: 1.16, supported values depend on the kind version. See kindversions.properties) "
   echo "  -n Kind cluster name (optional) "
@@ -49,6 +49,8 @@ function usage {
   echo "      (default: **/It*) "
   echo "  -c CNI implementation (optional) "
   echo "      (default: kindnet, supported values: kindnet, calico) "
+  echo "  -r OCI container runtime (optional) "
+  echo "      (default: containerd, supported values: containerd, cri-o) "
   echo "  -p Run It classes in parallel"
   echo "      (default: false) "
   echo "  -x Number of threads to run the classes in parallel"
@@ -80,6 +82,7 @@ else
 fi
 test_filter="**/It*"
 cni_implementation="kindnet"
+oci_runtime="cri-o"
 parallel_run="false"
 threads="2"
 wdt_download_url="https://github.com/oracle/weblogic-deploy-tooling/releases/latest"
@@ -88,7 +91,7 @@ wle_download_url="https://github.com/oracle/weblogic-logging-exporter/releases/l
 maven_profile_name="integration-tests"
 skip_tests=false
 
-while getopts "v:n:o:t:c:x:p:d:i:l:m:sh" opt; do
+while getopts "v:n:o:t:c:r:x:p:d:i:l:m:sh" opt; do
   case $opt in
     v) k8s_version="${OPTARG}"
     ;;
@@ -99,6 +102,8 @@ while getopts "v:n:o:t:c:x:p:d:i:l:m:sh" opt; do
     t) test_filter="${OPTARG}"
     ;;
     c) cni_implementation="${OPTARG}"
+    ;;
+    r) oci_runtime="${OPTARG}"
     ;;
     x) threads="${OPTARG}"
     ;;
@@ -213,7 +218,9 @@ if [ "${kind_network}" = "bridge" ]; then
 fi
 echo "Registry Host: ${reg_host}"
 
-echo 'Create a cluster with the local registry enabled in containerd'
+if [ "${oci_runtime}" = "containerd" ]; then
+
+echo 'Create the cluster using containerd'
 cat <<EOF | kind create cluster --name "${kind_name}" --kubeconfig "${RESULT_ROOT}/kubeconfig" --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -233,6 +240,46 @@ nodes:
       - hostPath: ${PV_ROOT}
         containerPath: ${PV_ROOT}
 EOF
+
+elif [ "${oci_runtime}" = "cri-o" ]; then
+
+echo 'Build Kind node image with CRI-O'
+kind_original_image=${kind_image}
+kind_image=kindnode-crio:v${k8s_version}
+docker build --build-arg IMAGE=${kind_original_image} -t ${kind_image} -f Dockerfile.kindtest .
+
+echo 'Create the cluster using CRI-O'
+cat <<EOF | kind create cluster --name "${kind_name}" --kubeconfig "${RESULT_ROOT}/kubeconfig" --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  disableDefaultCNI: ${disableDefaultCNI}
+  podSubnet: 192.168.0.0/16
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        criSocket: unix:///run/crio/crio.sock
+        kubeletExtraArgs:
+          cgroup-driver: cgroupfs
+    image: ${kind_image}
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        criSocket: unix:///run/crio/crio.sock
+        kubeletExtraArgs:
+          cgroup-driver: cgroupfs
+    image: ${kind_image}
+    extraMounts:
+      - hostPath: ${PV_ROOT}
+        containerPath: ${PV_ROOT}
+EOF
+
+fi
 
 echo "Access your cluster in other terminals with:"
 echo "  export KUBECONFIG=\"${RESULT_ROOT}/kubeconfig\""
@@ -282,7 +329,11 @@ EOF
 echo 'Set up test running ENVVARs...'
 export KIND_REPO="localhost:${reg_port}/"
 export K8S_NODEPORT_HOST=`kubectl get node kind-worker -o jsonpath='{.status.addresses[?(@.type == "InternalIP")].address}'`
-export JAVA_HOME="${JAVA_HOME:-`type -p java|xargs readlink -f|xargs dirname|xargs dirname`}"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  export JAVA_HOME=$(/usr/libexec/java_home)
+else
+  export JAVA_HOME="${JAVA_HOME:-`type -p java|xargs readlink -f|xargs dirname|xargs dirname`}"
+fi
 
 if [ "$skip_tests" = true ] ; then
   echo 'Cluster created. Skipping tests.'
