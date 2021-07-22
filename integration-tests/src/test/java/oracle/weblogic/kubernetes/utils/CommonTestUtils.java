@@ -3499,7 +3499,7 @@ public class CommonTestUtils {
    * @param headers extra header info to pass to the REST url
    * @param application name of the application
    * @param target the weblogic target for the application
-   * @param username username to log into the system 
+   * @param username username to log into the system
    * @param password password for the username
    */
   public static boolean checkAppIsActive(
@@ -3514,16 +3514,16 @@ public class CommonTestUtils {
 
     LoggingFacade logger = getLogger();
     String curlString = String.format("curl -v --show-error --noproxy '*' "
-           + "--user " + username + ":" + password + " " + headers  
+           + "--user " + username + ":" + password + " " + headers
            + " -H X-Requested-By:MyClient -H Accept:application/json "
-           + "-H Content-Type:application/json " 
+           + "-H Content-Type:application/json "
            + " -d \"{ target: '" + target + "' }\" "
            + " -X POST "
            + "http://%s:%s/management/weblogic/latest/domainRuntime/deploymentManager/appDeploymentRuntimes/"
            + application + "/getState", host, port);
 
     logger.info("curl command {0}", curlString);
-    withStandardRetryPolicy 
+    withStandardRetryPolicy
         .conditionEvaluationListener(
             condition -> logger.info("Waiting for Application {0} to be active "
                 + "(elapsed time {1} ms, remaining time {2} ms)",
@@ -3765,6 +3765,8 @@ public class CommonTestUtils {
             .template(podTemplateSpec));
     String jobName = assertDoesNotThrow(()
         -> createNamespacedJob(jobBody), "Failed to create Job");
+
+    assertDoesNotThrow(() -> Thread.sleep(10 * 60 * 1000));
 
     logger.info("Checking if the domain creation job {0} completed in namespace {1}",
         jobName, namespace);
