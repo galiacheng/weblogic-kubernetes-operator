@@ -38,7 +38,7 @@ class WdtUpdateFilterCase(unittest.TestCase):
     listen_address=self.env.toDNS1123Legal(self.env.getDomainUID() + "-" + name)
     nap = istio_naps[name]
     nap['Protocol'] = protocol
-    nap['ListenAddres'] = '127.0.0.1'
+    nap['ListenAddres'] = '0.0.0.0'
     nap['PublicAddress'] = '%s.%s' % (listen_address, self.env.getEnvOrDef("ISTIO_POD_NAMESPACE", "default"))
     nap['ListenPort'] = self.env.getEnvOrDef("ISTIO_READINESS_PORT", None)
     nap['HttpEnabledForThisProtocol'] = http_enabled
@@ -147,7 +147,7 @@ class WdtUpdateFilterCase(unittest.TestCase):
       server_template = self.getServerTemplate(model)
       model_wdt_mii_filter.customizeNetworkAccessPoints(server_template, 'sample-domain1-managed-server${id}')
       nap_listen_address = model['topology']['ServerTemplate']['cluster-1-template']['NetworkAccessPoint']['T3Channel']['ListenAddress']
-      self.assertEqual('127.0.0.1', nap_listen_address, "Expected nap listen address to be \'127.0.0.1\'")
+      self.assertEqual('0.0.0.0', nap_listen_address, "Expected nap listen address to be \'0.0.0.0\'")
     finally:
       del os.environ['ISTIO_ENABLED']
 
