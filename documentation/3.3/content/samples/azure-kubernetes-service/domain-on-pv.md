@@ -15,7 +15,7 @@ This sample demonstrates how to use the [WebLogic Kubernetes Operator](/weblogic
  - [Create WebLogic domain](#create-weblogic-domain)
  - [Automation](#automation)
  - [Deploy sample application](#deploy-sample-application)
- - [Access WebLogic Server logs](#access-weblogic-server-logs)
+ - [Validate NFS volume](#validate-nfs-volume)
  - [Clean up resources](#clean-up-resources)
  - [Troubleshooting](#troubleshooting)
  - [Useful links](#useful-links)
