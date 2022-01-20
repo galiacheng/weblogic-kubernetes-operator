@@ -2,8 +2,6 @@ name: Sync document
 
 on:
   push:
-    branches:
-      - galia-main
 
 jobs:
     sync:
