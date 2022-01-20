@@ -19,6 +19,7 @@ jobs:
             ref: main
         - name: Sync
           run: |
+            ls
             cd weblogic-kubernetes-operator-main/documentation/3.3/content/samples/azure-kubernetes-service/
             rm -Rf *
             cp -R weblogic-kubernetes-operator-galia-main/documentation/3.3/content/samples/azure-kubernetes-service/* .
