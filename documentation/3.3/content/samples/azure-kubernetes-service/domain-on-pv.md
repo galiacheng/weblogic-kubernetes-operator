@@ -29,7 +29,7 @@ This sample demonstrates how to use the [WebLogic Kubernetes Operator](/weblogic
 Clone the [WebLogic Kubernetes Operator repository](https://github.com/oracle/weblogic-kubernetes-operator) to your machine. We will use several scripts in this repository to create a WebLogic domain. This sample was tested with v3.3.7, but should work with the latest release.
 
 ```shell
-$ git clone --branch release/3.3 https://github.com/galiacheng/weblogic-kubernetes-operator.gitweblogic-kubernetes-operator.git
+$ git clone --branch release/3.3 https://github.com/galiacheng/weblogic-kubernetes-operator.git
 ```
 
 {{% notice info %}} The following sections of the sample instructions will guide you, step-by-step, through the process of setting up a WebLogic cluster on AKS - remaining as close as possible to a native Kubernetes experience. This lets you understand and customize each step. If you wish to have a more automated experience that abstracts some lower level details, you can skip to the [Automation](#automation) section.
@@ -129,7 +129,6 @@ $ kubectl get secret
 ```
 ```
 NAME                                      TYPE                                  DATA   AGE
-wlsazure-secret                           Opaque                                2      17m
 regcred                                   kubernetes.io/dockerconfigjson        1      2m25s
 default-token-csdvd                       kubernetes.io/service-account-token   3      25m
 domain1-weblogic-credentials              Opaque                                2      3m42s
@@ -504,7 +503,7 @@ For input values, you can edit `kubernetes/samples/scripts/create-weblogic-domai
 | `dockerEmail` | `yourDockerEmail` | Oracle Single Sign-On (SSO) account email, used to pull the WebLogic Server Docker image. |
 | `dockerPassword` | `yourDockerPassword`| Password for Oracle SSO account, used to pull the WebLogic Server Docker image, in clear text. |
 | `dockerUserName` | `yourDockerId` | The same value as `dockerEmail`.  |
-| `namePrefix` | `0730` | Alphanumeric value used as a disambiguation prefix for several Kubernetes resources. |
+| `namePrefix` | `wls` | Alphanumeric value used as a disambiguation prefix for several Kubernetes resources. |
 
 If you don't want to change the other parameters, you can use the default values.  Please make sure no extra whitespaces are added!
 

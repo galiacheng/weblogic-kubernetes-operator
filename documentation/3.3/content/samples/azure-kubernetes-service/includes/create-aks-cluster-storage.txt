@@ -4,7 +4,7 @@ Our usage pattern for the operator involves creating Kubernetes "persistent volu
 
 We will create an external data volume to access and persist data. There are several options for data sharing as described in [Storage options for applications in Azure Kubernetes Service (AKS)](https://docs.microsoft.com/azure/aks/concepts-storage).
 
-We will use Azure NFS File share as a Kubernetes volume.  For details about this full featured cloud storage solution, see the [Azure Files Documentation](https://docs.microsoft.com/en-us/azure/aks/azure-files-dynamic-pv).
+We will dynamically create and use a persistent volume with Azure Files NFS share.  For details about this full featured cloud storage solution, see the [Azure Files Documentation](https://docs.microsoft.com/en-us/azure/aks/azure-files-dynamic-pv).
 
 ##### Create an Azure Storage account and NFS share
 
@@ -15,7 +15,7 @@ We will use Azure NFS File share as a Kubernetes volume.  For details about this
     | Option name | Value | Notes |
     |-------------------|---------------|-------|
     | `name` | `$AKS_PERS_STORAGE_ACCOUNT_NAME` | The storage account name can contain only lowercase letters and numbers, and must be between 3 and 24 characters in length. |
-    | `sku`  | `Premium_LRS` | Only `Premium_LRS` and `Premium_ZRS` work for NFS share, see the [Azure NFS File Share Documentation](https://docs.microsoft.com/en-us/azure/storage/files/storage-files-how-to-create-nfs-shares?tabs=azure-portal#applies-to)|
+    | `sku`  | `Premium_LRS` | Only `Premium_LRS` and `Premium_ZRS` work for NFS share, see the [Azure Files NFS Share Documentation](https://docs.microsoft.com/en-us/azure/storage/files/storage-files-how-to-create-nfs-shares?tabs=azure-portal#applies-to)|
     | `https-only` | `false` | You can't mount an NFS file share unless you disable secure transfer. |
     | `default-action` | `Deny` | For security, we suggest to deny access by default, and choose to allow access from AKS cluster network. |
 
@@ -35,13 +35,13 @@ We will use Azure NFS File share as a Kubernetes volume.  For details about this
 
     Successful output will be a JSON object with the entry `"type": "Microsoft.Storage/storageAccounts"`.
 
-2. Create a NFS file share
+2. Create a NFS share
 
-    To create the file share, you must use `NoRootSquash` to cause the operator to change the ownership of the directory in NFS share correctly.
+    To create the file share, you must use `NoRootSquash` to allow the operator to change the ownership of the directory in NFS share.
 
-    Otherwise, you will get an error like "chown: changing ownership of '/shared': Operation not permitted".
+    Otherwise, you will get an error like `chown: changing ownership of '/shared': Operation not permitted`.
 
-    The following command create a NFS share with 100GiB:
+    The following command creates a NFS share with 100GiB:
 
     ```shell
     # Change value as needed for your own environment
@@ -56,11 +56,11 @@ We will use Azure NFS File share as a Kubernetes volume.  For details about this
         --quota 100
     ```
 
-    The command will provision a NFS file share with NFS 4.1 and above.
+    The command provisions a NFS file share with NFS 4.1 or above.
 
 3. Configure network security
 
-    We have to configure the network security and allow access from AKS cluster to the storage account.
+    We have to configure the network security allowing access from AKS cluster to the storage account.
 
     Firstly, we have to get the virtual network name and the subnet name of the AKS cluster. 
 
@@ -84,7 +84,7 @@ We will use Azure NFS File share as a Kubernetes volume.  For details about this
     $ echo ${aksSubnetId}
     ```
 
-    You must enable service endpoint `Microsoft.Storage` for the subnet using the following command:
+    You must enable the service endpoint `Microsoft.Storage` for the subnet using the following command:
 
     ```shell
     $ az network vnet subnet update \
@@ -132,9 +132,7 @@ We will use Azure NFS File share as a Kubernetes volume.  For details about this
 
 ##### Create Storage Class and PVC
 
-This sample will dynamically create and use a persistent volume with Azure Files in AKS.  
-
-These features are passed to Kubernetes using YAML files.  
+This sample will dynamically create and use a persistent volume with Azure Files in AKS.  These features are passed to Kubernetes using YAML files.  
 
 The script `kubernetes/samples/scripts/create-weblogic-domain-on-azure-kubernetes-service/create-domain-on-aks.sh` generates the required configuration files automatically, given an input file containing the parameters.  
 
@@ -171,11 +169,12 @@ Completed
 
 ##### Apply generated configuration files
 
-In order to mount the file share as a persistent volume, we have provided a configuration file `azure-csi-nfs.yaml`. You can find it in your output directory. 
+In order to define how an Azure file NFS share is created, we have provided a configuration file `azure-csi-nfs.yaml`. You can find it in your output directory. 
+
 The following command output the YAML content of your current settings, should be the same with content in `azure-csi-nfs.yaml`; use value `${AKS_PERS_RESOURCE_GROUP}` as "resourceGroup", `${AKS_PERS_STORAGE_ACCOUNT_NAME}` as "storageAccount", 
 `${AKS_PERS_SHARE_NAME}` as "shareName", and the Storage Class name is `azurefile-csi-nfs`. 
 
-This sample uses Azure Files Container Storage Interface (CSI) drivers to manage the NFS file share, see the [Azure Files CSI drivers documentation](https://docs.microsoft.com/en-us/azure/aks/azure-files-csi).
+This sample uses Azure Files Container Storage Interface (CSI) drivers to manage the NFS file share, provisioner is `file.csi.azure.com`, see the [Azure Files CSI drivers documentation](https://docs.microsoft.com/en-us/azure/aks/azure-files-csi).
 
 ```shell
 cat <<EOF
@@ -195,7 +194,7 @@ allowVolumeExpansion: true
 EOF
 ```
 
-We have provided another configuration file `pvc.yaml` for the `PersistentVolumeClaim`.  The `pvc.yaml` have exactly the same content with the Storage Class name created above. This is required. 
+We have provided another configuration file `pvc.yaml` for the `PersistentVolumeClaim`.  The `pvc.yaml` have exactly the same Storage Class name created above. This is required. 
 The following command outputs the YAML content of `pvc.yaml`.
 
 ```yaml
