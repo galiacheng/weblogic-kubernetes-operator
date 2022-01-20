@@ -19,14 +19,16 @@ jobs:
             ref: main
         - name: Sync
           run: |
+            curPath=`pwd`
             ls
             cd weblogic-kubernetes-operator-main/documentation/3.3/content/samples/azure-kubernetes-service/
             ls
             rm -Rf *
-            cp -R weblogic-kubernetes-operator-galia-main/documentation/3.3/content/samples/azure-kubernetes-service/ .
+            cp -R ${curPath}/weblogic-kubernetes-operator-galia-main/documentation/3.3/content/samples/azure-kubernetes-service/* .
             git status
             git config --global user.name "galiacheng"
             git config --global user.email "haixia.cheng@microsoft.com"
+            sed -i 's/git clone --branch v{{< latestVersion >}} https:\/\/github.com\/oracle\/weblogic-kubernetes-operator.git/git clone --branch release\/3.3 https:\/\/github.com\/galiacheng\/weblogic-kubernetes-operator.git/g' domain-on-pv.md
             git add --all
             git commit -m "sync doc from galia-main"
             git push origin main
