@@ -1,0 +1,32 @@
+name: Sync document
+
+on:
+  push:
+    branches:
+      - galia-main
+
+jobs:
+    sync:
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout galia-main
+          uses: actions/checkout@v2
+          with:
+            path: weblogic-kubernetes-operator-galia-main
+            ref: galia-main
+        - name: Checkout main
+          uses: actions/checkout@v2
+          with:
+            path: weblogic-kubernetes-operator-main
+            ref: main
+        - name: Sync
+          run: |
+            cd weblogic-kubernetes-operator-main/documentation/3.3/content/samples/azure-kubernetes-service/
+            rm -Rf *
+            cp -R weblogic-kubernetes-operator-galia-main/documentation/3.3/content/samples/azure-kubernetes-service/* .
+            git status
+            git config --global user.name "galiacheng"
+            git config --global user.email "haixia.cheng@microsoft.com"
+            git add --all
+            git commit -m "sync doc from galia-main"
+            git push origin main
