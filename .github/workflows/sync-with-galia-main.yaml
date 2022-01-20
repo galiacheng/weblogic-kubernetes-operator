@@ -22,7 +22,7 @@ jobs:
             ls
             cd weblogic-kubernetes-operator-main/documentation/3.3/content/samples/azure-kubernetes-service/
             rm -Rf *
-            cp -R weblogic-kubernetes-operator-galia-main/documentation/3.3/content/samples/azure-kubernetes-service/* .
+            cp -R weblogic-kubernetes-operator-galia-main/documentation/3.3/content/samples/azure-kubernetes-service/ .
             git status
             git config --global user.name "galiacheng"
             git config --global user.email "haixia.cheng@microsoft.com"
