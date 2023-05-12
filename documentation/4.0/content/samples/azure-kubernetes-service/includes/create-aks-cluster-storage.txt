@@ -66,24 +66,37 @@ cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolume
 metadata:
+  annotations:
+    pv.kubernetes.io/provisioned-by: file.csi.azure.com
   name: wls-azurefile
 spec:
   capacity:
-    storage: 5Gi
+    storage: 100Gi
   accessModes:
     - ReadWriteMany
-  storageClassName: azurefile
-  azureFile:
-    secretName: ${SECRET_NAME_AZURE_FILE}
-    shareName: ${AKS_PERS_SHARE_NAME}
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: azurefile-csi
+  csi:
+    driver: file.csi.azure.com
     readOnly: false
+    volumeHandle: ${NAME_PREFIX}-volumeid-${TIMESTAMP}
+    volumeAttributes:
+      resourceGroup: "{AKS_PERS_RESOURCE_GROUP}"
+      storageAccount: "{AKS_PERS_STORAGE_ACCOUNT_NAME}"
+      shareName: "${AKS_PERS_SHARE_NAME}"
+      protocol: smb
+    nodeStageSecretRef:
+      name: "${SECRET_NAME_AZURE_FILE}"
+      namespace: default
   mountOptions:
-  - dir_mode=0777
-  - file_mode=0777
-  - uid=1000
-  - gid=1000
-  - mfsymlinks
-  - nobrl
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=1000
+    - gid=1000
+    - mfsymlinks
+    - cache=strict
+    - nosharesock
+    - nobrl
 EOF
 ```
 
@@ -100,10 +113,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: azurefile
+  storageClassName: azurefile-csi
   resources:
     requests:
-      storage: 5Gi
+      storage: 100Gi
 EOF
 ```
 
@@ -111,12 +124,12 @@ Example output:
 
 ```shell
 $ kubectl get pv,pvc
-NAME                             CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM
-STORAGECLASS   REASON   AGE
-persistentvolume/wls-azurefile   5Gi        RWX            Retain           Bound    default/wls-azurefile-1683854532   azurefile               88s
+NNAME                             CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM
+STORAGECLASS    REASON   AGE
+persistentvolume/wls-azurefile   100Gi      RWX            Retain           Bound    default/smb-azurefile-1683854532   azurefile-csi            71s
 
-NAME                                             STATUS   VOLUME          CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-persistentvolumeclaim/wls-azurefile-1683854532   Bound    wls-azurefile   5Gi        RWX            azurefile      34s
+NAME                                             STATUS   VOLUME          CAPACITY   ACCESS MODES   STORAGECLASS    AGE
+persistentvolumeclaim/smb-azurefile-1683854532   Bound    wls-azurefile   100Gi      RWX            azurefile-csi   42s
 ```
 
 **Note**: Carefully inspect the output and verify it matches the above. `ACCESS MODES`, `CLAIM`, and `STORAGECLASS` are vital.
